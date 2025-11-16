@@ -3,10 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>נתוני Priority - לפי סניף</title>
 <!-- DataTables CSS -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
 <style>
 body { 
   font-family: Arial, sans-serif; 
@@ -245,6 +247,223 @@ tr:nth-child(even) {
   box-sizing: border-box;
   margin: 8px 1%;
   page-break-inside: avoid;
+}
+
+/* רספונסיביות למובייל */
+@media screen and (max-width: 768px) {
+  body {
+    padding: 10px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  
+  .container {
+    max-width: 100%;
+    padding: 15px;
+    border-radius: 10px;
+    margin: 0;
+  }
+  
+  h1 {
+    font-size: 1.3em;
+    margin-bottom: 15px;
+  }
+  
+  .controls {
+    padding: 15px;
+    gap: 10px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .control-group {
+    width: 100%;
+  }
+  
+  .control-group label {
+    font-size: 0.85em;
+  }
+  
+  input[type="date"], select {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px; /* מונע זום אוטומטי ב-iOS */
+    box-sizing: border-box;
+  }
+  
+  .btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 1em;
+    margin-top: 5px;
+  }
+  
+  .stats {
+    flex-direction: column;
+    gap: 15px;
+    padding: 10px;
+  }
+  
+  .stat-value {
+    font-size: 1.5em;
+  }
+  
+  .tabs {
+    flex-direction: column;
+    gap: 5px;
+    margin: 15px 0;
+  }
+  
+  .tab-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+    top: 0;
+  }
+  
+  .report-controls {
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+  }
+  
+  .report-controls label {
+    width: 100%;
+  }
+  
+  .report-controls select {
+    width: 100%;
+  }
+  
+  .table-container {
+    max-height: none;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 10px;
+    width: 100%;
+    position: relative;
+  }
+  
+  table {
+    font-size: 0.75em;
+    min-width: 600px;
+    width: 100% !important;
+  }
+  
+  /* DataTables responsive */
+  .dtr-details {
+    display: block;
+    width: 100%;
+  }
+  
+  .dtr-details li {
+    border-bottom: 1px solid #ddd;
+    padding: 8px 0;
+  }
+  
+  th, td {
+    padding: 8px 5px;
+    white-space: nowrap;
+  }
+  
+  th {
+    font-size: 0.8em;
+    padding: 6px 4px !important;
+  }
+  
+  th .header-text {
+    font-size: 0.75em;
+  }
+  
+  th input.column-filter {
+    font-size: 0.7em;
+    padding: 4px;
+  }
+  
+  .label-card {
+    width: 100%;
+    margin: 10px 0;
+    display: block;
+  }
+  
+  .status {
+    padding: 10px;
+    font-size: 0.9em;
+  }
+  
+  .loader {
+    width: 40px;
+    height: 40px;
+    border-width: 4px;
+  }
+  
+  /* מניעת overflow אופקי */
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+  
+  /* שיפור התצוגה של טאבים */
+  .tab-content {
+    padding: 10px 0;
+  }
+  
+  /* שיפור התצוגה של קונטרולים */
+  .control-group {
+    margin-bottom: 10px;
+  }
+  
+  /* שיפור התצוגה של סטטיסטיקות */
+  .stats {
+    flex-wrap: wrap;
+  }
+  
+  .stat-item {
+    flex: 1 1 45%;
+    min-width: 120px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  body {
+    padding: 5px;
+  }
+  
+  .container {
+    padding: 10px;
+  }
+  
+  h1 {
+    font-size: 1.1em;
+  }
+  
+  table {
+    font-size: 0.7em;
+    min-width: 500px;
+  }
+  
+  th, td {
+    padding: 6px 3px;
+    font-size: 0.85em;
+  }
+  
+  .btn {
+    font-size: 0.9em;
+    padding: 10px;
+  }
+  
+  .stats {
+    padding: 8px;
+  }
+  
+  .stat-label {
+    font-size: 0.75em;
+  }
+  
+  .stat-value {
+    font-size: 1.3em;
+  }
 }
 </style>
 </head>
@@ -706,6 +925,7 @@ function createTable(data) {
     pageLength: 25,
     order: [],
     scrollX: true,
+    responsive: true,
     dom: 'Bfrtip',
     // הפעלת חיפוש גלובלי בכל העמודות (ברירת מחדל)
     search: {
@@ -2185,6 +2405,7 @@ window.showTab = function(tabName, button) {
 <!-- jQuery and DataTables -->
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
 
