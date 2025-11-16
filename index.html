@@ -303,6 +303,12 @@ tr:nth-child(even) {
       <select id="summaryBranchFilter">
         <option value="">הכל</option>
       </select>
+      <label>שיטת אירוז:</label>
+      <select id="summaryPackingMethodFilter">
+        <option value="">הכל</option>
+        <option value="tray">חמגשית</option>
+        <option value="bulk">תפזורת</option>
+      </select>
       <label>פרמטר 1 למוצר:</label>
       <select id="summaryPSPEC6Filter">
         <option value="all">הכל</option>
@@ -828,7 +834,10 @@ function createSummaryReport(data) {
       TQUANT: item.tQuant,
       EATQUANT: item.eatQuant,
       SPEC2: order.spec2,
-      CARTON_TYPE: item.cartonType || item.Y_37210_5_ESH || order.Y_37210_5_ESH || ''
+      CARTON_TYPE: item.cartonType || item.Y_37210_5_ESH || order.Y_37210_5_ESH || '',
+      PACKMETHODCODE: item.packMethodCode || '',
+      CONTAINERS: item.containers || '',
+      ORDNAME: order.orderName || ''
     }))
   );
   
@@ -879,6 +888,7 @@ function applySummaryFilters() {
   const branchFilter = document.getElementById('summaryBranchFilter');
   const pspec6Filter = document.getElementById('summaryPSPEC6Filter');
   const cartonFilter = document.getElementById('summaryCartonFilter');
+  const packingMethodFilter = document.getElementById('summaryPackingMethodFilter');
   const flatData = window.allSummaryData || [];
   
   // סינון הנתונים
@@ -886,6 +896,23 @@ function applySummaryFilters() {
   
   if (branchFilter.value) {
     filteredData = filteredData.filter(r => String(r.BRANCHNAME) === branchFilter.value);
+  }
+  
+  // סינון לפי שיטת אירוז
+  if (packingMethodFilter && packingMethodFilter.value) {
+    if (packingMethodFilter.value === 'tray') {
+      // חמגשית - רק שיטת אירוז "חמגשית 101"
+      filteredData = filteredData.filter(r => {
+        const packMethod = String(r.PACKMETHODCODE || r.packMethodCode || '').trim();
+        return packMethod === 'חמגשית 101' || packMethod.includes('חמגשית 101');
+      });
+    } else if (packingMethodFilter.value === 'bulk') {
+      // תפזורת - כל השאר (לא חמגשית 101)
+      filteredData = filteredData.filter(r => {
+        const packMethod = String(r.PACKMETHODCODE || r.packMethodCode || '').trim();
+        return packMethod !== 'חמגשית 101' && !packMethod.includes('חמגשית 101');
+      });
+    }
   }
   
   // אם לא נבחר "הכל", ברירת מחדל היא "רק לא ריק"
@@ -917,7 +944,114 @@ function applySummaryFilters() {
     filteredData = filteredData.filter(r => String(r.CARTON_TYPE || '').trim() === selectedCt);
   }
   
-  // קיבוץ לפי פריט (PARTNAME) וסיכום כמות (TQUANT)
+  // אם נבחר חמגשית - לטפל בלוגיקה מיוחדת של שילוב פחמימה עיקרי + ירק
+  if (packingMethodFilter && packingMethodFilter.value === 'tray') {
+    // קיבוץ לפי הזמנה
+    const ordersMap = {};
+    filteredData.forEach(row => {
+      const orderName = row.ORDNAME || row.orderName || 'ללא_הזמנה';
+      if (!ordersMap[orderName]) {
+        ordersMap[orderName] = [];
+      }
+      ordersMap[orderName].push(row);
+    });
+    
+    // עבור כל הזמנה - למצוא פחמימה עיקרי וירק ולשלב אותם
+    const combinedItems = [];
+    Object.values(ordersMap).forEach(orderItems => {
+      let mainCarb = null; // פחמימה עיקרי
+      let vegetable = null; // ירק
+      
+      orderItems.forEach(item => {
+        const pspec1 = String(item.PSPEC1 || item.pspec1 || '').toLowerCase();
+        if ((pspec1.includes('עיקר') || pspec1.includes('עיקרי') || pspec1.includes('פחמימה')) && !pspec1.includes('ירק')) {
+          mainCarb = item;
+        } else if (pspec1.includes('ירק')) {
+          vegetable = item;
+        }
+      });
+      
+      // אם יש גם פחמימה עיקרי וגם ירק - לשלב אותם
+      if (mainCarb && vegetable) {
+        const combinedDes = `${mainCarb.PARTDES || mainCarb.partDes || ''}+${vegetable.PARTDES || vegetable.partDes || ''}`;
+        const combinedKey = `combined|${combinedDes}`;
+        combinedItems.push({
+          key: combinedKey,
+          partDes: combinedDes,
+          pspec1: 'חמגשית',
+          quantity: parseFloat(mainCarb.TQUANT || mainCarb.tQuant || 0) + parseFloat(vegetable.TQUANT || vegetable.tQuant || 0),
+          containers: (parseFloat(mainCarb.CONTAINERS || mainCarb.containers || 0) || 0) + (parseFloat(vegetable.CONTAINERS || vegetable.containers || 0) || 0)
+        });
+      } else {
+        // אם אין שילוב, להוסיף את הפריטים בנפרד
+        orderItems.forEach(item => {
+          const pspec1 = String(item.PSPEC1 || item.pspec1 || '').toLowerCase();
+          if ((pspec1.includes('עיקר') || pspec1.includes('עיקרי') || pspec1.includes('פחמימה')) || pspec1.includes('ירק')) {
+            const key = `${item.PARTNAME || item.partName || 'ללא'}|${item.PARTDES || item.partDes || ''}`;
+            combinedItems.push({
+              key: key,
+              partDes: item.PARTDES || item.partDes || '',
+              pspec1: item.PSPEC1 || item.pspec1 || '',
+              quantity: parseFloat(item.TQUANT || item.tQuant || 0),
+              containers: parseFloat(item.CONTAINERS || item.containers || 0) || 0
+            });
+          }
+        });
+      }
+    });
+    
+    // קיבוץ לפי key וסיכום
+    const summary = {};
+    combinedItems.forEach(item => {
+      if (!summary[item.key]) {
+        summary[item.key] = {
+          partDes: item.partDes,
+          pspec1: item.pspec1,
+          totalQuantity: 0,
+          totalContainers: 0
+        };
+      }
+      summary[item.key].totalQuantity += item.quantity;
+      summary[item.key].totalContainers += item.containers;
+    });
+    
+    const summaryArray = Object.values(summary).sort((a, b) => {
+      const pspec1A = (a.pspec1 || '').toString().toLowerCase();
+      const pspec1B = (b.pspec1 || '').toString().toLowerCase();
+      return pspec1A.localeCompare(pspec1B);
+    });
+    
+    // יצירת טבלה
+    let html = '<table><thead><tr>';
+    html += '<th>פרמטר 1 למוצר</th><th>תיאור מוצר</th><th>כמות (סה&quot;כ)</th><th>כמות מיכלים</th>';
+    html += '</tr></thead><tbody>';
+    
+    let grandTotal = 0;
+    let grandTotalContainers = 0;
+    summaryArray.forEach(item => {
+      html += '<tr>';
+      html += `<td>${item.pspec1}</td>`;
+      html += `<td>${item.partDes}</td>`;
+      html += `<td style="font-weight:bold;">${item.totalQuantity.toFixed(2)}</td>`;
+      html += `<td style="font-weight:bold;">${item.totalContainers > 0 ? item.totalContainers.toFixed(0) : ''}</td>`;
+      html += '</tr>';
+      grandTotal += item.totalQuantity;
+      grandTotalContainers += item.totalContainers;
+    });
+    
+    html += '<tr style="background:#e8f5e9;font-weight:bold;">';
+    html += '<td colspan="2">סה"כ כללי</td>';
+    html += `<td>${grandTotal.toFixed(2)}</td>`;
+    html += `<td>${grandTotalContainers > 0 ? grandTotalContainers.toFixed(0) : ''}</td>`;
+    html += '</tr>';
+    html += '</tbody></table>';
+    
+    container.innerHTML = html;
+    window.summaryData = summaryArray;
+    return;
+  }
+  
+  // לוגיקה רגילה (לא חמגשית) - קיבוץ לפי פריט (PARTNAME) וסיכום כמות (TQUANT)
   const summary = {};
   
   filteredData.forEach(row => {
@@ -927,17 +1061,20 @@ function applySummaryFilters() {
     const key = `${partName}|${partDes}`;
     const pspec1 = row.PSPEC1 || row.pspec1 || '';
     const quantity = parseFloat(row.TQUANT || row.tQuant || 0) || 0;
+    const containers = parseFloat(row.CONTAINERS || row.containers || 0) || 0;
     
     if (!summary[key]) {
       summary[key] = {
         partName: partName,
         partDes: partDes,
         pspec1: pspec1, // פרמטר 1 למוצר
-        totalQuantity: 0
+        totalQuantity: 0,
+        totalContainers: 0
       };
     }
     
     summary[key].totalQuantity += quantity;
+    summary[key].totalContainers += containers;
   });
   
   // המרה למערך ומיון לפי פרמטר 1 למוצר בסדר עולה
@@ -949,22 +1086,26 @@ function applySummaryFilters() {
   
   // יצירת טבלה (בלי עמודת מקט, רק תיאור מוצר)
   let html = '<table><thead><tr>';
-  html += '<th>פרמטר 1 למוצר</th><th>תיאור מוצר</th><th>כמות (סה&quot;כ)</th>';
+  html += '<th>פרמטר 1 למוצר</th><th>תיאור מוצר</th><th>כמות (סה&quot;כ)</th><th>כמות מיכלים</th>';
   html += '</tr></thead><tbody>';
   
   let grandTotal = 0;
+  let grandTotalContainers = 0;
   summaryArray.forEach(item => {
     html += '<tr>';
     html += `<td>${item.pspec1}</td>`;
     html += `<td>${item.partDes}</td>`;
     html += `<td style="font-weight:bold;">${item.totalQuantity.toFixed(2)}</td>`;
+    html += `<td style="font-weight:bold;">${item.totalContainers > 0 ? item.totalContainers.toFixed(0) : ''}</td>`;
     html += '</tr>';
     grandTotal += item.totalQuantity;
+    grandTotalContainers += item.totalContainers;
   });
   
   html += '<tr style="background:#e8f5e9;font-weight:bold;">';
   html += '<td colspan="2">סה"כ כללי</td>';
   html += `<td>${grandTotal.toFixed(2)}</td>`;
+  html += `<td>${grandTotalContainers > 0 ? grandTotalContainers.toFixed(0) : ''}</td>`;
   html += '</tr>';
   html += '</tbody></table>';
   
@@ -1496,15 +1637,18 @@ function downloadSummaryCSV() {
     return;
   }
   
-  let csv = '\uFEFFמקט,תיאור מוצר,כמות מעוגל (סה"כ)\n';
+  let csv = '\uFEFFפרמטר 1 למוצר,תיאור מוצר,כמות (סה"כ),כמות מיכלים\n';
   
   let grandTotal = 0;
+  let grandTotalContainers = 0;
   window.summaryData.forEach(item => {
-    csv += `"${item.partName}","${item.partDes}",${item.totalQuantity.toFixed(2)}\n`;
+    const partName = item.partName || '';
+    csv += `"${item.pspec1 || ''}","${item.partDes || ''}",${item.totalQuantity.toFixed(2)},${(item.totalContainers || 0) > 0 ? (item.totalContainers || 0).toFixed(0) : ''}\n`;
     grandTotal += item.totalQuantity;
+    grandTotalContainers += (item.totalContainers || 0);
   });
   
-  csv += `"סה"כ כללי","",${grandTotal.toFixed(2)}\n`;
+  csv += `"סה"כ כללי","",${grandTotal.toFixed(2)},${grandTotalContainers > 0 ? grandTotalContainers.toFixed(0) : ''}\n`;
   
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
