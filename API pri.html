@@ -1282,25 +1282,25 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       
       html += '</tbody></table>';
 
-      // טבלת פריטים
-      html += '<table style="width:100%;border-collapse:collapse;margin-top:10px;"><thead><tr style="background:#e3f2fd;">';
-      html += '<th style="border:1px solid #ccc;padding:8px;">כמות</th>';
-      if (isHotCarton) {
-        html += '<th style="border:1px solid #ccc;padding:8px;">מיכלים / מארז 5</th>';
-        html += '<th style="border:1px solid #ccc;padding:8px;">מארז 7</th>';
-      }
+      // טבלת פריטים - מימין לשמאל (תיאור מוצר מימין, כמות משמאל)
+      html += '<table style="width:100%;border-collapse:collapse;margin-top:10px;direction:rtl;"><thead><tr style="background:#e3f2fd;">';
       html += '<th style="border:1px solid #ccc;padding:8px;">תיאור מוצר</th>';
+      if (isHotCarton) {
+        html += '<th style="border:1px solid #ccc;padding:8px;">מארז 7</th>';
+        html += '<th style="border:1px solid #ccc;padding:8px;">מיכלים / מארז 5</th>';
+      }
+      html += '<th style="border:1px solid #ccc;padding:8px;">כמות</th>';
       html += '</tr></thead><tbody>';
       
       Object.values(itemsMap).forEach(item => {
         html += '<tr>';
-        html += `<td style="border:1px solid #ccc;padding:8px;">${item.sumQuant.toFixed(2)}</td>`;
+        html += `<td style="border:1px solid #ccc;padding:8px;">${item.partDes || ''}</td>`;
         if (isHotCarton) {
+          html += `<td style="border:1px solid #ccc;padding:8px;">${item.sumPack7 > 0 ? item.sumPack7 : ''}</td>`;
           const containersOrPack5 = item.sumContainers > 0 ? item.sumContainers : (item.sumPack5 > 0 ? item.sumPack5 : '');
           html += `<td style="border:1px solid #ccc;padding:8px;">${containersOrPack5 || ''}</td>`;
-          html += `<td style="border:1px solid #ccc;padding:8px;">${item.sumPack7 > 0 ? item.sumPack7 : ''}</td>`;
         }
-        html += `<td style="border:1px solid #ccc;padding:8px;">${item.partDes || ''}</td>`;
+        html += `<td style="border:1px solid #ccc;padding:8px;">${item.sumQuant.toFixed(2)}</td>`;
         html += '</tr>';
       });
       
