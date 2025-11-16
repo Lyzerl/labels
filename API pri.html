@@ -1139,22 +1139,34 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
   let html = '';
   
   ordersArray.forEach(order => {
-    // זיהוי שיטת אריזה עיקרית לפי PSPEC1 (הפריט עם PSPEC1 הראשון/העיקרי)
+    // זיהוי שיטת אריזה עיקרית לפי PSPEC1 - מחפש פריט עם "עיקר" בפרמטר 1
     let mainPackingMethod = '';
-    const pspec1Groups = {};
     order.items.forEach(item => {
-      if (item.pspec1) {
-        if (!pspec1Groups[item.pspec1] || !pspec1Groups[item.pspec1].packMethodCode) {
-          pspec1Groups[item.pspec1] = {
-            packMethodCode: item.packMethodCode || ''
-          };
+      if (item.pspec1 && item.packMethodCode) {
+        const pspec1Str = (item.pspec1 || '').toString().toLowerCase();
+        // אם פרמטר 1 מכיל את המילה "עיקר" - זה הפריט העיקרי
+        if (pspec1Str.includes('עיקר') && !mainPackingMethod) {
+          mainPackingMethod = item.packMethodCode || '';
         }
       }
     });
-    // נקח את שיטת האריזה של PSPEC1 הראשון
-    const firstPSpec1 = Object.keys(pspec1Groups).sort()[0];
-    if (firstPSpec1 && pspec1Groups[firstPSpec1]) {
-      mainPackingMethod = pspec1Groups[firstPSpec1].packMethodCode || '';
+    
+    // אם לא מצאנו פריט עם "עיקר", ניקח את הראשון
+    if (!mainPackingMethod) {
+      const pspec1Groups = {};
+      order.items.forEach(item => {
+        if (item.pspec1 && item.packMethodCode) {
+          if (!pspec1Groups[item.pspec1] || !pspec1Groups[item.pspec1].packMethodCode) {
+            pspec1Groups[item.pspec1] = {
+              packMethodCode: item.packMethodCode || ''
+            };
+          }
+        }
+      });
+      const firstPSpec1 = Object.keys(pspec1Groups).sort()[0];
+      if (firstPSpec1 && pspec1Groups[firstPSpec1]) {
+        mainPackingMethod = pspec1Groups[firstPSpec1].packMethodCode || '';
+      }
     }
     
     // זיהוי אם יש אלרגנים/צמחוני
@@ -1173,8 +1185,18 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       const cartonStr = (item.cartonType || '').toString().toLowerCase();
       const pspec6Str = (item.pspec6 || '').toString().toLowerCase();
       
-      // זיהוי אם זה קרטון חם: אם סוג קרטון או פרמטר 6 מכילים "חם" -> חם, אחרת נחשב כקר
-      const isHot = cartonStr.includes('חם') || pspec6Str.includes('חם');
+      // זיהוי אם זה קרטון חם או קר - קודם כל בודקים את סוג הקרטון
+      let isHot = false;
+      
+      // קודם בודקים את סוג הקרטון - עדיפות ראשונה
+      if (cartonStr.includes('חם') || cartonStr.includes('חמים')) {
+        isHot = true;
+      } else if (cartonStr.includes('קר') || cartonStr.includes('קרים')) {
+        isHot = false;
+      } else {
+        // רק אם אין אינדיקציה ברורה בסוג הקרטון, בודקים את PSPEC6
+        isHot = pspec6Str.includes('חם') || pspec6Str.includes('חמים');
+      }
       
       const partKey = `${item.partName}|${item.partDes}`;
       const itemsMap = isHot ? hotItemsMap : coldItemsMap;
