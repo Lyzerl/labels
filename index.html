@@ -175,7 +175,9 @@ tr:nth-child(even) {
 .table-container {
   max-height: 600px;
   overflow-y: auto;
+  overflow-x: auto;
   margin-top: 20px;
+  width: 100%;
 }
 .loader {
   border: 5px solid #f3f3f3;
@@ -508,6 +510,8 @@ tr:nth-child(even) {
   <div class="tabs" id="tabsContainer" style="display: none;">
     <button class="tab-btn active" onclick="showTab('general', this)">📋 טבלה כללית</button>
     <button class="tab-btn" onclick="showTab('summary', this)">📊 סיכום לפי פריט</button>
+    <button class="tab-btn" onclick="showTab('trays', this)">🍽️ דוח חמגשיות</button>
+    <button class="tab-btn" onclick="showTab('containers', this)">📦 דוח מיכלים</button>
     <button class="tab-btn" onclick="showTab('labels', this)">🏷️ דוח מדבקות</button>
   </div>
 
@@ -541,6 +545,30 @@ tr:nth-child(even) {
       <button class="btn download" onclick="downloadSummaryCSV()" id="downloadSummaryBtn">📥 הורד CSV</button>
     </div>
     <div class="table-container" id="summaryContainer"></div>
+  </div>
+
+  <div id="tabTrays" class="tab-content">
+    <div class="report-controls">
+      <label>סניף:</label>
+      <select id="traysBranchFilter">
+        <option value="">הכל</option>
+      </select>
+      <button class="btn" onclick="applyTraysFilters()">🔍 החל סינון</button>
+      <button class="btn download" onclick="downloadTraysCSV()" id="downloadTraysBtn">📥 הורד CSV</button>
+    </div>
+    <div class="table-container" id="traysContainer"></div>
+  </div>
+
+  <div id="tabContainers" class="tab-content">
+    <div class="report-controls">
+      <label>סניף:</label>
+      <select id="containersBranchFilter">
+        <option value="">הכל</option>
+      </select>
+      <button class="btn" onclick="applyContainersFilters()">🔍 החל סינון</button>
+      <button class="btn download" onclick="downloadContainersCSV()" id="downloadContainersBtn">📥 הורד CSV</button>
+    </div>
+    <div class="table-container" id="containersContainer"></div>
   </div>
 
   <div id="tabLabels" class="tab-content">
@@ -602,7 +630,9 @@ const SELECTED_FIELDS = [
   'Y_37210_5_ESH',
   'CONTAINERS',
   'PACK5',
-  'PACK7'
+  'PACK7',
+  'PACKDES',
+  'MEALNAME'
 ];
 
 // מיפוי שדות לעברית
@@ -638,7 +668,9 @@ const FIELD_NAMES_HEBREW = {
   'Y_37210_5_ESH': 'סוג קרטון',
   'CONTAINERS': 'מיכלים',
   'PACK5': 'מארז 5',
-  'PACK7': 'מארז 7'
+  'PACK7': 'מארז 7',
+  'PACKDES': 'תיאור מיכל',
+  'MEALNAME': 'ארוחה'
 };
 
 let currentData = []; // נתונים גולמיים (שורות)
@@ -698,7 +730,9 @@ function organizeAsNoSQL(rawData) {
       cartonType: row.Y_37210_5_ESH || '',
       containers: row.CONTAINERS || '',
       pack5: row.PACK5 || '',
-      pack7: row.PACK7 || ''
+      pack7: row.PACK7 || '',
+      packDes: row.PACKDES || '',
+      mealName: row.MEALNAME || ''
     };
     
     orders[orderKey].items.push(item);
@@ -808,7 +842,13 @@ async function fetchData() {
       console.log(`Fetching page ${pageNum}...`);
       statusDiv.innerHTML = `<div class="loader"></div><p>טוען דף ${pageNum}... (${allData.length} רשומות)</p>`;
       
-      const response = await fetch(url);
+      let response;
+      try {
+        response = await fetch(url);
+      } catch (fetchError) {
+        console.error('Fetch error:', fetchError);
+        throw new Error(`שגיאת רשת: ${fetchError.message}. בדוק את החיבור לשרת.`);
+      }
       
       if (!response.ok) {
         // נסה לקרוא את התשובה מהשרת כדי לראות מה הבעיה
@@ -819,7 +859,15 @@ async function fetchData() {
         } catch (e) {
           errorText = 'לא ניתן לקרוא את התשובה';
         }
-        throw new Error(`Error ${response.status}: ${errorText}`);
+        
+        // הודעת שגיאה ברורה יותר
+        if (response.status === 502) {
+          throw new Error('שגיאת שרת (502 Bad Gateway): השרת לא מגיב. נסה שוב מאוחר יותר.');
+        } else if (response.status === 503) {
+          throw new Error('השרת זמנית לא זמין (503). נסה שוב מאוחר יותר.');
+        } else {
+          throw new Error(`שגיאת שרת ${response.status}: ${errorText.substring(0, 200)}`);
+        }
       }
       
       const jsonData = await response.json();
@@ -857,11 +905,37 @@ async function fetchData() {
       
       console.log('✅ נתונים נמשכו:', allData.length, 'רשומות');
       console.log('✅ נתונים מובנים:', Object.keys(structuredData).length, 'הזמנות');
-      console.log('✅ דוגמה להזמנה:', Object.values(structuredData)[0]);
+      
+      // בדיקת שיטות אריזה בנתונים הגולמיים
+      if (allData.length > 0) {
+        const rawPackMethods = [...new Set(allData.map(r => String(r.PACKMETHODCODE || '').trim()).filter(Boolean))];
+        console.log('📊 שיטות אריזה בנתונים הגולמיים:', rawPackMethods);
+        const rawTrayCount = allData.filter(r => {
+          const pm = String(r.PACKMETHODCODE || '').trim();
+          return pm === 'חמגשית 101' || pm.includes('חמגשית 101');
+        }).length;
+        console.log('📊 מספר שורות עם חמגשית 101 בנתונים הגולמיים:', rawTrayCount);
+      }
+      
+      // בדיקת דוגמה להזמנה
+      const sampleOrder = Object.values(structuredData)[0];
+      if (sampleOrder) {
+        console.log('✅ דוגמה להזמנה:', {
+          orderName: sampleOrder.orderName,
+          itemsCount: sampleOrder.items.length,
+          sampleItems: sampleOrder.items.slice(0, 2).map(item => ({
+            partDes: item.partDes,
+            packMethodCode: item.packMethodCode,
+            pspec1: item.pspec1
+          }))
+        });
+      }
       
       createTable(allData);
       // יצירת דוחות נוספים מהנתונים המובנים
       createSummaryReport(structuredData);
+      createTraysReport(structuredData);
+      createContainersReport(structuredData);
       createLabelsReport(structuredData);
       // הצגת טאבים
       document.getElementById('tabsContainer').style.display = 'flex';
@@ -1042,26 +1116,35 @@ function createSummaryReport(data) {
   const branchFilter = document.getElementById('summaryBranchFilter');
   const pspec6Filter = document.getElementById('summaryPSPEC6Filter');
   
-  // המרה לנתונים שטוחים אם צריך (אם זה NoSQL)
+  // המרה לנתונים שטוחים אם צריך (אם זה NoSQL) - שימוש בנתונים מהטבלה המקורית בלבד
   const flatData = Array.isArray(data) ? data : Object.values(data).flatMap(order => 
     order.items.map(item => ({
       ...item,
-      BRANCHNAME: order.branchName,
-      PSPEC6: item.pspec6,
-      PSPEC1: item.pspec1,
-      PARTNAME: item.partName,
-      PARTDES: item.partDes,
-      TQUANT: item.tQuant,
-      EATQUANT: item.eatQuant,
-      SPEC2: order.spec2,
-      CARTON_TYPE: item.cartonType || item.Y_37210_5_ESH || order.Y_37210_5_ESH || '',
-      PACKMETHODCODE: item.packMethodCode || '',
+      BRANCHNAME: order.branchName || '',
+      PSPEC6: String(item.pspec6 || '').trim(),
+      PSPEC1: String(item.pspec1 || '').trim(),
+      PARTNAME: String(item.partName || '').trim(),
+      PARTDES: String(item.partDes || '').trim(),
+      TQUANT: parseFloat(item.tQuant || 0) || 0,
+      EATQUANT: parseFloat(item.eatQuant || 0) || 0,
+      SPEC2: String(order.spec2 || '').trim(),
+      CARTON_TYPE: String(item.cartonType || item.Y_37210_5_ESH || order.Y_37210_5_ESH || '').trim(),
+      PACKMETHODCODE: String(item.packMethodCode || '').trim(), // שיטת אריזה - חשוב לבדיקה
+      packMethodCode: String(item.packMethodCode || '').trim(), // גם בשדה הקטן
       CONTAINERS: item.containers || '',
       PACK5: parseFloat(item.pack5) || 0,
       PACK7: parseFloat(item.pack7) || 0,
-      ORDNAME: order.orderName || ''
+      PACKDES: String(item.packDes || '').trim(),
+      ORDNAME: String(order.orderName || '').trim()
     }))
   );
+  
+  // בדיקה - הצגת מידע על הנתונים
+  console.log('📊 דוח סיכום - סה"כ נתונים:', flatData.length);
+  if (flatData.length > 0) {
+    const packMethods = [...new Set(flatData.map(r => r.PACKMETHODCODE || r.packMethodCode || '').filter(Boolean))];
+    console.log('📊 שיטות אריזה שנמצאו:', packMethods);
+  }
   
   // איסוף ערכים ייחודיים לסינונים
   const branches = [...new Set(flatData.map(r => r.BRANCHNAME || '').filter(Boolean))].sort();
@@ -1120,19 +1203,41 @@ function applySummaryFilters() {
     filteredData = filteredData.filter(r => String(r.BRANCHNAME) === branchFilter.value);
   }
   
-  // סינון לפי שיטת אירוז
+  // סינון לפי שיטת אירוז - בדיקה מדויקת
   if (packingMethodFilter && packingMethodFilter.value) {
     if (packingMethodFilter.value === 'tray') {
       // חמגשית - רק שיטת אירוז "חמגשית 101"
+      const beforeTrayFilter = filteredData.length;
       filteredData = filteredData.filter(r => {
-        const packMethod = String(r.PACKMETHODCODE || r.packMethodCode || '').trim();
-        return packMethod === 'חמגשית 101' || packMethod.includes('חמגשית 101');
+        const packMethod1 = String(r.PACKMETHODCODE || '').trim();
+        const packMethod2 = String(r.packMethodCode || '').trim();
+        const packMethod = packMethod1 || packMethod2;
+        
+        // בדיקה מדויקת - חמגשית 101 (כולל וריאציות)
+        const isTray = packMethod === 'חמגשית 101' || 
+                       packMethod.includes('חמגשית 101') ||
+                       packMethod === 'חמגשית101' ||
+                       packMethod.includes('חמגשית101') ||
+                       (packMethod.toLowerCase().includes('חמגשית') && packMethod.includes('101'));
+        
+        return isTray;
       });
+      console.log('📊 דוח סיכום - אחרי סינון חמגשיות:', filteredData.length, 'מתוך', beforeTrayFilter);
     } else if (packingMethodFilter.value === 'bulk') {
       // תפזורת - כל השאר (לא חמגשית 101)
       filteredData = filteredData.filter(r => {
-        const packMethod = String(r.PACKMETHODCODE || r.packMethodCode || '').trim();
-        return packMethod !== 'חמגשית 101' && !packMethod.includes('חמגשית 101');
+        const packMethod1 = String(r.PACKMETHODCODE || '').trim();
+        const packMethod2 = String(r.packMethodCode || '').trim();
+        const packMethod = packMethod1 || packMethod2;
+        
+        // כל מה שלא חמגשית 101
+        const isNotTray = packMethod !== 'חמגשית 101' && 
+                         !packMethod.includes('חמגשית 101') &&
+                         packMethod !== 'חמגשית101' &&
+                         !packMethod.includes('חמגשית101') &&
+                         !(packMethod.toLowerCase().includes('חמגשית') && packMethod.includes('101'));
+        
+        return isNotTray;
       });
     }
   }
@@ -1168,120 +1273,176 @@ function applySummaryFilters() {
   
   // אם נבחר חמגשית - לטפל בלוגיקה מיוחדת של שילוב פחמימה עיקרי + ירק
   if (packingMethodFilter && packingMethodFilter.value === 'tray') {
-    // קיבוץ לפי הזמנה + סוג מנה (רגיל/ללא אלרגני)
+    // קיבוץ לפי הזמנה - שימוש בנתונים מהטבלה המקורית בלבד
     const ordersMap = {};
     filteredData.forEach(row => {
-      const orderName = row.ORDNAME || row.orderName || 'ללא_הזמנה';
-      // זיהוי אם זה ללא אלרגני
-      const spec2 = String(row.SPEC2 || row.spec2 || '').toLowerCase();
-      const pspec2 = String(row.PSPEC2 || row.pspec2 || '').toLowerCase();
-      const isNoAllergen = spec2.includes('ללא אלרגני') || spec2.includes('לא אלרגני') ||
-                          pspec2.includes('ללא אלרגני') || pspec2.includes('לא אלרגני');
-      const mealType = isNoAllergen ? 'no_allergen' : 'regular';
-      const orderKey = `${orderName}|${mealType}`;
+      const orderName = String(row.ORDNAME || row.orderName || 'ללא_הזמנה').trim();
       
-      if (!ordersMap[orderKey]) {
-        ordersMap[orderKey] = {
+      if (!ordersMap[orderName]) {
+        ordersMap[orderName] = {
           orderName: orderName,
-          mealType: mealType,
-          isNoAllergen: isNoAllergen,
-          items: [],
-          eatQuant: 0 // מספר מנות - נלקח פעם אחת
+          items: []
         };
       }
-      ordersMap[orderKey].items.push(row);
-      // שמירת EATQUANT (מספר מנות) - נלקח פעם אחת לכל קבוצה
-      if (ordersMap[orderKey].eatQuant === 0) {
-        ordersMap[orderKey].eatQuant = parseFloat(row.EATQUANT || row.eatQuant || 0) || 0;
-      }
+      ordersMap[orderName].items.push(row);
     });
     
-    // עבור כל קבוצת הזמנה+סוג מנה - למצוא עיקרי + פחמימה + ירק ולשלב אותם
+    // עבור כל הזמנה - למצוא עיקרי + פחמימה + ירק ולשלב אותם
+    // שים לב: ללא אלרגנים (לפי PSPEC1) לא נכנסים לשילוב - הם יופיעו בנפרד
     const combinedItems = [];
+    const noAllergenItems = []; // פריטים ללא אלרגנים - בנפרד
+    
     Object.values(ordersMap).forEach(orderGroup => {
       const orderItems = orderGroup.items;
-      let mainDish = null;     // עיקרי (חלבון)
-      let carbDish = null;     // פחמימה
-      let vegetable = null;    // ירק
+      const mainDishes = []; // כל הפריטים עיקרי
+      const carbDishes = []; // כל הפריטים פחמימה
+      const vegetables = []; // כל הפריטים ירק
+      const noAllergenItemsInOrder = [];
       
       orderItems.forEach(item => {
-        const pspec1Raw = String(item.PSPEC1 || item.pspec1 || '');
-        const pspec1 = pspec1Raw.toLowerCase();
-        const isMain = pspec1.includes('עיקר');
-        const isCarb = pspec1.includes('פחמ');
-        const isVeg = pspec1.includes('ירק');
-
-        if (isMain && !mainDish) {
-          mainDish = item;
-          return;
-        }
-        if (isCarb && !carbDish) {
-          carbDish = item;
-          return;
-        }
-        if (isVeg && !vegetable) {
-          vegetable = item;
+        // שימוש בנתונים מהטבלה המקורית בלבד
+        const pspec1 = String(item.PSPEC1 || item.pspec1 || '').trim().toLowerCase();
+        
+        // זיהוי אם זה ללא אלרגנים לפי פרמטר 1 למוצר (PSPEC1)
+        const isNoAllergen = pspec1.includes('ללא אלרגני') || pspec1.includes('לא אלרגני');
+        
+        if (isNoAllergen) {
+          // פריטים ללא אלרגנים - לא נכנסים לשילוב, נשמור בנפרד
+          noAllergenItemsInOrder.push(item);
+        } else {
+          // פריטים רגילים - נכנסים לשילוב
+          // עיקרי - כל מה שמכיל "עיקר"
+          if (pspec1.includes('עיקר')) {
+            mainDishes.push(item);
+          } else if (pspec1.includes('פחמ')) {
+            carbDishes.push(item);
+          } else if (pspec1.includes('ירק')) {
+            vegetables.push(item);
+          }
         }
       });
       
+      // זיהוי כשרות מ-PSPEC2 וגודל מ-PACKDES מהפריטים הרגילים - נתונים מהטבלה המקורית
+      let kashrut = '';
+      let traySize = 'רגיל';
+      let regularTQuant = 0; // TQUANT מהשורה הראשונה של הפריטים הרגילים
+      let regularEatQuant = 0; // EATQUANT מהשורה הראשונה של הפריטים הרגילים
+      
+      if (orderItems.length > 0) {
+        // נחפש פריט רגיל (לא ללא אלרגנים) לכשרות, גודל ו-TQUANT
+        const regularItem = orderItems.find(item => {
+          const pspec1 = String(item.PSPEC1 || item.pspec1 || '').trim().toLowerCase();
+          return !pspec1.includes('ללא אלרגני') && !pspec1.includes('לא אלרגני');
+        }) || orderItems[0];
+        
+        // כשרות מ-PSPEC2 - נתון מהטבלה המקורית
+        kashrut = String(regularItem.PSPEC2 || regularItem.pspec2 || '').trim();
+        
+        // גודל מ-PACKDES (תיאור אריזה) - נתון מהטבלה המקורית
+        const packDes = String(regularItem.PACKDES || regularItem.packDes || '').trim().toLowerCase();
+        if (packDes.includes('גדול') || packDes.includes('גדולה')) {
+          traySize = 'גדול';
+        } else if (packDes.includes('קטן') || packDes.includes('קטנה')) {
+          traySize = 'קטן';
+        }
+        
+        // TQUANT מהשורה הראשונה של הפריטים הרגילים - נתון מהטבלה המקורית
+        regularTQuant = parseFloat(regularItem.TQUANT || regularItem.tQuant || 0) || 0;
+        // EATQUANT מהשורה הראשונה של הפריטים הרגילים - נתון מהטבלה המקורית
+        regularEatQuant = parseFloat(regularItem.EATQUANT || regularItem.eatQuant || 0) || 0;
+      }
+      
       const getQuantity = (itm) => parseFloat(itm?.TQUANT || itm?.tQuant || 0) || 0;
-
-      // אם יש עיקרי + פחמימה + ירק - לשלב אותם כמוצר אחד
-      if (mainDish && carbDish && vegetable) {
-        const mainDes = mainDish.PARTDES || mainDish.partDes || '';
-        const carbDes = carbDish.PARTDES || carbDish.partDes || '';
-        const vegDes = vegetable.PARTDES || vegetable.partDes || '';
-        const combinedDes = [mainDes, carbDes, vegDes].filter(Boolean).join('+');
-        // הוספת סימון ללא אלרגני אם רלוונטי
-        const finalDes = orderGroup.isNoAllergen ? `${combinedDes} (ללא אלרגני)` : combinedDes;
-        const combinedKey = `combined|${orderGroup.orderName}|${orderGroup.mealType}|${finalDes}`;
-        combinedItems.push({
-          key: combinedKey,
-          partDes: finalDes,
-          pspec1: 'חמגשית',
-          quantity: getQuantity(mainDish) + getQuantity(carbDish) + getQuantity(vegetable),
-          containers: orderGroup.eatQuant // מספר מנות = מספר חמגשיות
+      
+      // טיפול בפריטים רגילים - שילוב עיקרי+פחמימה+ירק
+      if (mainDishes.length > 0 || carbDishes.length > 0 || vegetables.length > 0) {
+        const parts = [];
+        // נוסיף את כל העיקריים - נתונים מהטבלה המקורית
+        mainDishes.forEach(item => {
+          const partDes = String(item.PARTDES || item.partDes || '').trim();
+          if (partDes && !parts.includes(partDes)) parts.push(partDes);
         });
-      } else {
-        // אם אין שילוב, להוסיף את הפריטים בנפרד
-        orderItems.forEach(item => {
-          const pspec1 = String(item.PSPEC1 || item.pspec1 || '').toLowerCase();
-          const isRelevant =
-            pspec1.includes('עיקר') ||
-            pspec1.includes('פחמ') ||
-            pspec1.includes('ירק');
-          if (isRelevant) {
-            const partDes = item.PARTDES || item.partDes || '';
-            const finalDes = orderGroup.isNoAllergen ? `${partDes} (ללא אלרגני)` : partDes;
-            const key = `${orderGroup.orderName}|${orderGroup.mealType}|${item.PARTNAME || item.partName || 'ללא'}|${finalDes}`;
-            combinedItems.push({
-              key: key,
-              partDes: finalDes,
-              pspec1: item.PSPEC1 || item.pspec1 || '',
-              quantity: parseFloat(item.TQUANT || item.tQuant || 0),
-              containers: orderGroup.eatQuant // מספר מנות = מספר חמגשיות
-            });
+        // נוסיף את כל הפחמימות - נתונים מהטבלה המקורית
+        carbDishes.forEach(item => {
+          const partDes = String(item.PARTDES || item.partDes || '').trim();
+          if (partDes && !parts.includes(partDes)) parts.push(partDes);
+        });
+        // נוסיף את כל הירקות - נתונים מהטבלה המקורית
+        vegetables.forEach(item => {
+          const partDes = String(item.PARTDES || item.partDes || '').trim();
+          if (partDes && !parts.includes(partDes)) parts.push(partDes);
+        });
+        
+        const combinedDes = parts.filter(Boolean).join('+');
+        
+        if (combinedDes) {
+          combinedItems.push({
+            key: `combined|${orderGroup.orderName}|${kashrut}|${traySize}|${combinedDes}`,
+            partDes: combinedDes,
+            pspec1: 'חמגשית',
+            kashrut: kashrut,
+            traySize: traySize,
+            quantity: mainDishes.reduce((sum, item) => sum + getQuantity(item), 0) +
+                     carbDishes.reduce((sum, item) => sum + getQuantity(item), 0) +
+                     vegetables.reduce((sum, item) => sum + getQuantity(item), 0),
+            containers: regularTQuant, // TQUANT מהטבלה המקורית - פעם אחת לכל הזמנה
+            eatQuant: regularEatQuant // EATQUANT מהטבלה המקורית - פעם אחת לכל הזמנה
+          });
+        }
+      }
+      
+      // טיפול בפריטים ללא אלרגנים - בנפרד
+      if (noAllergenItemsInOrder.length > 0) {
+        noAllergenItemsInOrder.forEach(item => {
+          // שימוש בנתונים מהטבלה המקורית בלבד
+          const partDes = String(item.PARTDES || item.partDes || '').trim();
+          // כשרות מ-PSPEC2 - נתון מהטבלה המקורית
+          const itemKashrut = String(item.PSPEC2 || item.pspec2 || '').trim();
+          // גודל מ-PACKDES (תיאור אריזה) - נתון מהטבלה המקורית
+          const itemPackDes = String(item.PACKDES || item.packDes || '').trim().toLowerCase();
+          let itemTraySize = 'רגיל';
+          if (itemPackDes.includes('גדול') || itemPackDes.includes('גדולה')) {
+            itemTraySize = 'גדול';
+          } else if (itemPackDes.includes('קטן') || itemPackDes.includes('קטנה')) {
+            itemTraySize = 'קטן';
           }
+          // TQUANT נפרד למנה ללא אלרגנים - נתון מהטבלה המקורית
+          const itemTQuant = parseFloat(item.TQUANT || item.tQuant || 0) || 0;
+          // EATQUANT נפרד למנה ללא אלרגנים - נתון מהטבלה המקורית
+          const itemEatQuant = parseFloat(item.EATQUANT || item.eatQuant || 0) || 0;
+          
+          noAllergenItems.push({
+            key: `no_allergen|${orderGroup.orderName}|${itemKashrut || kashrut}|${itemTraySize}|${partDes}`,
+            partDes: `${partDes} (ללא אלרגני)`,
+            pspec1: item.PSPEC1 || item.pspec1 || '',
+            kashrut: itemKashrut || kashrut,
+            traySize: itemTraySize,
+            quantity: parseFloat(item.TQUANT || item.tQuant || 0),
+            containers: itemTQuant, // TQUANT מהטבלה המקורית - נפרד למנה ללא אלרגנים
+            eatQuant: itemEatQuant // EATQUANT מהטבלה המקורית - נפרד למנה ללא אלרגנים
+          });
         });
       }
     });
     
     // קיבוץ לפי key וסיכום
-    // קיבוץ לפי תיאור המוצר + סוג מנה (רגיל/ללא אלרגני)
-    // כך שמנות רגילות וללא אלרגני יופיעו בשורות נפרדות
+    // קיבוץ לפי תיאור המוצר + כשרות + סוג חמגשית
     const summary = {};
-    combinedItems.forEach(item => {
-      // יצירת key לפי תיאור המוצר (שכבר כולל את הסימון ללא אלרגני אם רלוונטי)
-      const simpleKey = item.partDes;
+    [...combinedItems, ...noAllergenItems].forEach(item => {
+      // יצירת key לפי תיאור המוצר + כשרות + סוג חמגשית
+      const simpleKey = `${item.partDes}|${item.kashrut || ''}|${item.traySize || 'רגיל'}`;
       if (!summary[simpleKey]) {
         summary[simpleKey] = {
           partDes: item.partDes,
           pspec1: item.pspec1,
+          kashrut: item.kashrut || '',
           totalQuantity: 0,
+          totalEatQuant: 0, // סה"כ מנות (EATQUANT)
           totalContainers: 0 // זה יהיה סה"כ מנות (EATQUANT)
         };
       }
       summary[simpleKey].totalQuantity += item.quantity;
+      summary[simpleKey].totalEatQuant += item.eatQuant || 0; // EATQUANT
       summary[simpleKey].totalContainers += item.containers; // containers = EATQUANT (מספר מנות)
     });
     
@@ -1293,26 +1454,31 @@ function applySummaryFilters() {
     
     // יצירת טבלה
     let html = '<table><thead><tr>';
-    html += '<th>פרמטר 1 למוצר</th><th>תיאור מוצר</th><th>כמות (סה&quot;כ)</th><th>כמות מיכלים</th>';
+    html += '<th>פרמטר 1 למוצר</th><th>תיאור מוצר</th><th>כמות (סה&quot;כ)</th><th>כמות מנות</th><th>כמות מיכלים</th>';
     html += '</tr></thead><tbody>';
     
     let grandTotal = 0;
+    let grandTotalEatQuant = 0;
     let grandTotalContainers = 0;
     summaryArray.forEach(item => {
       html += '<tr>';
       html += `<td>${item.pspec1}</td>`;
       html += `<td>${item.partDes}</td>`;
       html += `<td style="font-weight:bold;">${item.totalQuantity.toFixed(2)}</td>`;
+      // totalEatQuant = סה"כ מנות (EATQUANT)
+      html += `<td style="font-weight:bold;">${item.totalEatQuant > 0 ? item.totalEatQuant.toFixed(0) : ''}</td>`;
       // totalContainers = סה"כ מנות (EATQUANT) = מספר חמגשיות
       html += `<td style="font-weight:bold;">${item.totalContainers > 0 ? item.totalContainers.toFixed(0) : ''}</td>`;
       html += '</tr>';
       grandTotal += item.totalQuantity;
+      grandTotalEatQuant += item.totalEatQuant || 0;
       grandTotalContainers += item.totalContainers;
     });
     
     html += '<tr style="background:#e8f5e9;font-weight:bold;">';
     html += '<td colspan="2">סה"כ כללי</td>';
     html += `<td>${grandTotal.toFixed(2)}</td>`;
+    html += `<td>${grandTotalEatQuant > 0 ? grandTotalEatQuant.toFixed(0) : ''}</td>`;
     html += `<td>${grandTotalContainers > 0 ? grandTotalContainers.toFixed(0) : ''}</td>`;
     html += '</tr>';
     html += '</tbody></table>';
@@ -1332,6 +1498,7 @@ function applySummaryFilters() {
     const key = `${partName}|${partDes}`;
     const pspec1 = row.PSPEC1 || row.pspec1 || '';
     const quantity = parseFloat(row.TQUANT || row.tQuant || 0) || 0;
+    const eatQuant = parseFloat(row.EATQUANT || row.eatQuant || 0) || 0;
     const containers = parseFloat(row.CONTAINERS || row.containers || 0) || 0;
     
     if (!summary[key]) {
@@ -1340,6 +1507,7 @@ function applySummaryFilters() {
         partDes: partDes,
         pspec1: pspec1, // פרמטר 1 למוצר
         totalQuantity: 0,
+        totalEatQuant: 0,
         totalContainers: 0,
         totalPack5: 0,
         totalPack7: 0,
@@ -1348,6 +1516,7 @@ function applySummaryFilters() {
     }
     
     summary[key].totalQuantity += quantity;
+    summary[key].totalEatQuant += eatQuant;
     summary[key].totalContainers += containers;
     const pack5 = parseFloat(row.PACK5 || row.pack5 || 0) || 0;
     const pack7 = parseFloat(row.PACK7 || row.pack7 || 0) || 0;
@@ -1380,10 +1549,11 @@ function applySummaryFilters() {
   
   // יצירת טבלה (בלי עמודת מקט, רק תיאור מוצר)
   let html = '<table><thead><tr>';
-  html += '<th>פרמטר 1 למוצר</th><th>תיאור מוצר</th><th>כמות (סה&quot;כ)</th><th>כמות מיכלים</th>';
+  html += '<th>פרמטר 1 למוצר</th><th>תיאור מוצר</th><th>כמות (סה&quot;כ)</th><th>כמות מנות</th><th>כמות מיכלים</th>';
   html += '</tr></thead><tbody>';
   
   let grandTotal = 0;
+  let grandTotalEatQuant = 0;
   let grandTotalContainers = 0;
   let grandTotalPack5 = 0;
   let grandTotalPack7 = 0;
@@ -1392,9 +1562,11 @@ function applySummaryFilters() {
     html += `<td>${item.pspec1}</td>`;
     html += `<td>${item.partDes}</td>`;
     html += `<td style="font-weight:bold;">${item.totalQuantity.toFixed(2)}</td>`;
+    html += `<td style="font-weight:bold;">${item.totalEatQuant > 0 ? item.totalEatQuant.toFixed(0) : ''}</td>`;
     html += `<td style="font-weight:bold;">${item.displayContainers || ''}</td>`;
     html += '</tr>';
     grandTotal += item.totalQuantity;
+    grandTotalEatQuant += item.totalEatQuant || 0;
     grandTotalContainers += item.totalContainers;
     grandTotalPack5 += item.totalPack5 || 0;
     grandTotalPack7 += item.totalPack7 || 0;
@@ -1403,6 +1575,7 @@ function applySummaryFilters() {
   html += '<tr style="background:#e8f5e9;font-weight:bold;">';
   html += '<td colspan="2">סה"כ כללי</td>';
   html += `<td>${grandTotal.toFixed(2)}</td>`;
+  html += `<td>${grandTotalEatQuant > 0 ? grandTotalEatQuant.toFixed(0) : ''}</td>`;
   const totalPieces = [];
   if (grandTotalContainers > 0) {
     const containersText = Number.isInteger(grandTotalContainers) ? grandTotalContainers.toFixed(0) : grandTotalContainers.toFixed(2);
@@ -1422,6 +1595,536 @@ function applySummaryFilters() {
   
   // שמירת נתונים להורדה
   window.summaryData = summaryArray;
+}
+
+// דוח חמגשיות - סיכום לפי פרמטרים וכשרות
+function createTraysReport(data) {
+  const container = document.getElementById('traysContainer');
+  const branchFilter = document.getElementById('traysBranchFilter');
+  
+  // בדיקת בטיחות
+  if (!container || !branchFilter) {
+    console.error('❌ אלמנטים לא נמצאו לדוח חמגשיות');
+    return;
+  }
+  
+  if (!data || (Array.isArray(data) && data.length === 0) || (!Array.isArray(data) && Object.keys(data).length === 0)) {
+    console.warn('⚠️ אין נתונים לדוח חמגשיות');
+    container.innerHTML = '<p style="text-align:center;padding:50px;color:#999;">אין נתונים להצגה</p>';
+    branchFilter.innerHTML = '<option value="">הכל</option>';
+    window.allTraysData = [];
+    return;
+  }
+  
+  // המרה לנתונים שטוחים - שימוש בנתונים מהטבלה המקורית בלבד
+  let flatData = Array.isArray(data) ? data : Object.values(data).flatMap(order => {
+    if (!order || !order.items || !Array.isArray(order.items)) {
+      return [];
+    }
+    return order.items.map(item => ({
+      ...item,
+      BRANCHNAME: order.branchName || '',
+      PSPEC1: String(item.pspec1 || '').trim(),
+      PSPEC6: String(item.pspec6 || '').trim(),
+      PARTDES: String(item.partDes || '').trim(),
+      PACKMETHODCODE: String(item.packMethodCode || '').trim(), // שיטת אריזה - חשוב לבדיקה
+      packMethodCode: String(item.packMethodCode || '').trim(), // גם בשדה הקטן
+      PACKDES: String(item.packDes || '').trim(),
+      TQUANT: parseFloat(item.tQuant || 0) || 0,
+      EATQUANT: parseFloat(item.eatQuant || 0) || 0,
+      SPEC2: String(order.spec2 || '').trim(),
+      PSPEC2: String(item.pspec2 || '').trim(),
+      ORDNAME: String(order.orderName || '').trim(),
+      MEALNAME: String(item.mealName || '').trim() // ארוחה
+    }));
+  });
+  
+  // בדיקה - הצגת מידע על הנתונים
+  console.log('📊 דוח חמגשיות - סה"כ נתונים לפני סינון:', flatData.length);
+  if (flatData.length > 0) {
+    const packMethods = [...new Set(flatData.map(r => {
+      const pm1 = String(r.PACKMETHODCODE || '').trim();
+      const pm2 = String(r.packMethodCode || '').trim();
+      return pm1 || pm2;
+    }).filter(Boolean))];
+    console.log('📊 שיטות אריזה שנמצאו:', packMethods);
+    
+    // בדיקה מדויקת - כמה שורות עם חמגשית 101
+    const trayCount = flatData.filter(r => {
+      const pm1 = String(r.PACKMETHODCODE || '').trim();
+      const pm2 = String(r.packMethodCode || '').trim();
+      const pm = pm1 || pm2;
+      return pm === 'חמגשית 101' || 
+             pm.includes('חמגשית 101') ||
+             pm === 'חמגשית101' ||
+             pm.includes('חמגשית101') ||
+             (pm.toLowerCase().includes('חמגשית') && pm.includes('101'));
+    }).length;
+    console.log('📊 מספר שורות עם חמגשית 101:', trayCount);
+    
+    // הצגת דוגמאות לנתונים
+    if (trayCount === 0 && flatData.length > 0) {
+      console.log('⚠️ לא נמצאו חמגשיות! דוגמאות לנתונים:');
+      flatData.slice(0, 3).forEach((r, idx) => {
+        console.log(`  ${idx + 1}. ORDNAME: ${r.ORDNAME}, PACKMETHODCODE: "${r.PACKMETHODCODE}", packMethodCode: "${r.packMethodCode}", PARTDES: ${r.PARTDES}`);
+      });
+    }
+  }
+  
+  // סינון לפי שיטת אריזה "חמגשית"
+  flatData = flatData.filter(r => {
+    const pm1 = String(r.PACKMETHODCODE || '').trim();
+    const pm2 = String(r.packMethodCode || '').trim();
+    const pm = pm1 || pm2;
+    
+    // בדיקה מדויקת - חמגשית 101 (כולל וריאציות)
+    const isTray = pm === 'חמגשית 101' || 
+                   pm.includes('חמגשית 101') ||
+                   pm === 'חמגשית101' ||
+                   pm.includes('חמגשית101') ||
+                   (pm.toLowerCase().includes('חמגשית') && pm.includes('101'));
+    
+    return isTray;
+  });
+  
+  // סינון נוסף לפי תיאור מיכל (PACKDES) - רק חמגשית גדולה/קטנה
+  flatData = flatData.filter(r => {
+    const desc = String(r.PACKDES || r.packDes || '').trim().toLowerCase();
+    if (!desc.includes('חמגש')) {
+      return false;
+    }
+    return desc.includes('גד') || desc.includes('קט');
+  });
+
+  console.log('✅ דוח חמגשיות - אחרי סינון חמגשיות:', flatData.length, 'שורות');
+  
+  // איסוף סניפים ייחודיים מהנתונים המסוננים
+  const branches = [...new Set(flatData.map(r => r.BRANCHNAME || '').filter(Boolean))].sort();
+  branchFilter.innerHTML = '<option value="">הכל</option>';
+  branches.forEach(branch => {
+    const option = document.createElement('option');
+    option.value = branch;
+    option.textContent = branch;
+    branchFilter.appendChild(option);
+  });
+  
+  // שמירת נתונים מקוריים (כבר מסוננים לחמגשיות)
+  window.allTraysData = flatData;
+  
+  // הצגה ראשונית
+  applyTraysFilters();
+}
+
+function applyTraysFilters() {
+  const container = document.getElementById('traysContainer');
+  const branchFilter = document.getElementById('traysBranchFilter');
+  
+  // בדיקת בטיחות
+  if (!container || !branchFilter) {
+    console.error('❌ אלמנטים לא נמצאו לדוח חמגשיות');
+    return;
+  }
+  
+  const flatData = window.allTraysData || [];
+  
+  // סינון לפי סניף
+  let filteredData = flatData;
+  if (branchFilter && branchFilter.value) {
+    filteredData = filteredData.filter(r => String(r.BRANCHNAME) === branchFilter.value);
+  }
+  
+  console.log('✅ דוח חמגשיות - אחרי סינון סניף:', filteredData.length, 'שורות');
+  
+  // שלב 1: קיבוץ לפי מספר הזמנה
+  const ordersMap = {};
+  filteredData.forEach(row => {
+    const orderName = String(row.ORDNAME || row.orderName || 'ללא_הזמנה').trim();
+    
+    if (!ordersMap[orderName]) {
+      ordersMap[orderName] = {
+        orderName: orderName,
+        items: []
+      };
+    }
+    ordersMap[orderName].items.push(row);
+  });
+  
+  // שלב 2: הפרדה בין פריטים רגילים (כולל צמחוני) לפריטים ללא אלרגנים, עם קיבוץ לפי ארוחה
+  const ordersArray = [];
+  const allergenOrdersArray = [];
+  
+  Object.values(ordersMap).forEach(orderGroup => {
+    const orderItems = orderGroup.items;
+    const orderName = orderGroup.orderName;
+    
+    // קיבוץ לפי ארוחה (MEALNAME) - כל ארוחה בנפרד
+    const itemsByMeal = {};
+    
+    orderItems.forEach(item => {
+      const mealName = String(item.MEALNAME || item.mealName || '').trim() || 'ללא ארוחה';
+      
+      if (!itemsByMeal[mealName]) {
+        itemsByMeal[mealName] = [];
+      }
+      itemsByMeal[mealName].push(item);
+    });
+    
+    // לכל ארוחה - הפרדה לפי סוג (רגיל/אלרגן) - צמחוני נשאר עם רגיל
+    Object.keys(itemsByMeal).forEach(mealName => {
+      const mealItems = itemsByMeal[mealName];
+      
+      // הפרדה: פריטים רגילים (כולל צמחוני) ופריטים ללא אלרגנים
+      const normalItems = [];
+      const allergenItems = [];
+      
+      mealItems.forEach(item => {
+        const pspec1 = String(item.PSPEC1 || item.pspec1 || '').trim().toLowerCase();
+        const hasNoAllergen = pspec1.includes('ללא אלרגני') || pspec1.includes('לא אלרגני');
+        
+        if (hasNoAllergen) {
+          allergenItems.push(item);
+        } else {
+          // כל השאר (כולל צמחוני) נכנסים לרגיל
+          normalItems.push(item);
+        }
+      });
+      
+      // שורה לפריטים רגילים (כולל צמחוני) - עם שם ארוחה אם יש כמה ארוחות
+      if (normalItems.length > 0) {
+        const firstItem = normalItems[0];
+        const displayOrderName = Object.keys(itemsByMeal).length > 1 
+          ? `${orderName} (${mealName})` 
+          : orderName;
+        ordersArray.push({
+          orderName: displayOrderName,
+          items: normalItems,
+          branchName: firstItem?.BRANCHNAME || '',
+          eatQuant: parseFloat(firstItem?.EATQUANT || firstItem?.eatQuant || 0) || 0,
+          tQuant: parseFloat(firstItem?.TQUANT || firstItem?.tQuant || 0) || 0,
+          isAllergen: false,
+          mealName: mealName
+        });
+      }
+      
+      // שורה נפרדת לפריטים ללא אלרגנים - עם שם ארוחה אם יש כמה ארוחות
+      if (allergenItems.length > 0) {
+        const firstItem = allergenItems[0];
+        const displayOrderName = Object.keys(itemsByMeal).length > 1 
+          ? `${orderName} (${mealName}) (ללא אלרגנים)` 
+          : `${orderName} (ללא אלרגנים)`;
+        allergenOrdersArray.push({
+          orderName: displayOrderName,
+          items: allergenItems,
+          branchName: firstItem?.BRANCHNAME || '',
+          eatQuant: parseFloat(firstItem?.EATQUANT || firstItem?.eatQuant || 0) || 0,
+          tQuant: parseFloat(firstItem?.TQUANT || firstItem?.tQuant || 0) || 0,
+          isAllergen: true,
+          mealName: mealName
+        });
+      }
+    });
+  });
+  
+  // שילוב שתי הרשימות
+  const allOrdersArray = [...ordersArray, ...allergenOrdersArray];
+  
+  console.log('✅ דוח חמגשיות - הזמנות לפני קיבוץ:', allOrdersArray.length);
+  
+  // שלב 3: קיבוץ ראשוני - הזמנות עם אותו שילוב פריטים + גודל חמגשית + ארוחה
+  const initialGrouped = {};
+  
+  allOrdersArray.forEach(order => {
+    // יצירת מפתח לפי שילוב הפריטים (ללא כמות, רק שמות)
+    const itemsKey = order.items
+      .map(item => String(item.PARTDES || item.partDes || '').trim())
+      .filter(Boolean)
+      .sort()
+      .join('|');
+    
+    // זיהוי גודל חמגשית מהפריט הראשון
+    const firstItem = order.items[0];
+    const packDes = String(firstItem?.PACKDES || firstItem?.packDes || '').trim().toLowerCase();
+    let traySize = 'רגיל';
+    if (packDes.includes('גד') || packDes.includes('גדול') || packDes.includes('גדולה')) {
+      traySize = 'גדולה';
+    } else if (packDes.includes('קט') || packDes.includes('קטן') || packDes.includes('קטנה')) {
+      traySize = 'קטנה';
+    }
+    
+    // מפתח ראשוני: שילוב פריטים + גודל חמגשית + ללא אלרגנים + ארוחה
+    const specialType = order.isAllergen ? 'allergen' : 'normal';
+    const mealName = String(order.mealName || '').trim() || 'ללא ארוחה';
+    
+    const groupKey = `${itemsKey}|${traySize}|${specialType}|${mealName}`;
+    
+    if (!initialGrouped[groupKey]) {
+      initialGrouped[groupKey] = {
+        items: order.items.map(item => ({
+          ...item,
+          partDes: String(item.PARTDES || item.partDes || '').trim()
+        })),
+        isAllergen: order.isAllergen,
+        traySize: traySize,
+        mealName: mealName,
+        totalQuantity: 0,
+        orderNames: []
+      };
+    }
+    
+    // סיכום המנות
+    const quantity = order.eatQuant || order.tQuant || 0;
+    initialGrouped[groupKey].totalQuantity += quantity;
+    initialGrouped[groupKey].orderNames.push(order.orderName);
+  });
+  
+  // שלב 4: איחוד קבוצות עם פריטים זהים (ללא ארוחה) - רק אם כל הפריטים זהים
+  const finalGrouped = {};
+  
+  Object.values(initialGrouped).forEach(group => {
+    // מפתח ללא ארוחה: שילוב פריטים + גודל חמגשית + ללא אלרגנים
+    const itemsKey = group.items
+      .map(item => item.partDes)
+      .filter(Boolean)
+      .sort()
+      .join('|');
+    
+    const specialType = group.isAllergen ? 'allergen' : 'normal';
+    const finalKey = `${itemsKey}|${group.traySize}|${specialType}`;
+    
+    if (!finalGrouped[finalKey]) {
+      finalGrouped[finalKey] = {
+        items: group.items,
+        isAllergen: group.isAllergen,
+        traySize: group.traySize,
+        totalQuantity: 0,
+        orderNames: [],
+        mealNames: [] // רשימת ארוחות שונות
+      };
+    }
+    
+    // איחוד הנתונים
+    finalGrouped[finalKey].totalQuantity += group.totalQuantity;
+    finalGrouped[finalKey].orderNames.push(...group.orderNames);
+    if (group.mealName && !finalGrouped[finalKey].mealNames.includes(group.mealName)) {
+      finalGrouped[finalKey].mealNames.push(group.mealName);
+    }
+  });
+  
+  // המרה למערך
+  const groupedArray = Object.values(finalGrouped);
+  
+  console.log('✅ דוח חמגשיות - קבוצות אחרי קיבוץ:', groupedArray.length);
+  
+  // שלב 4: מציאת המספר המקסימלי של פריטים (למספר העמודות)
+  let maxItems = 0;
+  groupedArray.forEach(group => {
+    if (group.items.length > maxItems) {
+      maxItems = group.items.length;
+    }
+  });
+  
+  // יצירת טבלה עם עמודה A למספר הזמנה, ועמודות B, C, D... לפריטים
+  let html = '<div style="overflow-x:auto;width:100%;"><table style="width:100%;border-collapse:collapse;min-width:600px;"><thead><tr>';
+  html += '<th style="border:1px solid #ccc;padding:8px;background:#e3f2fd;position:sticky;left:0;z-index:10;min-width:150px;">מספר הזמנה</th>';
+  
+  // עמודות לפריטים (B, C, D...)
+  for (let i = 1; i <= maxItems; i++) {
+    html += `<th style="border:1px solid #ccc;padding:8px;background:#e3f2fd;min-width:200px;">פריט ${i}</th>`;
+  }
+  
+  html += '<th style="border:1px solid #ccc;padding:8px;background:#e3f2fd;min-width:120px;">גודל חמגשית</th>';
+  html += '<th style="border:1px solid #ccc;padding:8px;background:#e3f2fd;min-width:120px;">סה"כ מנות</th>';
+  html += '<th style="border:1px solid #ccc;padding:8px;background:#e3f2fd;min-width:100px;">פעולות</th>';
+  html += '</tr></thead><tbody>';
+  
+  // שורה לכל קבוצה (שילוב פריטים + גודל חמגשית)
+  groupedArray.forEach((group, groupIndex) => {
+    html += '<tr>';
+    // צבע רקע: צהוב ללא אלרגנים, לבן לרגיל (כולל צמחוני)
+    const bgColor = group.isAllergen ? '#fff9c4' : 'white';
+    
+    // מספרי הזמנות (אם יש כמה, נציג את הראשון + מספר נוסף)
+    const orderNameDisplay = group.orderNames.length === 1 
+      ? group.orderNames[0] 
+      : `${group.orderNames[0]} (${group.orderNames.length} הזמנות)`;
+    
+    html += `<td style="border:1px solid #ccc;padding:8px;font-weight:bold;position:sticky;left:0;background:${bgColor};z-index:5;">${orderNameDisplay}</td>`;
+    
+    // לכל פריט - הצגה בעמודה נפרדת (ללא סוגריים)
+    for (let i = 0; i < maxItems; i++) {
+      if (i < group.items.length) {
+        const item = group.items[i];
+        const partDes = item.partDes;
+        
+        html += `<td style="border:1px solid #ccc;padding:8px;background:#e8f5e9;">${partDes}</td>`;
+      } else {
+        html += `<td style="border:1px solid #ccc;padding:8px;background:${bgColor};"></td>`;
+      }
+    }
+    
+    // גודל חמגשית
+    html += `<td style="border:1px solid #ccc;padding:8px;font-weight:bold;background:${bgColor};">${group.traySize}</td>`;
+    
+    // סה"כ מנות
+    html += `<td style="border:1px solid #ccc;padding:8px;font-weight:bold;background:${bgColor};">${group.totalQuantity.toFixed(0)}</td>`;
+    
+    // כפתור להורדת רשימת הזמנות
+    html += `<td style="border:1px solid #ccc;padding:8px;background:${bgColor};text-align:center;">`;
+    html += `<button class="btn" onclick="downloadOrderNames(${groupIndex})" style="padding:5px 10px;font-size:0.85em;">📋 הורד רשימה</button>`;
+    html += '</td>';
+    
+    html += '</tr>';
+  });
+  
+  html += '</tbody></table></div>';
+  
+  container.innerHTML = html;
+  
+  // שמירת נתונים להורדה
+  window.traysData = groupedArray;
+}
+
+// הורדת רשימת מספרי הזמנות לקבוצה מסוימת
+function downloadOrderNames(groupIndex) {
+  if (!window.traysData || !window.traysData[groupIndex]) {
+    alert('אין נתונים להורדה');
+    return;
+  }
+  
+  const group = window.traysData[groupIndex];
+  const orderNames = group.orderNames || [];
+  
+  if (orderNames.length === 0) {
+    alert('אין מספרי הזמנות להורדה');
+    return;
+  }
+  
+  // יצירת CSV עם רשימת מספרי הזמנות
+  let csv = '\uFEFFמספר הזמנה\n';
+  orderNames.forEach(orderName => {
+    csv += `"${orderName}"\n`;
+  });
+  
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  
+  // שם הקובץ עם פרטי הקבוצה
+  const itemsDesc = group.items.map(item => item.partDes).join('_').substring(0, 30);
+  link.download = `orders_${itemsDesc}_${document.getElementById('dateInput').value}.csv`;
+  link.click();
+}
+
+// דוח מיכלים - תפזורת/סיפט
+function createContainersReport(data) {
+  const container = document.getElementById('containersContainer');
+  const branchFilter = document.getElementById('containersBranchFilter');
+  
+  // המרה לנתונים שטוחים
+  const flatData = Array.isArray(data) ? data : Object.values(data).flatMap(order => 
+    order.items.map(item => ({
+      ...item,
+      BRANCHNAME: order.branchName,
+      PACKMETHODCODE: item.packMethodCode || '',
+      PACKDES: item.packDes || '',
+      CONTAINERS: item.containers || '',
+      PACK5: parseFloat(item.pack5) || 0,
+      PACK7: parseFloat(item.pack7) || 0,
+      PARTDES: item.partDes || ''
+    }))
+  );
+  
+  // איסוף סניפים ייחודיים
+  const branches = [...new Set(flatData.map(r => r.BRANCHNAME || '').filter(Boolean))].sort();
+  branchFilter.innerHTML = '<option value="">הכל</option>';
+  branches.forEach(branch => {
+    const option = document.createElement('option');
+    option.value = branch;
+    option.textContent = branch;
+    branchFilter.appendChild(option);
+  });
+  
+  // שמירת נתונים מקוריים
+  window.allContainersData = flatData;
+  
+  // הצגה ראשונית
+  applyContainersFilters();
+}
+
+function applyContainersFilters() {
+  const container = document.getElementById('containersContainer');
+  const branchFilter = document.getElementById('containersBranchFilter');
+  const flatData = window.allContainersData || [];
+  
+  // סינון לפי סניף
+  let filteredData = flatData;
+  if (branchFilter.value) {
+    filteredData = filteredData.filter(r => String(r.BRANCHNAME) === branchFilter.value);
+  }
+  
+  // סינון רק תפזורת/סיפט (לא חמגשית 101)
+  filteredData = filteredData.filter(r => {
+    const packMethod = String(r.PACKMETHODCODE || r.packMethodCode || '').trim();
+    return packMethod !== 'חמגשית 101' && !packMethod.includes('חמגשית 101');
+  });
+  
+  // קיבוץ לפי תיאור מיכל (PACKDES) ופריט
+  const summary = {};
+  filteredData.forEach(row => {
+    const packDes = String(row.PACKDES || row.packDes || '').trim();
+    const partDes = String(row.PARTDES || row.partDes || '').trim();
+    const key = `${packDes}|${partDes}`;
+    
+    if (!summary[key]) {
+      summary[key] = {
+        packDes: packDes || 'ללא תיאור',
+        partDes: partDes,
+        totalContainers: 0,
+        totalPack5: 0,
+        totalPack7: 0
+      };
+    }
+    
+    summary[key].totalContainers += parseFloat(row.CONTAINERS || row.containers || 0) || 0;
+    summary[key].totalPack5 += parseFloat(row.PACK5 || row.pack5 || 0) || 0;
+    summary[key].totalPack7 += parseFloat(row.PACK7 || row.pack7 || 0) || 0;
+  });
+  
+  const summaryArray = Object.values(summary).sort((a, b) => {
+    return (a.packDes || '').localeCompare(b.packDes || '');
+  });
+  
+  // יצירת טבלה
+  let html = '<table><thead><tr>';
+  html += '<th>תיאור מיכל</th><th>תיאור מוצר</th><th>כמות מיכלים</th><th>סה"כ מארז 5</th><th>סה"כ מארז 7</th>';
+  html += '</tr></thead><tbody>';
+  
+  let grandTotalContainers = 0;
+  let grandTotalPack5 = 0;
+  let grandTotalPack7 = 0;
+  summaryArray.forEach(item => {
+    html += '<tr>';
+    html += `<td>${item.packDes}</td>`;
+    html += `<td>${item.partDes}</td>`;
+    html += `<td style="font-weight:bold;">${item.totalContainers > 0 ? item.totalContainers.toFixed(0) : ''}</td>`;
+    html += `<td style="font-weight:bold;">${item.totalPack5 > 0 ? item.totalPack5.toFixed(0) : ''}</td>`;
+    html += `<td style="font-weight:bold;">${item.totalPack7 > 0 ? item.totalPack7.toFixed(0) : ''}</td>`;
+    html += '</tr>';
+    grandTotalContainers += item.totalContainers;
+    grandTotalPack5 += item.totalPack5;
+    grandTotalPack7 += item.totalPack7;
+  });
+  
+  html += '<tr style="background:#e8f5e9;font-weight:bold;">';
+  html += '<td colspan="2">סה"כ כללי</td>';
+  html += `<td>${grandTotalContainers > 0 ? grandTotalContainers.toFixed(0) : ''}</td>`;
+  html += `<td>${grandTotalPack5 > 0 ? grandTotalPack5.toFixed(0) : ''}</td>`;
+  html += `<td>${grandTotalPack7 > 0 ? grandTotalPack7.toFixed(0) : ''}</td>`;
+  html += '</tr>';
+  html += '</tbody></table>';
+  
+  container.innerHTML = html;
+  window.containersData = summaryArray;
 }
 
 // דוח מדבקות - לפי קו חלוקה וסדר הפצה
@@ -1946,9 +2649,10 @@ function downloadSummaryCSV() {
     return;
   }
   
-  let csv = '\uFEFFפרמטר 1 למוצר,תיאור מוצר,כמות (סה"כ),כמות מיכלים\n';
+  let csv = '\uFEFFפרמטר 1 למוצר,תיאור מוצר,כמות (סה"כ),כמות מנות,כמות מיכלים\n';
   
   let grandTotal = 0;
+  let grandTotalEatQuant = 0;
   let grandTotalContainers = 0;
   let grandTotalPack5 = 0;
   let grandTotalPack7 = 0;
@@ -1956,8 +2660,9 @@ function downloadSummaryCSV() {
     const containersPlain = (item.displayContainers || '')
       .replace(/<br\s*\/?>/gi, ' | ')
       .replace(/"/g, '""');
-    csv += `"${item.pspec1 || ''}","${item.partDes || ''}",${item.totalQuantity.toFixed(2)},"${containersPlain}"\n`;
+    csv += `"${item.pspec1 || ''}","${item.partDes || ''}",${item.totalQuantity.toFixed(2)},${item.totalEatQuant > 0 ? item.totalEatQuant.toFixed(0) : ''},"${containersPlain}"\n`;
     grandTotal += item.totalQuantity;
+    grandTotalEatQuant += (item.totalEatQuant || 0);
     grandTotalContainers += (item.totalContainers || 0);
     grandTotalPack5 += (item.totalPack5 || 0);
     grandTotalPack7 += (item.totalPack7 || 0);
@@ -1973,12 +2678,99 @@ function downloadSummaryCSV() {
   if (grandTotalPack7 > 0) {
     totalPieces.push(`מארז 7: ${grandTotalPack7.toFixed(0)}`);
   }
-  csv += `"סה"כ כללי","",${grandTotal.toFixed(2)},"${totalPieces.join(' | ')}"\n`;
+  csv += `"סה"כ כללי","",${grandTotal.toFixed(2)},${grandTotalEatQuant > 0 ? grandTotalEatQuant.toFixed(0) : ''},"${totalPieces.join(' | ')}"\n`;
   
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
   link.download = `summary_${document.getElementById('dateInput').value}.csv`;
+  link.click();
+}
+
+// הורדת CSV לדוח חמגשיות
+function downloadTraysCSV() {
+  if (!window.traysData || window.traysData.length === 0) {
+    alert('אין נתונים להורדה');
+    return;
+  }
+  
+  const groupedArray = window.traysData;
+  
+  // מציאת המספר המקסימלי של פריטים
+  let maxItems = 0;
+  groupedArray.forEach(group => {
+    if (group.items.length > maxItems) {
+      maxItems = group.items.length;
+    }
+  });
+  
+  // יצירת כותרות CSV
+  let csv = '\uFEFFמספר הזמנה';
+  for (let i = 1; i <= maxItems; i++) {
+    csv += `,פריט ${i}`;
+  }
+  csv += ',גודל חמגשית,סה"כ מנות\n';
+  
+  // שורות נתונים
+  groupedArray.forEach(group => {
+    // מספרי הזמנות
+    const orderNameDisplay = group.orderNames.length === 1 
+      ? group.orderNames[0] 
+      : `${group.orderNames[0]} (${group.orderNames.length} הזמנות)`;
+    
+    csv += `"${orderNameDisplay}"`;
+    
+    // לכל פריט (ללא סוגריים)
+    for (let i = 0; i < maxItems; i++) {
+      if (i < group.items.length) {
+        const item = group.items[i];
+        const partDes = item.partDes;
+        
+        csv += `,"${partDes}"`;
+      } else {
+        csv += ',""';
+      }
+    }
+    
+    // גודל חמגשית
+    csv += `,"${group.traySize}"`;
+    
+    // סה"כ מנות
+    csv += `,${group.totalQuantity.toFixed(0)}\n`;
+  });
+  
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `trays_${document.getElementById('dateInput').value}.csv`;
+  link.click();
+}
+
+// הורדת CSV לדוח מיכלים
+function downloadContainersCSV() {
+  if (!window.containersData || window.containersData.length === 0) {
+    alert('אין נתונים להורדה');
+    return;
+  }
+  
+  let csv = '\uFEFFתיאור מיכל,תיאור מוצר,כמות מיכלים,סה"כ מארז 5,סה"כ מארז 7\n';
+  
+  let grandTotalContainers = 0;
+  let grandTotalPack5 = 0;
+  let grandTotalPack7 = 0;
+  window.containersData.forEach(item => {
+    csv += `"${item.packDes || ''}","${item.partDes || ''}",${item.totalContainers > 0 ? item.totalContainers.toFixed(0) : ''},${item.totalPack5 > 0 ? item.totalPack5.toFixed(0) : ''},${item.totalPack7 > 0 ? item.totalPack7.toFixed(0) : ''}\n`;
+    grandTotalContainers += item.totalContainers;
+    grandTotalPack5 += item.totalPack5;
+    grandTotalPack7 += item.totalPack7;
+  });
+  
+  csv += `"סה"כ כללי","",${grandTotalContainers > 0 ? grandTotalContainers.toFixed(0) : ''},${grandTotalPack5 > 0 ? grandTotalPack5.toFixed(0) : ''},${grandTotalPack7 > 0 ? grandTotalPack7.toFixed(0) : ''}\n`;
+  
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `containers_${document.getElementById('dateInput').value}.csv`;
   link.click();
 }
 
