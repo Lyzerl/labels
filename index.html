@@ -467,8 +467,7 @@ tr:nth-child(even) {
   }
   
   /* שיפור טבלאות בדוחות */
-  #summaryContainer table,
-  #traysContainer table {
+  #summaryContainer table {
     font-size: 0.7em;
     width: 100% !important;
     display: block;
@@ -477,30 +476,56 @@ tr:nth-child(even) {
   }
   
   #summaryContainer table thead,
-  #summaryContainer table tbody,
-  #traysContainer table thead,
-  #traysContainer table tbody {
+  #summaryContainer table tbody {
     display: block;
   }
   
-  #summaryContainer table tr,
-  #traysContainer table tr {
+  #summaryContainer table tr {
     display: table;
     width: 100%;
     table-layout: fixed;
   }
   
-  /* שיפור טבלאות חמגשיות */
+  /* דוח אריזה חמה - טבלאות אחת מתחת לשנייה */
+  #traysContainer table {
+    font-size: 0.7em;
+    width: 100% !important;
+    display: table;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* שיפור טבלאות חמגשיות - אחת מתחת לשנייה במובייל */
   #traysContainer > div {
     width: 100% !important;
     display: block !important;
     margin: 10px 0 !important;
   }
   
-  .tray-category-table {
-    width: 100% !important;
+  /* שינוי כל הטבלאות בדוח אריזה חמה להיות אחת מתחת לשנייה במובייל */
+  #traysContainer .tray-category-table,
+  #traysContainer div[style*="display:inline-block"] {
     display: block !important;
+    width: 100% !important;
+    margin: 15px 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    clear: both !important;
+    float: none !important;
+  }
+  
+  /* וידוא שהטבלאות לא עולות אחת על השנייה */
+  #traysContainer > div > div {
+    display: block !important;
+    width: 100% !important;
     margin: 10px 0 !important;
+  }
+  
+  /* וידוא שכל ה-divs בתוך traysContainer הם block */
+  #traysContainer div {
+    display: block !important;
+    width: 100% !important;
+    float: none !important;
   }
   
   #traysContainer table {
@@ -581,14 +606,27 @@ tr:nth-child(even) {
   }
   
   /* שיפורים נוספים לטבלאות במובייל קטן */
-  .tray-category-table {
+  .tray-category-table,
+  #traysContainer div[style*="display:inline-block"] {
     width: 100% !important;
+    display: block !important;
     margin: 10px 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    float: none !important;
+    clear: both !important;
   }
   
   #traysContainer h3 {
     font-size: 0.85em;
     padding: 6px;
+  }
+  
+  /* וידוא שכל הטבלאות בדוח אריזה חמה הן אחת מתחת לשנייה */
+  #traysContainer > div > div {
+    display: block !important;
+    width: 100% !important;
+    float: none !important;
   }
   
   #summaryContainer table,
@@ -1631,7 +1669,7 @@ function applyTraysFilters() {
   };
   
   // יצירת טבלאות לפי קטגוריות
-  let html = '<div style="width:100%;">';
+  let html = '<div style="width:100%;display:block;">';
   
   // חמגשית קטנה - קיבוץ לפי הזמנה, ארוחה, והפרדת אלרגני
   if (categories.smallTray.length > 0) {
