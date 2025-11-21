@@ -132,7 +132,9 @@ table {
 th, td { 
   border: 1px solid #ddd; 
   padding: 12px; 
-  text-align: right; 
+  text-align: right;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 th { 
   background: #4285f4; 
@@ -179,11 +181,13 @@ tr:nth-child(even) {
   margin-top: 20px;
   width: 100%;
   position: relative;
+  -webkit-overflow-scrolling: touch;
 }
 .table-container table {
   width: 100% !important;
   min-width: 100%;
   display: table;
+  table-layout: auto;
 }
 .loader {
   border: 5px solid #f3f3f3;
@@ -347,16 +351,39 @@ tr:nth-child(even) {
   .table-container {
     max-height: none;
     overflow-x: auto;
+    overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     margin-top: 10px;
     width: 100%;
     position: relative;
+    display: block;
   }
   
   table {
     font-size: 0.75em;
-    min-width: 600px;
+    min-width: 100%;
     width: 100% !important;
+    display: table;
+    table-layout: auto;
+  }
+  
+  /* שיפור גלילה בטבלאות */
+  .table-container::-webkit-scrollbar {
+    height: 8px;
+  }
+  
+  .table-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  
+  .table-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+  }
+  
+  .table-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
   }
   
   /* DataTables responsive */
@@ -410,11 +437,18 @@ tr:nth-child(even) {
   html, body {
     overflow-x: hidden;
     width: 100%;
+    box-sizing: border-box;
+  }
+  
+  * {
+    box-sizing: border-box;
   }
   
   /* שיפור התצוגה של טאבים */
   .tab-content {
     padding: 10px 0;
+    width: 100%;
+    overflow-x: auto;
   }
   
   /* שיפור התצוגה של קונטרולים */
@@ -430,6 +464,76 @@ tr:nth-child(even) {
   .stat-item {
     flex: 1 1 45%;
     min-width: 120px;
+  }
+  
+  /* שיפור טבלאות בדוחות */
+  #summaryContainer table,
+  #traysContainer table {
+    font-size: 0.7em;
+    width: 100% !important;
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  #summaryContainer table thead,
+  #summaryContainer table tbody,
+  #traysContainer table thead,
+  #traysContainer table tbody {
+    display: block;
+  }
+  
+  #summaryContainer table tr,
+  #traysContainer table tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+  
+  /* שיפור טבלאות חמגשיות */
+  #traysContainer > div {
+    width: 100% !important;
+    display: block !important;
+    margin: 10px 0 !important;
+  }
+  
+  .tray-category-table {
+    width: 100% !important;
+    display: block !important;
+    margin: 10px 0 !important;
+  }
+  
+  #traysContainer table {
+    min-width: 100%;
+    width: 100% !important;
+  }
+  
+  /* שיפור כותרות טבלאות */
+  #traysContainer h3 {
+    font-size: 0.9em;
+    padding: 8px;
+  }
+  
+  /* שיפור תצוגת דוח אריזה קרה */
+  #summaryContainer table {
+    font-size: 0.8em;
+    width: 100% !important;
+  }
+  
+  #summaryContainer th,
+  #summaryContainer td {
+    padding: 6px 4px;
+    font-size: 0.85em;
+  }
+  
+  /* שיפור תצוגת דוחות */
+  .report-controls {
+    width: 100%;
+  }
+  
+  .report-controls button {
+    width: 100%;
+    margin-top: 10px;
   }
 }
 
@@ -448,12 +552,15 @@ tr:nth-child(even) {
   
   table {
     font-size: 0.7em;
-    min-width: 500px;
+    min-width: 100%;
+    width: 100% !important;
   }
   
   th, td {
     padding: 6px 3px;
-    font-size: 0.85em;
+    font-size: 0.8em;
+    word-wrap: break-word;
+    max-width: 200px;
   }
   
   .btn {
@@ -471,6 +578,36 @@ tr:nth-child(even) {
   
   .stat-value {
     font-size: 1.3em;
+  }
+  
+  /* שיפורים נוספים לטבלאות במובייל קטן */
+  .tray-category-table {
+    width: 100% !important;
+    margin: 10px 0 !important;
+  }
+  
+  #traysContainer h3 {
+    font-size: 0.85em;
+    padding: 6px;
+  }
+  
+  #summaryContainer table,
+  #traysContainer table {
+    font-size: 0.7em;
+  }
+  
+  #summaryContainer th,
+  #summaryContainer td,
+  #traysContainer th,
+  #traysContainer td {
+    padding: 5px 3px;
+    font-size: 0.75em;
+  }
+  
+  /* שיפור תצוגת טקסט ארוך */
+  td {
+    word-break: break-word;
+    overflow-wrap: break-word;
   }
 }
 </style>
@@ -1274,7 +1411,7 @@ function applySummaryFilters() {
   });
   
   // יצירת טבלה (בלי עמודת מקט, רק תיאור מוצר)
-  let html = '<table><thead><tr>';
+  let html = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="width:100%;min-width:100%;"><thead><tr>';
   html += '<th>לפי קטגוריה</th><th>תיאור מוצר</th><th>ס&quot;ה מנות</th><th>ס&quot;ה לייצור</th>';
   html += '</tr></thead><tbody>';
   
@@ -1291,7 +1428,7 @@ function applySummaryFilters() {
     grandTotalEatQuant += item.totalEatQuant || 0;
   });
   
-  html += '</tbody></table>';
+  html += '</tbody></table></div>';
   
   if (summaryArray.length === 0) {
     html = '<p style="text-align:center;padding:50px;color:#999;">לא נמצאו נתונים להצגה</p>';
@@ -1475,21 +1612,21 @@ function applyTraysFilters() {
       a.partDes.localeCompare(b.partDes)
     );
     
-    let html = `<div style="display:inline-block;width:48%;margin:1%;vertical-align:top;margin-bottom:20px;">`;
-    html += `<h3 style="background:#c8e6c9;padding:10px;margin:0;text-align:center;border:1px solid #4caf50;">${categoryName}</h3>`;
-    html += `<table style="width:100%;border-collapse:collapse;border:1px solid #ccc;"><thead><tr>`;
-    html += `<th style="border:1px solid #ccc;padding:8px;background:#c8e6c9;text-align:right;">${categoryName}</th>`;
-    html += `<th style="border:1px solid #ccc;padding:8px;background:#c8e6c9;text-align:center;">כמות</th>`;
+    let html = `<div class="tray-category-table" style="display:inline-block;width:48%;margin:1%;vertical-align:top;margin-bottom:20px;box-sizing:border-box;">`;
+    html += `<h3 style="background:#c8e6c9;padding:10px;margin:0;text-align:center;border:1px solid #4caf50;font-size:1em;">${categoryName}</h3>`;
+    html += `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="width:100%;border-collapse:collapse;border:1px solid #ccc;min-width:200px;"><thead><tr>`;
+    html += `<th style="border:1px solid #ccc;padding:8px;background:#c8e6c9;text-align:right;font-size:0.9em;">${categoryName}</th>`;
+    html += `<th style="border:1px solid #ccc;padding:8px;background:#c8e6c9;text-align:center;font-size:0.9em;">כמות</th>`;
     html += `</tr></thead><tbody>`;
     
     summaryArray.forEach(item => {
       html += '<tr>';
-      html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;">${item.partDes}</td>`;
-      html += `<td style="border:1px solid #ccc;padding:8px;font-weight:bold;text-align:center;">${item.totalValue.toFixed(0)}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;font-size:0.85em;word-wrap:break-word;">${item.partDes}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;font-weight:bold;text-align:center;font-size:0.85em;">${item.totalValue.toFixed(0)}</td>`;
       html += '</tr>';
     });
     
-    html += '</tbody></table></div>';
+    html += '</tbody></table></div></div>';
     return html;
   };
   
@@ -1582,21 +1719,21 @@ function applyTraysFilters() {
       a.itemsKey.localeCompare(b.itemsKey)
     );
     
-    html += `<div style="display:inline-block;width:48%;margin:1%;vertical-align:top;margin-bottom:20px;">`;
-    html += `<h3 style="background:#c8e6c9;padding:10px;margin:0;text-align:center;border:1px solid #4caf50;">חמגשית קטנה</h3>`;
-    html += `<table style="width:100%;border-collapse:collapse;border:1px solid #ccc;"><thead><tr>`;
-    html += `<th style="border:1px solid #ccc;padding:8px;background:#c8e6c9;text-align:right;">חמגשית קטנה</th>`;
-    html += `<th style="border:1px solid #ccc;padding:8px;background:#c8e6c9;text-align:center;">כמות</th>`;
+    html += `<div class="tray-category-table" style="display:inline-block;width:48%;margin:1%;vertical-align:top;margin-bottom:20px;box-sizing:border-box;">`;
+    html += `<h3 style="background:#c8e6c9;padding:10px;margin:0;text-align:center;border:1px solid #4caf50;font-size:1em;">חמגשית קטנה</h3>`;
+    html += `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="width:100%;border-collapse:collapse;border:1px solid #ccc;min-width:200px;"><thead><tr>`;
+    html += `<th style="border:1px solid #ccc;padding:8px;background:#c8e6c9;text-align:right;font-size:0.9em;">חמגשית קטנה</th>`;
+    html += `<th style="border:1px solid #ccc;padding:8px;background:#c8e6c9;text-align:center;font-size:0.9em;">כמות</th>`;
     html += `</tr></thead><tbody>`;
     
     summaryArray.forEach(item => {
       html += '<tr>';
-      html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;">${item.itemsKey}</td>`;
-      html += `<td style="border:1px solid #ccc;padding:8px;font-weight:bold;text-align:center;">${item.totalQuantity.toFixed(0)}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;font-size:0.85em;word-wrap:break-word;">${item.itemsKey}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;font-weight:bold;text-align:center;font-size:0.85em;">${item.totalQuantity.toFixed(0)}</td>`;
       html += '</tr>';
     });
     
-    html += '</tbody></table></div>';
+    html += '</tbody></table></div></div>';
   }
   
   // חמגשית גדולה - קיבוץ לפי הזמנה, ארוחה, והפרדת אלרגני
@@ -1685,21 +1822,21 @@ function applyTraysFilters() {
       a.itemsKey.localeCompare(b.itemsKey)
     );
     
-    html += `<div style="display:inline-block;width:48%;margin:1%;vertical-align:top;margin-bottom:20px;">`;
-    html += `<h3 style="background:#c8e6c9;padding:10px;margin:0;text-align:center;border:1px solid #4caf50;">חמגשית גדולה</h3>`;
-    html += `<table style="width:100%;border-collapse:collapse;border:1px solid #ccc;"><thead><tr>`;
-    html += `<th style="border:1px solid #ccc;padding:8px;background:#c8e6c9;text-align:right;">חמגשית גדולה</th>`;
-    html += `<th style="border:1px solid #ccc;padding:8px;background:#c8e6c9;text-align:center;">כמות</th>`;
+    html += `<div class="tray-category-table" style="display:inline-block;width:48%;margin:1%;vertical-align:top;margin-bottom:20px;box-sizing:border-box;">`;
+    html += `<h3 style="background:#c8e6c9;padding:10px;margin:0;text-align:center;border:1px solid #4caf50;font-size:1em;">חמגשית גדולה</h3>`;
+    html += `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="width:100%;border-collapse:collapse;border:1px solid #ccc;min-width:200px;"><thead><tr>`;
+    html += `<th style="border:1px solid #ccc;padding:8px;background:#c8e6c9;text-align:right;font-size:0.9em;">חמגשית גדולה</th>`;
+    html += `<th style="border:1px solid #ccc;padding:8px;background:#c8e6c9;text-align:center;font-size:0.9em;">כמות</th>`;
     html += `</tr></thead><tbody>`;
     
     summaryArray.forEach(item => {
       html += '<tr>';
-      html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;">${item.itemsKey}</td>`;
-      html += `<td style="border:1px solid #ccc;padding:8px;font-weight:bold;text-align:center;">${item.totalQuantity.toFixed(0)}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;font-size:0.85em;word-wrap:break-word;">${item.itemsKey}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;font-weight:bold;text-align:center;font-size:0.85em;">${item.totalQuantity.toFixed(0)}</td>`;
       html += '</tr>';
     });
     
-    html += '</tbody></table></div>';
+    html += '</tbody></table></div></div>';
   }
   
   // גסטרונום - לפי CONTAINERS
