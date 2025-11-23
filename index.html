@@ -670,8 +670,8 @@ tr:nth-child(even) {
       <label for="branchSelect">סניף:</label>
       <select id="branchSelect">
         <option value="all">הכל</option>
-        <option value="south">דרום (1 ומטה)</option>
-        <option value="north">צפון (3 ומעלה)</option>
+        <option value="south">דרום </option>
+        <option value="north">צפון </option>
       </select>
     </div>
     
@@ -2044,42 +2044,17 @@ function applyTraysFilters() {
     return isBulk;
   });
   if (containersData.length > 0) {
-    // קיבוץ לפי הזמנה + פריט - כל הזמנה נספרת פעם אחת
-    const ordersByPart = {};
+    const summary = {};
     containersData.forEach(row => {
       const partDes = String(row.PARTDES || row.partDes || '').trim();
-      const orderName = String(row.ORDNAME || row.orderName || '').trim();
-      if (!partDes || !orderName) return;
-      
-      // יצירת מפתח לפי הזמנה + פריט
-      const key = `${orderName}|${partDes}`;
-      
-      if (!ordersByPart[key]) {
-        ordersByPart[key] = {
-          partDes: partDes,
-          orderName: orderName,
-          containers: parseFloat(row.CONTAINERS || row.containers || 0) || 0
-        };
-      }
-      // אם יש כמה שורות לאותה הזמנה + פריט, לוקחים את הכמות מהשורה הראשונה (או מקסימום)
-      const currentContainers = parseFloat(row.CONTAINERS || row.containers || 0) || 0;
-      if (currentContainers > ordersByPart[key].containers) {
-        ordersByPart[key].containers = currentContainers;
-      }
-    });
-    
-    // סיכום לפי פריט - כל הזמנה נספרת פעם אחת
-    const summary = {};
-    Object.values(ordersByPart).forEach(item => {
-      const partDes = item.partDes;
+      if (!partDes) return;
       if (!summary[partDes]) {
         summary[partDes] = {
           partDes: partDes,
           totalValue: 0
         };
       }
-      // כל הזמנה נספרת פעם אחת
-      summary[partDes].totalValue += item.containers;
+      summary[partDes].totalValue += parseFloat(row.CONTAINERS || row.containers || 0) || 0;
     });
     
     const summaryArray = Object.values(summary).sort((a, b) => 
