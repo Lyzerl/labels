@@ -697,6 +697,7 @@ tr:nth-child(even) {
     <button class="tab-btn active" onclick="showTab('general', this)">📋 טבלה כללית</button>
     <button class="tab-btn" onclick="showTab('summary', this)">❄️ דוח אריזה קרה</button>
     <button class="tab-btn" onclick="showTab('trays', this)">🔥 דוח אריזה חמה</button>
+    <button class="tab-btn" onclick="showTab('allergens', this)">🚫 דוח אלרגנים</button>
     <button class="tab-btn" onclick="showTab('labels', this)">🏷️ דוח מדבקות</button>
   </div>
 
@@ -723,6 +724,10 @@ tr:nth-child(even) {
 
   <div id="tabTrays" class="tab-content">
     <div class="table-container" id="traysContainer"></div>
+  </div>
+
+  <div id="tabAllergens" class="tab-content">
+    <div class="table-container" id="allergensContainer"></div>
   </div>
 
   <div id="tabContainers" class="tab-content">
@@ -1161,6 +1166,7 @@ async function fetchData() {
       // יצירת דוחות נוספים מהנתונים המובנים
       createSummaryReport(structuredData);
       createTraysReport(structuredData);
+      createAllergensReport(structuredData);
       createLabelsReport(structuredData);
       // הצגת טאבים
       document.getElementById('tabsContainer').style.display = 'flex';
@@ -2078,10 +2084,30 @@ function applyTraysFilters() {
     html += '</tbody></table></div></div>';
   }
   
-  // טבלת מארז 5 - מכל הנתונים של קרטון חמים, לפי PACK5
+  // טבלת מארז 5 - מכל הנתונים של קרטון חמים, לפי PACK5, רק סיפט או תפזורת
   const pack5Data = filteredData.filter(r => {
     const pack5 = parseFloat(r.PACK5 || r.pack5 || 0) || 0;
-    return pack5 > 0;
+    if (pack5 <= 0) return false;
+    
+    // בדיקה שזה לא חמגשית ולא גסטרונום
+    const pm = String(r.PACKMETHODCODE || r.packMethodCode || '').trim().toLowerCase();
+    const packDes = String(r.PACKDES || r.packDes || '').trim().toLowerCase();
+    const pspec1 = String(r.PSPEC1 || r.pspec1 || '').trim().toLowerCase();
+    
+    // אם זה חמגשית - לא נכלל
+    if (pm.includes('חמגשית') || packDes.includes('חמגשית')) {
+      return false;
+    }
+    
+    // אם זה גסטרונום - לא נכלל
+    if (pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום')) {
+      return false;
+    }
+    
+    // רק תפזורת או סיפט
+    const isBulk = pm.includes('תפזורת') || packDes.includes('תפזורת') || pm.includes('סיפט') || packDes.includes('סיפט');
+    
+    return isBulk;
   });
   if (pack5Data.length > 0) {
     const summary = {};
@@ -2118,10 +2144,30 @@ function applyTraysFilters() {
     html += '</tbody></table></div></div>';
   }
   
-  // טבלת מארז 7 - מכל הנתונים של קרטון חמים, לפי PACK7
+  // טבלת מארז 7 - מכל הנתונים של קרטון חמים, לפי PACK7, רק סיפט או תפזורת
   const pack7Data = filteredData.filter(r => {
     const pack7 = parseFloat(r.PACK7 || r.pack7 || 0) || 0;
-    return pack7 > 0;
+    if (pack7 <= 0) return false;
+    
+    // בדיקה שזה לא חמגשית ולא גסטרונום
+    const pm = String(r.PACKMETHODCODE || r.packMethodCode || '').trim().toLowerCase();
+    const packDes = String(r.PACKDES || r.packDes || '').trim().toLowerCase();
+    const pspec1 = String(r.PSPEC1 || r.pspec1 || '').trim().toLowerCase();
+    
+    // אם זה חמגשית - לא נכלל
+    if (pm.includes('חמגשית') || packDes.includes('חמגשית')) {
+      return false;
+    }
+    
+    // אם זה גסטרונום - לא נכלל
+    if (pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום')) {
+      return false;
+    }
+    
+    // רק תפזורת או סיפט
+    const isBulk = pm.includes('תפזורת') || packDes.includes('תפזורת') || pm.includes('סיפט') || packDes.includes('סיפט');
+    
+    return isBulk;
   });
   if (pack7Data.length > 0) {
     const summary = {};
@@ -2197,6 +2243,157 @@ function downloadTrayRowOrdersCSV(rowId, trayType) {
   link.download = `הזמנות_${trayName}_${rowId}_${dateStr}.csv`;
   
   link.click();
+}
+
+// דוח אלרגנים - סיכום מנות ללא אלרגני לפי קו חלוקה, לקוח, כשרות ושיטת אירוז
+function createAllergensReport(data) {
+  const container = document.getElementById('allergensContainer');
+  
+  if (!container) {
+    console.error('❌ אלמנט לא נמצא לדוח אלרגנים');
+    return;
+  }
+  
+  if (!data || (Array.isArray(data) && data.length === 0) || (!Array.isArray(data) && Object.keys(data).length === 0)) {
+    console.warn('⚠️ אין נתונים לדוח אלרגנים');
+    container.innerHTML = '<p style="text-align:center;padding:50px;color:#999;">אין נתונים להצגה</p>';
+    return;
+  }
+  
+  // המרה לנתונים שטוחים
+  let flatData = Array.isArray(data) ? data : Object.values(data).flatMap(order => {
+    if (!order || !order.items || !Array.isArray(order.items)) {
+      return [];
+    }
+    return order.items.map(item => ({
+      ...item,
+      BRANCHNAME: order.branchName || '',
+      PSPEC1: String(item.pspec1 || '').trim(),
+      SPEC1: String(order.spec1 || '').trim(),
+      SPEC2: String(order.spec2 || '').trim(),
+      DISTRLINECODE: String(order.distrLineCode || item.distrLineCode || '').trim(),
+      DISTRLINEDES: String(order.distrLineDes || item.distrLineDes || '').trim(),
+      PACKMETHODCODE: String(item.packMethodCode || '').trim(),
+      PACKDES: String(item.packDes || '').trim(),
+      EATQUANT: parseFloat(item.eatQuant || 0) || 0
+    }));
+  });
+  
+  // סינון רק פריטים ללא אלרגנים
+  const allergenFreeData = flatData.filter(r => {
+    const pspec1 = String(r.PSPEC1 || '').trim().toLowerCase();
+    return pspec1.includes('ללא אלרגני') || pspec1.includes('לא אלרגני');
+  });
+  
+  console.log('📊 דוח אלרגנים - סה"כ נתונים:', flatData.length, 'פריטים ללא אלרגנים:', allergenFreeData.length);
+  
+  if (allergenFreeData.length === 0) {
+    container.innerHTML = '<p style="text-align:center;padding:50px;color:#999;">לא נמצאו פריטים ללא אלרגנים</p>';
+    return;
+  }
+  
+  // קיבוץ לפי: לקוח (SPEC1), כשרות (SPEC2), קו חלוקה (DISTRLINECODE), שיטת אירוז (PACKMETHODCODE/PACKDES)
+  const summary = {};
+  
+  allergenFreeData.forEach(row => {
+    const spec1 = String(row.SPEC1 || '').trim() || 'ללא סוג לקוח';
+    const spec2 = String(row.SPEC2 || '').trim() || 'ללא כשרות';
+    const distrLineCode = String(row.DISTRLINECODE || '').trim() || 'ללא קו';
+    const distrLineDes = String(row.DISTRLINEDES || '').trim() || 'ללא תיאור';
+    
+    // קביעת שיטת אירוז
+    const packMethod = String(row.PACKMETHODCODE || '').trim();
+    const packDes = String(row.PACKDES || '').trim().toLowerCase();
+    let packingMethod = 'אחר';
+    
+    if (packMethod.includes('חמגשית') || packDes.includes('חמגשית')) {
+      packingMethod = 'חמגשית';
+    } else if (packMethod.includes('תפזורת') || packDes.includes('תפזורת') || packMethod.includes('סיפט') || packDes.includes('סיפט')) {
+      packingMethod = 'תפזורת';
+    } else if (packDes.includes('גסטרונום') || packMethod.includes('גסטרונום')) {
+      packingMethod = 'גסטרונום';
+    }
+    
+    // יצירת מפתח ייחודי
+    const key = `${spec1}|${spec2}|${distrLineCode}|${packingMethod}`;
+    
+    if (!summary[key]) {
+      summary[key] = {
+        spec1: spec1,
+        spec2: spec2,
+        distrLineCode: distrLineCode,
+        distrLineDes: distrLineDes,
+        packingMethod: packingMethod,
+        totalQuantity: 0
+      };
+    }
+    
+    summary[key].totalQuantity += row.EATQUANT || 0;
+  });
+  
+  // קיבוץ לפי לקוח + כשרות + שיטת אירוז
+  const groupedByCustomer = {};
+  
+  Object.values(summary).forEach(item => {
+    const customerKey = `${item.spec1}|${item.spec2}|${item.packingMethod}`;
+    if (!groupedByCustomer[customerKey]) {
+      groupedByCustomer[customerKey] = {
+        spec1: item.spec1,
+        spec2: item.spec2,
+        packingMethod: item.packingMethod,
+        lines: []
+      };
+    }
+    groupedByCustomer[customerKey].lines.push({
+      distrLineCode: item.distrLineCode,
+      distrLineDes: item.distrLineDes,
+      totalQuantity: item.totalQuantity
+    });
+  });
+  
+  // יצירת טבלאות נפרדות לפי לקוח + כשרות + שיטת אירוז
+  let html = '<div style="width:100%;">';
+  
+  Object.values(groupedByCustomer).forEach(group => {
+    // מיון לפי קו חלוקה
+    group.lines.sort((a, b) => a.distrLineCode.localeCompare(b.distrLineCode));
+    
+    const groupTotal = group.lines.reduce((sum, line) => sum + line.totalQuantity, 0);
+    const groupTitle = `${group.spec1} - ${group.spec2} - ${group.packingMethod}`;
+    
+    html += `<div style="margin-bottom:30px;display:inline-block;width:48%;margin:1%;vertical-align:top;box-sizing:border-box;">`;
+    html += `<h3 style="background:#c8e6c9;padding:10px;margin:0;text-align:center;border:1px solid #4caf50;font-size:1em;">${groupTitle}</h3>`;
+    html += `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;border:1px solid #ccc;min-width:200px;">`;
+    html += '<thead><tr style="background:#c8e6c9;">';
+    html += '<th style="border:1px solid #ccc;padding:8px;text-align:right;font-size:0.9em;">קוד קו</th>';
+    html += '<th style="border:1px solid #ccc;padding:8px;text-align:right;font-size:0.9em;">תאור קו</th>';
+    html += '<th style="border:1px solid #ccc;padding:8px;text-align:center;font-size:0.9em;">סה"כ</th>';
+    html += '</tr></thead><tbody>';
+    
+    group.lines.forEach(line => {
+      html += '<tr>';
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;font-size:0.85em;">${line.distrLineCode}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;font-size:0.85em;">${line.distrLineDes}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;font-size:0.85em;">${line.totalQuantity.toFixed(0)}</td>`;
+      html += '</tr>';
+    });
+    
+    // שורת סיכום
+    html += '<tr style="background:#e8f5e9;font-weight:bold;">';
+    html += '<td colspan="2" style="border:1px solid #ccc;padding:8px;text-align:right;">סכום כולל</td>';
+    html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${groupTotal.toFixed(0)}</td>`;
+    html += '</tr>';
+    
+    html += '</tbody></table></div></div>';
+  });
+  
+  html += '</div>';
+  
+  container.innerHTML = html;
+  
+  const totalGroups = Object.keys(groupedByCustomer).length;
+  const totalLines = Object.values(groupedByCustomer).reduce((sum, group) => sum + group.lines.length, 0);
+  console.log('✅ דוח אלרגנים - הושלם, סה"כ קבוצות:', totalGroups, 'סה"כ קווי חלוקה:', totalLines);
 }
 
 // הורדת רשימת מספרי הזמנות לקבוצה מסוימת
