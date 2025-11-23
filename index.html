@@ -949,7 +949,8 @@ function calculateContainersAndPacks(data) {
     
     // חישוב מארז 5 ו-7 - אם יש פרמטר 8
     if (!isNaN(param8) && param8 > 0) {
-      const totalServings = tQuant / param8;
+      // חלוקת המשקל בפרמטר 8 ועגול כלפי מעלה למספר שלם
+      const totalServings = Math.ceil(tQuant / param8);
       const optimized = optimizeServings(totalServings);
       newRow.PACK5 = optimized.five;
       newRow.PACK7 = optimized.seven;
@@ -3441,15 +3442,19 @@ function calculatePackingByWeight(totalWeight, weightPerLiter, containers) {
 
 // חישוב אופטימיזציה לפי חמשבע (5 ו-7 מנות)
 function optimizeServings(totalServings) {
-  // עיגול למספר שלם
-  const target = Math.round(totalServings);
+  // totalServings כבר מגיע מעוגל כלפי מעלה, אבל נוודא שזה מספר שלם
+  const target = Math.ceil(totalServings);
   
   if (target <= 0) {
     return { five: 0, seven: 0, waste: 0 };
   }
   
   // נסה כל שילוב אפשרי של 5 ו-7 מנות
-  let bestSolution = { five: 0, seven: 0, waste: target };
+  let perfectSolution = null; // פתרון מושלם (waste = 0)
+  let bestExcessSolution = null; // פתרון עם עודף קטן
+  let bestExcess = Infinity;
+  let bestShortageSolution = null; // פתרון עם חסר קטן
+  let bestShortage = Infinity;
   
   // נסה לכל כמות של 7 מנות (מ-0 עד המקסימום האפשרי)
   const maxSevens = Math.ceil(target / 7);
@@ -3460,15 +3465,16 @@ function optimizeServings(totalServings) {
     
     if (remaining === 0) {
       // פתרון מושלם - בדיוק מה שצריך!
-      bestSolution = { five: 0, seven: seven, waste: 0 };
+      perfectSolution = { five: 0, seven: seven, waste: 0 };
       break; // זה הפתרון הטוב ביותר, אין צורך להמשיך
     }
     
     if (remaining < 0) {
-      // יותר מדי מארזי 7 - נחשב את הפחת
-      const waste = Math.abs(remaining);
-      if (waste < bestSolution.waste) {
-        bestSolution = { five: 0, seven: seven, waste: waste };
+      // יותר מדי מארזי 7 - נחשב את ההפרש (עודף)
+      const excess = Math.abs(remaining);
+      if (excess < bestExcess) {
+        bestExcessSolution = { five: 0, seven: seven, waste: excess };
+        bestExcess = excess;
       }
       continue;
     }
@@ -3477,9 +3483,15 @@ function optimizeServings(totalServings) {
     const fiveFloor = Math.floor(remaining / 5);
     const leftover = remaining - (fiveFloor * 5);
     
-    if (leftover < bestSolution.waste || 
-        (leftover === bestSolution.waste && fiveFloor + seven < bestSolution.five + bestSolution.seven)) {
-      bestSolution = { five: fiveFloor, seven: seven, waste: leftover };
+    if (leftover === 0) {
+      // פתרון מושלם!
+      perfectSolution = { five: fiveFloor, seven: seven, waste: 0 };
+      break; // זה הפתרון הטוב ביותר, אין צורך להמשיך
+    }
+    
+    if (leftover < bestShortage) {
+      bestShortageSolution = { five: fiveFloor, seven: seven, waste: leftover };
+      bestShortage = leftover;
     }
     
     // נסה גם עם מארז 5 נוסף (יותר ממה שצריך - פחת - עודף)
@@ -3487,14 +3499,23 @@ function optimizeServings(totalServings) {
       const fiveCeil = Math.ceil(remaining / 5);
       const excess = (fiveCeil * 5) - remaining;
       
-      if (excess < bestSolution.waste || 
-          (excess === bestSolution.waste && fiveCeil + seven < bestSolution.five + bestSolution.seven)) {
-        bestSolution = { five: fiveCeil, seven: seven, waste: excess };
+      if (excess < bestExcess) {
+        bestExcessSolution = { five: fiveCeil, seven: seven, waste: excess };
+        bestExcess = excess;
       }
     }
   }
   
-  return bestSolution;
+  // עדיפות: 1. פתרון מושלם, 2. עודף קטן, 3. חסר קטן
+  if (perfectSolution) {
+    return perfectSolution;
+  }
+  
+  if (bestExcessSolution) {
+    return bestExcessSolution;
+  }
+  
+  return bestShortageSolution || { five: 0, seven: 0, waste: target };
 }
 
 // חישוב אופטימיזציה כללי
@@ -3699,4 +3720,6 @@ window.showTab = function(tabName, button) {
 
 </body>
 </html>
+
+
 
