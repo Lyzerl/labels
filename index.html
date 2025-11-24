@@ -723,6 +723,12 @@ tr:nth-child(even) {
   </div>
 
   <div id="tabTrays" class="tab-content">
+    <div class="report-controls">
+      <label>סניף:</label>
+      <select id="traysBranchFilter">
+        <option value="">הכל</option>
+      </select>
+    </div>
     <div class="table-container" id="traysContainer"></div>
   </div>
 
@@ -1616,12 +1622,29 @@ function createTraysReport(data) {
   // שמירת כל הנתונים
   window.allTraysData = flatData;
   
+  // מילוי סינון סניפים
+  const branchFilter = document.getElementById('traysBranchFilter');
+  if (branchFilter) {
+    const branches = [...new Set(flatData.map(r => r.BRANCHNAME || r.branchName || '').filter(Boolean))].sort();
+    branchFilter.innerHTML = '<option value="">הכל</option>';
+    branches.forEach(branch => {
+      const option = document.createElement('option');
+      option.value = branch;
+      option.textContent = branch;
+      branchFilter.appendChild(option);
+    });
+    
+    // הוספת event listener לסינון
+    branchFilter.addEventListener('change', applyTraysFilters);
+  }
+  
   // הצגה ראשונית
   applyTraysFilters();
 }
 
 function applyTraysFilters() {
   const container = document.getElementById('traysContainer');
+  const branchFilter = document.getElementById('traysBranchFilter');
   
   // בדיקת בטיחות
   if (!container) {
@@ -1631,8 +1654,14 @@ function applyTraysFilters() {
   
   const flatData = window.allTraysData || [];
   
+  // סינון לפי סניף
+  let filteredData = flatData;
+  if (branchFilter && branchFilter.value) {
+    filteredData = filteredData.filter(r => String(r.BRANCHNAME || r.branchName || '') === branchFilter.value);
+  }
+  
   // סינון רק קרטון חמים
-  let filteredData = flatData.filter(r => {
+  filteredData = filteredData.filter(r => {
     const ct = String(r.CARTON_TYPE || r.cartonType || '').trim().toLowerCase();
     const pspec6 = String(r.PSPEC6 || r.pspec6 || '').trim().toLowerCase();
     // בדיקה גם ב-CARTON_TYPE וגם ב-PSPEC6
