@@ -194,6 +194,116 @@ tr:nth-child(even) {
   display: table;
   table-layout: auto;
 }
+
+.labels-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+.labels-print-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.label-card {
+  border: 2px solid #333;
+  border-radius: 12px;
+  padding: 14px;
+  background: #f9f9f9;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  page-break-inside: avoid;
+}
+
+.label-card-hot {
+  border-color: #ef6c00;
+}
+
+.label-card-cold {
+  border-color: #1976d2;
+}
+
+.label-card-no-allergen {
+  background: #ffd6d6;
+  border-color: #c62828;
+}
+
+.label-card-vegetarian {
+  background: #d6f5d6;
+  border-color: #2e7d32;
+}
+
+.label-card-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.label-card-table:first-of-type {
+  margin-top: 0;
+}
+
+.label-card-table th,
+.label-card-table td {
+  border: 1px solid #ccc;
+  padding: 6px 8px;
+  text-align: right;
+  font-size: 0.95em;
+  vertical-align: top;
+}
+
+.label-card-table thead tr {
+  background: #e3f2fd;
+}
+
+.label-card-table .label-total-cell {
+  background: #e8f5e9;
+  font-weight: bold;
+}
+
+.label-row-no-allergen {
+  background-color: #ffcdd2 !important;
+  color: #000 !important;
+}
+
+.label-row-vegetarian {
+  background-color: #c8e6c9 !important;
+  color: #000 !important;
+}
+
+@media print {
+  body {
+    background: white;
+  }
+  .container {
+    box-shadow: none;
+    margin: 0;
+    max-width: 100%;
+  }
+  .controls,
+  .tabs,
+  .report-controls,
+  .labels-actions,
+  #status {
+    display: none !important;
+  }
+  .labels-print-wrapper {
+    gap: 10mm;
+  }
+  .label-card {
+    min-height: 125mm;
+    margin: 0;
+    page-break-inside: avoid;
+  }
+  .label-card:nth-of-type(even) {
+    page-break-after: always;
+  }
+  .label-card:last-of-type {
+    page-break-after: auto;
+  }
+}
 .loader {
   border: 5px solid #f3f3f3;
   border-top: 5px solid #4285f4;
@@ -764,7 +874,10 @@ tr:nth-child(even) {
       <select id="packingMethodFilter">
         <option value="">הכל</option>
       </select>
+    </div>
+    <div class="labels-actions">
       <button class="btn download" onclick="downloadLabelsCSV()" id="downloadLabelsBtn">📥 הורד CSV</button>
+      <button class="btn download" onclick="downloadLabelsPDF()" id="downloadLabelsPDFBtn">📄 הורד PDF</button>
     </div>
     <div class="table-container" id="labelsContainer"></div>
   </div>
@@ -2731,7 +2844,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
     return (a.orderName || '').localeCompare(b.orderName || '');
   });
   
-  let html = '';
+  let html = '<div class="labels-print-wrapper">';
   
   ordersArray.forEach(order => {
     // זיהוי שיטת אריזה עיקרית לפי PSPEC1 - מחפש פריט עם "עיקר" בפרמטר 1
@@ -2779,6 +2892,19 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
 
       const cartonStr = (item.cartonType || '').toString().toLowerCase();
       const pspec6Str = (item.pspec6 || '').toString().toLowerCase();
+      const spec2Str = (item.pspec2 || order.spec2 || '').toString().toLowerCase();
+      const partDesStr = (item.partDes || '').toString().toLowerCase();
+      const partNameStr = (item.partName || '').toString().toLowerCase();
+      const descriptionStr = `${partDesStr} ${partNameStr}`.toLowerCase();
+      
+      // זיהוי פריטים אלרגניים - מחפש "אלרגני" או "ללא אלרגני" בטקסט
+      const isNoAllergenItem = spec2Str.includes('ללא אלרג') || spec2Str.includes('לא אלרג') ||
+        descriptionStr.includes('ללא אלרג') || descriptionStr.includes('לא אלרג') ||
+        partDesStr.includes('אלרגני') || partNameStr.includes('אלרגני') ||
+        spec2Str.includes('אלרגני');
+      
+      const isVegetarianItem = spec2Str.includes('צמחונ') || spec2Str.includes('טבעונ') ||
+        descriptionStr.includes('צמחונ') || descriptionStr.includes('טבעונ');
       
       // זיהוי אם זה קרטון חם או קר - קודם כל בודקים את סוג הקרטון
       let isHot = false;
@@ -2804,8 +2930,24 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
           sumQuant: 0,
           sumContainers: 0,
           sumPack5: 0,
-          sumPack7: 0
+          sumPack7: 0,
+          hasNoAllergen: false,
+          isVegetarian: false
         };
+      }
+
+      if (isNoAllergenItem) {
+        itemsMap[partKey].hasNoAllergen = true;
+        itemsMap[partKey].displayName = (item.partDes || item.partName || '').trim() || 'ללא אלרגנים';
+      }
+      if (isVegetarianItem) {
+        itemsMap[partKey].isVegetarian = true;
+        if (!itemsMap[partKey].displayName) {
+          itemsMap[partKey].displayName = (item.partDes || item.partName || '').trim() || 'צמחוני';
+        }
+      }
+      if (!itemsMap[partKey].displayName) {
+        itemsMap[partKey].displayName = (item.partDes || item.partName || '').trim();
       }
       
       // סיכום הכמויות
@@ -2839,8 +2981,18 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       const firstItem = Object.values(itemsMap)[0];
       const cartonTypeText = firstItem.cartonType || '';
 
-      html += '<div class="label-card" style="border:2px solid #333;padding:10px;background:#f9f9f9;">';
-      html += '<table style="width:100%;border-collapse:collapse;"><tbody>';
+      const itemsArray = Object.values(itemsMap);
+      const cartonHasNoAllergen = hasNoAllergen || itemsArray.some(item => item.hasNoAllergen);
+      const cartonHasVegetarian = isVegetarian || itemsArray.some(item => item.isVegetarian);
+      const cardClasses = ['label-card', isHotCarton ? 'label-card-hot' : 'label-card-cold'];
+      if (cartonHasNoAllergen) {
+        cardClasses.push('label-card-no-allergen');
+      } else if (cartonHasVegetarian) {
+        cardClasses.push('label-card-vegetarian');
+      }
+
+      html += `<div class="${cardClasses.join(' ')}">`;
+      html += '<table class="label-card-table primary-info"><tbody>';
       
       // שורה ראשונה - פרטים עיקריים (רק נתונים, בלי כותרות)
       html += '<tr>';
@@ -2878,24 +3030,37 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       html += '</tbody></table>';
 
       // טבלת פריטים - מימין לשמאל (תיאור מוצר מימין, כמות משמאל)
-      html += '<table style="width:100%;border-collapse:collapse;margin-top:10px;direction:rtl;"><thead><tr style="background:#e3f2fd;">';
-      html += '<th style="border:1px solid #ccc;padding:8px;">תיאור מוצר</th>';
+      html += '<table class="label-card-table items-table"><thead><tr>';
+      html += '<th>תיאור מוצר</th>';
       if (isHotCarton) {
-        html += '<th style="border:1px solid #ccc;padding:8px;">מארז 7</th>';
-        html += '<th style="border:1px solid #ccc;padding:8px;">מיכלים / מארז 5</th>';
+        html += '<th>מארז 7</th>';
+        html += '<th>מיכלים / מארז 5</th>';
       }
-      html += '<th style="border:1px solid #ccc;padding:8px;">כמות</th>';
+      html += '<th>כמות</th>';
       html += '</tr></thead><tbody>';
       
-      Object.values(itemsMap).forEach(item => {
-        html += '<tr>';
-        html += `<td style="border:1px solid #ccc;padding:8px;">${item.partDes || ''}</td>`;
-        if (isHotCarton) {
-          html += `<td style="border:1px solid #ccc;padding:8px;">${item.sumPack7 > 0 ? item.sumPack7 : ''}</td>`;
-          const containersOrPack5 = item.sumContainers > 0 ? item.sumContainers : (item.sumPack5 > 0 ? item.sumPack5 : '');
-          html += `<td style="border:1px solid #ccc;padding:8px;">${containersOrPack5 || ''}</td>`;
+      itemsArray.forEach(item => {
+        let rowClasses = [];
+        let partLabel = item.displayName || item.partDes || item.partName || '';
+        if (item.hasNoAllergen) {
+          rowClasses.push('label-row-no-allergen');
+          if (!partLabel.includes('(ללא אלרגנים)')) {
+            partLabel += ' (ללא אלרגנים)';
+          }
+        } else if (item.isVegetarian) {
+          rowClasses.push('label-row-vegetarian');
+          if (!partLabel.includes('(צמחוני)')) {
+            partLabel += ' (צמחוני)';
+          }
         }
-        html += `<td style="border:1px solid #ccc;padding:8px;">${item.sumQuant.toFixed(2)}</td>`;
+        html += `<tr class="${rowClasses.join(' ')}">`;
+        html += `<td>${partLabel}</td>`;
+        if (isHotCarton) {
+          html += `<td>${item.sumPack7 > 0 ? item.sumPack7 : ''}</td>`;
+          const containersOrPack5 = item.sumContainers > 0 ? item.sumContainers : (item.sumPack5 > 0 ? item.sumPack5 : '');
+          html += `<td>${containersOrPack5 || ''}</td>`;
+        }
+        html += `<td>${item.sumQuant.toFixed(2)}</td>`;
         html += '</tr>';
       });
       
@@ -2912,6 +3077,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
     }
   });
   
+  html += '</div>';
   container.innerHTML = html;
   
   // שמירה למטרות CSV
@@ -3045,13 +3211,29 @@ function renderLabelsTable(data, container) {
     
     // מנות קר - המרה מאובייקט למערך (רק רשימת פריטים, בלי כמות)
     const coldItemsArray = Object.values(group.coldItems || {});
-    let coldText = coldItemsArray.map(item => item.partDes).join('<br>');
+    let coldText = coldItemsArray.map(item => {
+      let label = item.partDes || item.partName || '';
+      if (item.isNoAllergen) {
+        label = `<span class="label-row-no-allergen">${label} (ללא אלרגנים)</span>`;
+      } else if (item.isVegetarian) {
+        label = `<span class="label-row-vegetarian">${label} (צמחוני)</span>`;
+      }
+      return label;
+    }).join('<br>');
     const coldCount = coldItemsArray.length;
     html += `<td>${coldText || '-'}${coldCount > 0 ? `<br><small>(${coldCount} פריטים)</small>` : ''}</td>`;
     
     // מנות חם - המרה מאובייקט למערך (רק רשימת פריטים, בלי כמות)
     const hotItemsArray = Object.values(group.hotItems || {});
-    let hotText = hotItemsArray.map(item => item.partDes).join('<br>');
+    let hotText = hotItemsArray.map(item => {
+      let label = item.partDes || item.partName || '';
+      if (item.isNoAllergen) {
+        label = `<span class="label-row-no-allergen">${label} (ללא אלרגנים)</span>`;
+      } else if (item.isVegetarian) {
+        label = `<span class="label-row-vegetarian">${label} (צמחוני)</span>`;
+      }
+      return label;
+    }).join('<br>');
     const hotCount = hotItemsArray.length;
     html += `<td>${hotText || '-'}${hotCount > 0 ? `<br><small>(${hotCount} פריטים)</small>` : ''}</td>`;
     
@@ -3061,13 +3243,13 @@ function renderLabelsTable(data, container) {
     
     // מנות קר ללא אלרגני
     const noAllergenColdArray = Object.values(group.noAllergenColdItems || {});
-    let noAllergenColdText = noAllergenColdArray.map(item => item.partDes).join('<br>');
+    let noAllergenColdText = noAllergenColdArray.map(item => item.partDes || item.partName || '').join('<br>');
     const noAllergenColdCount = noAllergenColdArray.length;
     html += `<td style="background:#fff9c4;">${noAllergenColdText || '-'}${noAllergenColdCount > 0 ? `<br><small>(${noAllergenColdCount} פריטים)</small>` : ''}</td>`;
     
     // מנות חם ללא אלרגני
     const noAllergenHotArray = Object.values(group.noAllergenHotItems || {});
-    let noAllergenHotText = noAllergenHotArray.map(item => item.partDes).join('<br>');
+    let noAllergenHotText = noAllergenHotArray.map(item => item.partDes || item.partName || '').join('<br>');
     const noAllergenHotCount = noAllergenHotArray.length;
     html += `<td style="background:#fff9c4;">${noAllergenHotText || '-'}${noAllergenHotCount > 0 ? `<br><small>(${noAllergenHotCount} פריטים)</small>` : ''}</td>`;
     
@@ -3278,6 +3460,99 @@ function downloadLabelsCSV() {
   link.click();
 }
 
+// הורדת PDF לדוח מדבקות - באמצעות הדפסה
+function downloadLabelsPDF() {
+  const container = document.getElementById('labelsContainer');
+  
+  if (!container || !container.innerHTML || container.innerHTML.trim() === '') {
+    alert('אין נתונים להורדה');
+    return;
+  }
+  
+  // יצירת חלון חדש להדפסה
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('לא ניתן לפתוח חלון חדש. אנא אפשר חלונות קופצים בדפדפן.');
+    return;
+  }
+  
+  const dateValue = document.getElementById('dateInput').value || new Date().toISOString().split('T')[0];
+  
+  // יצירת עותק של התוכן עם ניקוי
+  const contentClone = container.cloneNode(true);
+  
+  // הסרת scripts ואלמנטים לא נחוצים
+  const scripts = contentClone.querySelectorAll('script');
+  scripts.forEach(script => script.remove());
+  
+  // ניקוי event handlers
+  const elementsWithOnclick = contentClone.querySelectorAll('[onclick]');
+  elementsWithOnclick.forEach(el => el.removeAttribute('onclick'));
+  
+  const containerHTML = contentClone.innerHTML;
+  
+  // בדיקה שהתוכן לא ריק
+  if (!containerHTML || containerHTML.trim() === '') {
+    alert('אין תוכן להדפסה. אנא ודא שהדוח נטען כראוי.');
+    printWindow.close();
+    return;
+  }
+  
+  // יצירת HTML להדפסה - שימוש ב-write מספר פעמים
+  printWindow.document.open('text/html', 'replace');
+  printWindow.document.write('<!DOCTYPE html>');
+  printWindow.document.write('<html lang="he" dir="rtl">');
+  printWindow.document.write('<head>');
+  printWindow.document.write('<meta charset="UTF-8">');
+  printWindow.document.write('<meta name="viewport" content="width=device-width, initial-scale=1.0">');
+  printWindow.document.write('<title>דוח מדבקות - ' + dateValue + '</title>');
+  printWindow.document.write('<style>');
+  printWindow.document.write('@page { size: A4; margin: 15mm; }');
+  printWindow.document.write('* { box-sizing: border-box; }');
+  printWindow.document.write('body { font-family: Arial, "DejaVu Sans", sans-serif; direction: rtl; margin: 0; padding: 20px; font-size: 11pt; color: #000; background: white; }');
+  printWindow.document.write('h1 { text-align: center; margin: 0 0 20px 0; font-size: 18pt; color: #333; }');
+  printWindow.document.write('table { width: 100%; border-collapse: collapse; margin-bottom: 15px; page-break-inside: auto; }');
+  printWindow.document.write('tr { page-break-inside: avoid; page-break-after: auto; }');
+  printWindow.document.write('thead { display: table-header-group; }');
+  printWindow.document.write('tfoot { display: table-footer-group; }');
+  printWindow.document.write('th, td { border: 1px solid #000; padding: 8px; text-align: right; font-size: 10pt; word-wrap: break-word; }');
+  printWindow.document.write('th { background-color: #4285f4; color: white; font-weight: bold; }');
+  printWindow.document.write('tr:nth-child(even) { background-color: #f9f9f9; }');
+  printWindow.document.write('.labels-print-wrapper { display: flex; flex-direction: column; gap: 20px; }');
+  printWindow.document.write('.label-card { border: 2px solid #333; border-radius: 12px; padding: 14px; background: #f9f9f9; page-break-inside: avoid; }');
+  printWindow.document.write('.label-card-hot { border-color: #ef6c00; }');
+  printWindow.document.write('.label-card-cold { border-color: #1976d2; }');
+  printWindow.document.write('.label-card-no-allergen { background: #ffd6d6; border-color: #c62828; }');
+  printWindow.document.write('.label-card-vegetarian { background: #d6f5d6; border-color: #2e7d32; }');
+  printWindow.document.write('.label-card-table { width: 100%; border-collapse: collapse; margin-top: 10px; }');
+  printWindow.document.write('.label-card-table:first-of-type { margin-top: 0; }');
+  printWindow.document.write('.label-card-table th, .label-card-table td { border: 1px solid #ccc; padding: 6px 8px; text-align: right; font-size: 10pt; }');
+  printWindow.document.write('.label-card-table thead tr { background: #e3f2fd; }');
+  printWindow.document.write('.label-row-no-allergen { background-color: #ffcdd2 !important; color: #000 !important; }');
+  printWindow.document.write('.label-row-vegetarian { background-color: #c8e6c9 !important; color: #000 !important; }');
+  printWindow.document.write('@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } table { page-break-inside: auto; } tr { page-break-inside: avoid; } }');
+  printWindow.document.write('@media print { .label-card { min-height: 125mm; } .label-card:nth-of-type(even) { page-break-after: always; } .label-card:last-of-type { page-break-after: auto; } }');
+  printWindow.document.write('</style>');
+  printWindow.document.write('</head>');
+  printWindow.document.write('<body>');
+  printWindow.document.write('<h1>דוח מדבקות - ' + dateValue + '</h1>');
+  printWindow.document.write(containerHTML);
+  printWindow.document.write('<script>');
+  printWindow.document.write('window.onload = function() { setTimeout(function() { window.print(); }, 500); };');
+  printWindow.document.write('<\/script>');
+  printWindow.document.write('</body>');
+  printWindow.document.write('</html>');
+  printWindow.document.close();
+  
+  // המתנה קצרה כדי שהדף יטען
+  setTimeout(function() {
+    if (printWindow.document.body && printWindow.document.body.innerHTML.trim() === '') {
+      console.error('הדף נשאר ריק');
+      alert('הדף נשאר ריק. נסה שוב או בדוק את הקונסול לשגיאות.');
+    }
+  }, 1000);
+}
+
 // משתנה לאחסון טבלת DataTables
 let dataTable = null;
 
@@ -3349,21 +3624,48 @@ function displayProductsSettings(settings) {
   
   Object.values(settings).forEach(product => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${product.partName}<br><small>${product.partDes}</small></td>
-      <td>
-        <select onchange="updateProductSetting('${product.partName}', 'calcType', this.value)">
-          <option value="weight" ${product.calcType === 'weight' ? 'selected' : ''}>מקל (משקל/נפח)</option>
-          <option value="servings" ${product.calcType === 'servings' ? 'selected' : ''}>חמשבע</option>
-        </select>
-      </td>
-      <td>
-        <input type="number" step="0.01" value="${product.value}" 
-               onchange="updateProductSetting('${product.partName}', 'value', this.value)"
-               style="width:100px;">
-      </td>
-      <td><button class="btn" onclick="deleteProductSetting('${product.partName}')">מחק</button></td>
-    `;
+    const partNameEscaped = String(product.partName || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    const partDesEscaped = String(product.partDes || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    const calcTypeSelected = product.calcType === 'weight' ? 'selected' : '';
+    const calcTypeSelected2 = product.calcType === 'servings' ? 'selected' : '';
+    const td1 = document.createElement('td');
+    td1.innerHTML = partNameEscaped + '<br><small>' + partDesEscaped + '</small>';
+    
+    const td2 = document.createElement('td');
+    const select = document.createElement('select');
+    select.setAttribute('onchange', 'updateProductSetting(\'' + partNameEscaped + '\', \'calcType\', this.value)');
+    const opt1 = document.createElement('option');
+    opt1.value = 'weight';
+    opt1.textContent = 'מקל (משקל/נפח)';
+    if (product.calcType === 'weight') opt1.selected = true;
+    const opt2 = document.createElement('option');
+    opt2.value = 'servings';
+    opt2.textContent = 'חמשבע';
+    if (product.calcType === 'servings') opt2.selected = true;
+    select.appendChild(opt1);
+    select.appendChild(opt2);
+    td2.appendChild(select);
+    
+    const td3 = document.createElement('td');
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.step = '0.01';
+    input.value = product.value || 0;
+    input.style.width = '100px';
+    input.setAttribute('onchange', 'updateProductSetting(\'' + partNameEscaped + '\', \'value\', this.value)');
+    td3.appendChild(input);
+    
+    const td4 = document.createElement('td');
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.textContent = 'מחק';
+    btn.setAttribute('onclick', 'deleteProductSetting(\'' + partNameEscaped + '\')');
+    td4.appendChild(btn);
+    
+    tr.appendChild(td1);
+    tr.appendChild(td2);
+    tr.appendChild(td3);
+    tr.appendChild(td4);
     tbody.appendChild(tr);
   });
 }
@@ -3374,13 +3676,36 @@ function displayContainersSettings(settings) {
   
   settings.forEach((container, index) => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><input type="text" value="${container.name}" 
-                 onchange="updateContainerSetting(${index}, 'name', this.value)" style="width:150px;"></td>
-      <td><input type="number" step="0.1" value="${container.volume}" 
-                 onchange="updateContainerSetting(${index}, 'volume', this.value)" style="width:100px;"> ליטר</td>
-      <td><button class="btn" onclick="deleteContainerSetting(${index})">מחק</button></td>
-    `;
+    const containerNameEscaped = String(container.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    
+    const td1 = document.createElement('td');
+    const input1 = document.createElement('input');
+    input1.type = 'text';
+    input1.value = containerNameEscaped;
+    input1.style.width = '150px';
+    input1.setAttribute('onchange', 'updateContainerSetting(' + index + ', \'name\', this.value)');
+    td1.appendChild(input1);
+    
+    const td2 = document.createElement('td');
+    const input2 = document.createElement('input');
+    input2.type = 'number';
+    input2.step = '0.1';
+    input2.value = container.volume || 0;
+    input2.style.width = '100px';
+    input2.setAttribute('onchange', 'updateContainerSetting(' + index + ', \'volume\', this.value)');
+    td2.appendChild(input2);
+    td2.appendChild(document.createTextNode(' ליטר'));
+    
+    const td3 = document.createElement('td');
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.textContent = 'מחק';
+    btn.setAttribute('onclick', 'deleteContainerSetting(' + index + ')');
+    td3.appendChild(btn);
+    
+    tr.appendChild(td1);
+    tr.appendChild(td2);
+    tr.appendChild(td3);
     tbody.appendChild(tr);
   });
 }
@@ -3746,6 +4071,8 @@ window.showTab = function(tabName, button) {
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<!-- html2pdf.js for PDF export with Hebrew support -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 </body>
 </html>
