@@ -276,6 +276,8 @@ tr:nth-child(even) {
 @media print {
   body {
     background: white;
+    margin: 0;
+    padding: 0;
   }
   .container {
     box-shadow: none;
@@ -286,19 +288,39 @@ tr:nth-child(even) {
   .tabs,
   .report-controls,
   .labels-actions,
-  #status {
+  #status,
+  h1 {
     display: none !important;
   }
   .labels-print-wrapper {
-    gap: 10mm;
+    gap: 0;
+    margin: 0;
+    padding: 0;
   }
   .label-card {
-    min-height: 125mm;
+    height: 148.5mm;
+    min-height: 148.5mm;
+    max-height: 148.5mm;
     margin: 0;
     page-break-inside: avoid;
+    display: flex;
+    flex-direction: column;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .label-card,
+  .label-card-no-allergen,
+  .label-card-vegetarian,
+  .label-row-no-allergen,
+  .label-row-vegetarian {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   .label-card:nth-of-type(even) {
     page-break-after: always;
+  }
+  .label-card:nth-of-type(odd) {
+    page-break-after: auto;
   }
   .label-card:last-of-type {
     page-break-after: auto;
@@ -3507,10 +3529,9 @@ function downloadLabelsPDF() {
   printWindow.document.write('<meta name="viewport" content="width=device-width, initial-scale=1.0">');
   printWindow.document.write('<title>דוח מדבקות - ' + dateValue + '</title>');
   printWindow.document.write('<style>');
-  printWindow.document.write('@page { size: A4; margin: 15mm; }');
-  printWindow.document.write('* { box-sizing: border-box; }');
-  printWindow.document.write('body { font-family: Arial, "DejaVu Sans", sans-serif; direction: rtl; margin: 0; padding: 20px; font-size: 11pt; color: #000; background: white; }');
-  printWindow.document.write('h1 { text-align: center; margin: 0 0 20px 0; font-size: 18pt; color: #333; }');
+  printWindow.document.write('@page { size: A4; margin: 0; }');
+  printWindow.document.write('* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+  printWindow.document.write('body { font-family: Arial, "DejaVu Sans", sans-serif; direction: rtl; margin: 0; padding: 0; font-size: 11pt; color: #000; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
   printWindow.document.write('table { width: 100%; border-collapse: collapse; margin-bottom: 15px; page-break-inside: auto; }');
   printWindow.document.write('tr { page-break-inside: avoid; page-break-after: auto; }');
   printWindow.document.write('thead { display: table-header-group; }');
@@ -3518,24 +3539,23 @@ function downloadLabelsPDF() {
   printWindow.document.write('th, td { border: 1px solid #000; padding: 8px; text-align: right; font-size: 10pt; word-wrap: break-word; }');
   printWindow.document.write('th { background-color: #4285f4; color: white; font-weight: bold; }');
   printWindow.document.write('tr:nth-child(even) { background-color: #f9f9f9; }');
-  printWindow.document.write('.labels-print-wrapper { display: flex; flex-direction: column; gap: 20px; }');
-  printWindow.document.write('.label-card { border: 2px solid #333; border-radius: 12px; padding: 14px; background: #f9f9f9; page-break-inside: avoid; }');
-  printWindow.document.write('.label-card-hot { border-color: #ef6c00; }');
-  printWindow.document.write('.label-card-cold { border-color: #1976d2; }');
-  printWindow.document.write('.label-card-no-allergen { background: #ffd6d6; border-color: #c62828; }');
-  printWindow.document.write('.label-card-vegetarian { background: #d6f5d6; border-color: #2e7d32; }');
+  printWindow.document.write('.labels-print-wrapper { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; }');
+  printWindow.document.write('.label-card { border: 2px solid #333; border-radius: 12px; padding: 14px; background: #f9f9f9 !important; page-break-inside: avoid; width: 100%; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+  printWindow.document.write('.label-card-hot { border-color: #ef6c00 !important; }');
+  printWindow.document.write('.label-card-cold { border-color: #1976d2 !important; }');
+  printWindow.document.write('.label-card-no-allergen { background: #ffd6d6 !important; border-color: #c62828 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+  printWindow.document.write('.label-card-vegetarian { background: #d6f5d6 !important; border-color: #2e7d32 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
   printWindow.document.write('.label-card-table { width: 100%; border-collapse: collapse; margin-top: 10px; }');
   printWindow.document.write('.label-card-table:first-of-type { margin-top: 0; }');
   printWindow.document.write('.label-card-table th, .label-card-table td { border: 1px solid #ccc; padding: 6px 8px; text-align: right; font-size: 10pt; }');
   printWindow.document.write('.label-card-table thead tr { background: #e3f2fd; }');
-  printWindow.document.write('.label-row-no-allergen { background-color: #ffcdd2 !important; color: #000 !important; }');
-  printWindow.document.write('.label-row-vegetarian { background-color: #c8e6c9 !important; color: #000 !important; }');
-  printWindow.document.write('@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } table { page-break-inside: auto; } tr { page-break-inside: avoid; } }');
-  printWindow.document.write('@media print { .label-card { min-height: 125mm; } .label-card:nth-of-type(even) { page-break-after: always; } .label-card:last-of-type { page-break-after: auto; } }');
+  printWindow.document.write('.label-row-no-allergen { background-color: #ffcdd2 !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+  printWindow.document.write('.label-row-vegetarian { background-color: #c8e6c9 !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+  printWindow.document.write('@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } h1 { display: none !important; } table { page-break-inside: auto; } tr { page-break-inside: avoid; } }');
+  printWindow.document.write('@media print { .label-card { height: 148.5mm; min-height: 148.5mm; max-height: 148.5mm; display: flex; flex-direction: column; } .label-card:nth-of-type(even) { page-break-after: always; } .label-card:nth-of-type(odd) { page-break-after: auto; } .label-card:last-of-type { page-break-after: auto; } }');
   printWindow.document.write('</style>');
   printWindow.document.write('</head>');
   printWindow.document.write('<body>');
-  printWindow.document.write('<h1>דוח מדבקות - ' + dateValue + '</h1>');
   printWindow.document.write(containerHTML);
   printWindow.document.write('<script>');
   printWindow.document.write('window.onload = function() { setTimeout(function() { window.print(); }, 500); };');
