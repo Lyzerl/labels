@@ -860,6 +860,10 @@ tr:nth-child(even) {
       <select id="traysBranchFilter">
         <option value="">הכל</option>
       </select>
+      <label>קו חלוקה:</label>
+      <select id="traysDistrLineFilter">
+        <option value="">הכל</option>
+      </select>
     </div>
     <div class="table-container" id="traysContainer"></div>
   </div>
@@ -1726,9 +1730,13 @@ function createTraysReport(data) {
     if (!order || !order.items || !Array.isArray(order.items)) {
       return [];
     }
-    return order.items.map(item => ({
+      return order.items.map(item => ({
       ...item,
       BRANCHNAME: order.branchName || '',
+      DISTRLINECODE: String(order.distrLineCode || item.distrLineCode || '').trim(),
+      distrLineCode: String(order.distrLineCode || item.distrLineCode || '').trim(),
+      DISTRLINEDES: String(order.distrLineDes || item.distrLineDes || '').trim(),
+      distrLineDes: String(order.distrLineDes || item.distrLineDes || '').trim(),
       PSPEC1: String(item.pspec1 || '').trim(),
       PSPEC6: String(item.pspec6 || '').trim(),
       PARTDES: String(item.partDes || '').trim(),
@@ -1773,6 +1781,38 @@ function createTraysReport(data) {
     branchFilter.addEventListener('change', applyTraysFilters);
   }
   
+  // מילוי סינון קווי חלוקה
+  const distrLineFilter = document.getElementById('traysDistrLineFilter');
+  if (distrLineFilter) {
+    // יצירת Map של קוד -> תיאור
+    const distrLinesMap = new Map();
+    flatData.forEach(r => {
+      const code = String(r.DISTRLINECODE || r.distrLineCode || '').trim();
+      const des = String(r.DISTRLINEDES || r.distrLineDes || '').trim();
+      if (code) {
+        // אם יש תיאור, נשתמש בו. אחרת נשתמש בקוד
+        const displayText = des || code;
+        distrLinesMap.set(code, displayText);
+      }
+    });
+    
+    // המרה למערך ומיון לפי תיאור
+    const distrLinesArray = Array.from(distrLinesMap.entries())
+      .map(([code, des]) => ({ code, des }))
+      .sort((a, b) => a.des.localeCompare(b.des));
+    
+    distrLineFilter.innerHTML = '<option value="">הכל</option>';
+    distrLinesArray.forEach(({ code, des }) => {
+      const option = document.createElement('option');
+      option.value = code; // הערך הוא הקוד (לסינון)
+      option.textContent = des; // הטקסט הוא התיאור (להצגה)
+      distrLineFilter.appendChild(option);
+    });
+    
+    // הוספת event listener לסינון
+    distrLineFilter.addEventListener('change', applyTraysFilters);
+  }
+  
   // הצגה ראשונית
   applyTraysFilters();
 }
@@ -1780,6 +1820,7 @@ function createTraysReport(data) {
 function applyTraysFilters() {
   const container = document.getElementById('traysContainer');
   const branchFilter = document.getElementById('traysBranchFilter');
+  const distrLineFilter = document.getElementById('traysDistrLineFilter');
   
   // בדיקת בטיחות
   if (!container) {
@@ -1793,6 +1834,11 @@ function applyTraysFilters() {
   let filteredData = flatData;
   if (branchFilter && branchFilter.value) {
     filteredData = filteredData.filter(r => String(r.BRANCHNAME || r.branchName || '') === branchFilter.value);
+  }
+  
+  // סינון לפי קו חלוקה
+  if (distrLineFilter && distrLineFilter.value) {
+    filteredData = filteredData.filter(r => String(r.DISTRLINECODE || r.distrLineCode || '') === distrLineFilter.value);
   }
   
   // סינון רק קרטון חמים
