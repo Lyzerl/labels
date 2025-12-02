@@ -957,6 +957,7 @@ tr:nth-child(even) {
       <select id="traysDistrLineFilter">
         <option value="">הכל</option>
       </select>
+      <button class="btn download" onclick="downloadTraysPDF()" id="downloadTraysPDFBtn">📄 הורד PDF</button>
     </div>
     <div class="table-container" id="traysContainer"></div>
   </div>
@@ -2297,14 +2298,12 @@ function applyTraysFilters() {
       const safeItemsKey = String(item.itemsKey || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
       
       html += '<tr>';
-      html += `<td class="clickable-item" style="border:1px solid #ccc;padding:8px;text-align:right;font-size:0.85em;word-wrap:break-word;cursor:pointer;" onclick="openItemModal('${safeItemsKey}', '${itemKey}')">`;
-      html += `<a href="#" onclick="event.stopPropagation(); downloadTrayRowOrdersCSV('${rowId}', 'small'); return false;" style="color:#2e7d32;text-decoration:none;cursor:pointer;">${item.itemsKey}</a>`;
-      html += `</td>`;
+      html += `<td class="clickable-item" style="border:1px solid #ccc;padding:8px;text-align:right;font-size:0.85em;word-wrap:break-word;cursor:pointer;" onclick="openItemModal('${safeItemsKey}', '${itemKey}')">${item.itemsKey}</td>`;
       html += `<td class="clickable-item" style="border:1px solid #ccc;padding:8px;font-weight:bold;text-align:center;font-size:0.85em;cursor:pointer;" onclick="openItemModal('${safeItemsKey}', '${itemKey}')">${item.totalQuantity.toFixed(0)}</td>`;
       html += '</tr>';
     });
     
-    // שמירת המפה של הזמנות
+    // שמירת המפה של הזמנות (למקרה שיהיה צורך בעתיד)
     window.smallTrayOrdersMap = smallTrayOrdersMap;
     
     html += '</tbody></table></div></div>';
@@ -2450,14 +2449,12 @@ function applyTraysFilters() {
       const safeItemsKey = String(item.itemsKey || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
       
       html += '<tr>';
-      html += `<td class="clickable-item" style="border:1px solid #ccc;padding:8px;text-align:right;font-size:0.85em;word-wrap:break-word;cursor:pointer;" onclick="openItemModal('${safeItemsKey}', '${itemKey}')">`;
-      html += `<a href="#" onclick="event.stopPropagation(); downloadTrayRowOrdersCSV('${rowId}', 'large'); return false;" style="color:#2e7d32;text-decoration:none;cursor:pointer;">${item.itemsKey}</a>`;
-      html += `</td>`;
+      html += `<td class="clickable-item" style="border:1px solid #ccc;padding:8px;text-align:right;font-size:0.85em;word-wrap:break-word;cursor:pointer;" onclick="openItemModal('${safeItemsKey}', '${itemKey}')">${item.itemsKey}</td>`;
       html += `<td class="clickable-item" style="border:1px solid #ccc;padding:8px;font-weight:bold;text-align:center;font-size:0.85em;cursor:pointer;" onclick="openItemModal('${safeItemsKey}', '${itemKey}')">${item.totalQuantity.toFixed(0)}</td>`;
       html += '</tr>';
     });
     
-    // שמירת המפה של הזמנות
+    // שמירת המפה של הזמנות (למקרה שיהיה צורך בעתיד)
     window.largeTrayOrdersMap = largeTrayOrdersMap;
     
     html += '</tbody></table></div></div>';
@@ -3901,6 +3898,101 @@ function downloadLabelsPDF() {
   printWindow.document.write('</style>');
   printWindow.document.write('</head>');
   printWindow.document.write('<body>');
+  printWindow.document.write(containerHTML);
+  printWindow.document.write('<script>');
+  printWindow.document.write('window.onload = function() { setTimeout(function() { window.print(); }, 500); };');
+  printWindow.document.write('<\/script>');
+  printWindow.document.write('</body>');
+  printWindow.document.write('</html>');
+  printWindow.document.close();
+  
+  // המתנה קצרה כדי שהדף יטען
+  setTimeout(function() {
+    if (printWindow.document.body && printWindow.document.body.innerHTML.trim() === '') {
+      console.error('הדף נשאר ריק');
+      alert('הדף נשאר ריק. נסה שוב או בדוק את הקונסול לשגיאות.');
+    }
+  }, 1000);
+}
+
+// הורדת PDF לדוח אריזה חמה
+function downloadTraysPDF() {
+  const container = document.getElementById('traysContainer');
+  
+  if (!container || !container.innerHTML || container.innerHTML.trim() === '') {
+    alert('אין נתונים להורדה');
+    return;
+  }
+  
+  // יצירת חלון חדש להדפסה
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('לא ניתן לפתוח חלון חדש. אנא אפשר חלונות קופצים בדפדפן.');
+    return;
+  }
+  
+  const dateValue = document.getElementById('dateInput').value || new Date().toISOString().split('T')[0];
+  const branchFilter = document.getElementById('traysBranchFilter');
+  const distrLineFilter = document.getElementById('traysDistrLineFilter');
+  const branchName = branchFilter && branchFilter.value ? branchFilter.options[branchFilter.selectedIndex].text : 'הכל';
+  const distrLineName = distrLineFilter && distrLineFilter.value ? distrLineFilter.options[distrLineFilter.selectedIndex].text : 'הכל';
+  
+  // יצירת עותק של התוכן עם ניקוי
+  const contentClone = container.cloneNode(true);
+  
+  // הסרת scripts ואלמנטים לא נחוצים
+  const scripts = contentClone.querySelectorAll('script');
+  scripts.forEach(script => script.remove());
+  
+  // ניקוי event handlers
+  const elementsWithOnclick = contentClone.querySelectorAll('[onclick]');
+  elementsWithOnclick.forEach(el => el.removeAttribute('onclick'));
+  
+  // הסרת class clickable-item (לא נחוץ ב-PDF)
+  const clickableItems = contentClone.querySelectorAll('.clickable-item');
+  clickableItems.forEach(el => {
+    el.classList.remove('clickable-item');
+    el.style.cursor = 'default';
+  });
+  
+  const containerHTML = contentClone.innerHTML;
+  
+  // בדיקה שהתוכן לא ריק
+  if (!containerHTML || containerHTML.trim() === '') {
+    alert('אין תוכן להדפסה. אנא ודא שהדוח נטען כראוי.');
+    printWindow.close();
+    return;
+  }
+  
+  // יצירת HTML להדפסה
+  printWindow.document.open('text/html', 'replace');
+  printWindow.document.write('<!DOCTYPE html>');
+  printWindow.document.write('<html lang="he" dir="rtl">');
+  printWindow.document.write('<head>');
+  printWindow.document.write('<meta charset="UTF-8">');
+  printWindow.document.write('<meta name="viewport" content="width=device-width, initial-scale=1.0">');
+  printWindow.document.write('<title>דוח אריזה חמה - ' + dateValue + '</title>');
+  printWindow.document.write('<style>');
+  printWindow.document.write('@page { size: A4; margin: 10mm; }');
+  printWindow.document.write('* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+  printWindow.document.write('body { font-family: Arial, "DejaVu Sans", sans-serif; direction: rtl; margin: 0; padding: 10px; font-size: 10pt; color: #000; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+  printWindow.document.write('h1 { text-align: center; margin: 0 0 15px 0; font-size: 16pt; color: #333; }');
+  printWindow.document.write('h2 { text-align: center; margin: 10px 0; font-size: 12pt; color: #666; }');
+  printWindow.document.write('.tray-category-table { display: inline-block; width: 48%; margin: 1%; vertical-align: top; margin-bottom: 20px; box-sizing: border-box; page-break-inside: avoid; }');
+  printWindow.document.write('.tray-category-table h3 { background: #c8e6c9; padding: 10px; margin: 0; text-align: center; border: 1px solid #4caf50; font-size: 1em; }');
+  printWindow.document.write('table { width: 100%; border-collapse: collapse; margin-bottom: 15px; page-break-inside: auto; font-size: 9pt; }');
+  printWindow.document.write('tr { page-break-inside: avoid; }');
+  printWindow.document.write('thead { display: table-header-group; }');
+  printWindow.document.write('tfoot { display: table-footer-group; }');
+  printWindow.document.write('th, td { border: 1px solid #000; padding: 6px; text-align: right; word-wrap: break-word; }');
+  printWindow.document.write('th { background-color: #c8e6c9 !important; color: #000 !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+  printWindow.document.write('td { background-color: white; }');
+  printWindow.document.write('@media print { body { margin: 0; padding: 5mm; } .no-print { display: none !important; } table { page-break-inside: auto; } tr { page-break-inside: avoid; } .tray-category-table { page-break-inside: avoid; } }');
+  printWindow.document.write('</style>');
+  printWindow.document.write('</head>');
+  printWindow.document.write('<body>');
+  printWindow.document.write('<h1>🔥 דוח אריזה חמה</h1>');
+  printWindow.document.write('<h2>תאריך: ' + dateValue + ' | סניף: ' + branchName + ' | קו חלוקה: ' + distrLineName + '</h2>');
   printWindow.document.write(containerHTML);
   printWindow.document.write('<script>');
   printWindow.document.write('window.onload = function() { setTimeout(function() { window.print(); }, 500); };');
