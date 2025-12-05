@@ -1276,12 +1276,31 @@ function calculateContainersAndPacks(data) {
     
     // שימוש ב-TQUANT (כמות) במקום PRIT_GENQUANT (כמות מעוגל)
     const tQuant = parseFloat(newRow.TQUANT) || 0;
-    const param7 = parseFloat(newRow.Y_9964_5_ESH);
-    const param8 = parseFloat(newRow.Y_9965_5_ESH);
+    
+    // עיגול פרמטר 7 ל-2 ספרות אחרי הנקודה לפני החישוב
+    let param7 = parseFloat(newRow.Y_9964_5_ESH);
+    if (!isNaN(param7) && param7 > 0) {
+      param7 = parseFloat(param7.toFixed(2));
+      // עדכון הערך ב-newRow לערך המעוגל
+      newRow.Y_9964_5_ESH = param7;
+    }
+    
+    // עיגול פרמטר 8 ל-2 ספרות אחרי הנקודה לפני החישוב
+    let param8 = parseFloat(newRow.Y_9965_5_ESH);
+    if (!isNaN(param8) && param8 > 0) {
+      param8 = parseFloat(param8.toFixed(2));
+      // עדכון הערך ב-newRow לערך המעוגל
+      newRow.Y_9965_5_ESH = param8;
+    }
     
     // חישוב מיכלים - אם יש פרמטר 7: (TQUANT / Y_9964_5_ESH) / 2, עגול כלפי מעלה
+    // חשוב: עיגול התוצאה ל-2 ספרות אחרי הנקודה לפני Math.ceil כדי למנוע בעיות floating point
     if (!isNaN(param7) && param7 > 0) {
-      newRow.CONTAINERS = Math.ceil((tQuant / param7) / 2);
+      const divisionResult = tQuant / param7;
+      const halfResult = divisionResult / 2;
+      // עיגול ל-2 ספרות אחרי הנקודה כדי למנוע בעיות floating point (למשל 3.0000000000000005 -> 3.00)
+      const roundedHalfResult = Math.round(halfResult * 100) / 100;
+      newRow.CONTAINERS = Math.ceil(roundedHalfResult);
     } else {
       newRow.CONTAINERS = '';
     }
@@ -1670,7 +1689,16 @@ function createTable(data) {
     headers.forEach(field => {
       // הצגת הערך בדיוק כמו שהוא - ללא עיבוד או שינויים
       // שימוש ישיר בערך מהנתונים הגולמיים
-      const value = row[field] !== undefined && row[field] !== null ? row[field] : '';
+      let value = row[field] !== undefined && row[field] !== null ? row[field] : '';
+      
+      // עיבוד מיוחד לפרמטר 7 - הצגה עם 2 ספרות אחרי הנקודה
+      if (field === 'Y_9964_5_ESH' && value !== '') {
+        const numValue = parseFloat(value);
+        if (!isNaN(numValue)) {
+          value = numValue.toFixed(2);
+        }
+      }
+      
       html += `<td>${value}</td>`;
     });
     html += '</tr>';
@@ -2803,6 +2831,7 @@ function applyTraysFilters() {
     const pm = String(r.PACKMETHODCODE || r.packMethodCode || '').trim().toLowerCase();
     const packDes = String(r.PACKDES || r.packDes || '').trim().toLowerCase();
     const pspec1 = String(r.PSPEC1 || r.pspec1 || '').trim().toLowerCase();
+    const pspec6 = String(r.PSPEC6 || r.pspec6 || '').trim().toLowerCase();
     
     // אם זה חמגשית - לא נכלל (בודק בכל השדות הרלוונטיים)
     if (pm.includes('חמגשית') || packDes.includes('חמגשית') || pspec1.includes('חמגשית')) {
@@ -2814,6 +2843,11 @@ function applyTraysFilters() {
       return false;
     }
     
+    // אם זה צמחוני בפרמטר 6 - לא נכלל
+    if (pspec6.includes('צמחוני')) {
+      return false;
+    }
+    
     // רק תפזורת או סיפט
     const isBulk = pm.includes('תפזורת') || packDes.includes('תפזורת') || pm.includes('סיפט') || packDes.includes('סיפט');
     
@@ -2821,9 +2855,39 @@ function applyTraysFilters() {
   });
   if (containersData.length > 0) {
     const summary = {};
-    containersData.forEach(row => {
+    // קיבוץ לפי הזמנה + ארוחה + פריט כדי למנוע כפילות מאותה הזמנה ואותה ארוחה
+    const orderMealItemMap = new Map(); // Map של "orderName|mealName|partDes" -> containers value
+    
+    console.log('📊 מיכלים - סה"כ שורות לפני קיבוץ:', containersData.length);
+    
+    containersData.forEach((row, idx) => {
       const partDes = String(row.PARTDES || row.partDes || '').trim();
       if (!partDes) return;
+      
+      const orderName = String(row.ORDNAME || row.orderName || '').trim();
+      const mealName = String(row.MEALNAME || row.mealName || '').trim() || 'ללא_ארוחה';
+      const containersValue = parseFloat(row.CONTAINERS || row.containers || 0) || 0;
+      
+      // לוגים לבדיקה - רק עבור 10 השורות הראשונות
+      if (idx < 10) {
+        console.log(`  שורה ${idx + 1}: פריט="${partDes}", מיכלים=${containersValue}, הזמנה=${orderName}, ארוחה="${mealName}"`);
+      }
+      
+      if (orderName) {
+        // יצירת מפתח ייחודי לכל הזמנה + ארוחה + פריט
+        const orderMealItemKey = `${orderName}|${mealName}|${partDes}`;
+        
+        // אם יש כבר ערך עבור הזמנה + ארוחה + פריט הזה, לא נוסיף אותו שוב (למניעת כפילות)
+        // נשתמש רק בערך הראשון שנמצא
+        if (!orderMealItemMap.has(orderMealItemKey)) {
+          orderMealItemMap.set(orderMealItemKey, containersValue);
+        } else {
+          // אם יש כבר ערך, נדלג על השורה הזו (כי זה אותו פריט מאותה הזמנה ואותה ארוחה)
+          console.log(`  ⚠️ דילוג על שורה ${idx + 1}: פריט="${partDes}" כבר קיים עבור הזמנה ${orderName} וארוחה "${mealName}"`);
+        }
+      }
+      
+      // קיבוץ לפי פריט לסיכום
       if (!summary[partDes]) {
         summary[partDes] = {
           partDes: partDes,
@@ -2831,13 +2895,21 @@ function applyTraysFilters() {
           ordersMap: new Map() // Map של orderName -> custDes
         };
       }
-      summary[partDes].totalValue += parseFloat(row.CONTAINERS || row.containers || 0) || 0;
       
       // שמירת נתוני הזמנה
-      const orderName = String(row.ORDNAME || row.orderName || '').trim();
       const custDes = String(row.CUSTDES || row.custDes || '').trim();
       if (orderName) {
         summary[partDes].ordersMap.set(orderName, custDes || 'ללא שם לקוח');
+      }
+    });
+    
+    console.log('📊 מיכלים - סה"כ שורות ייחודיות אחרי קיבוץ:', orderMealItemMap.size);
+    
+    // חישוב הסיכום לפי הזמנות + ארוחות ייחודיות
+    orderMealItemMap.forEach((containersValue, orderMealItemKey) => {
+      const [orderName, mealName, partDes] = orderMealItemKey.split('|');
+      if (summary[partDes]) {
+        summary[partDes].totalValue += containersValue;
       }
     });
     
@@ -2876,7 +2948,8 @@ function applyTraysFilters() {
     html += '</tbody></table></div></div>';
   }
   
-  // טבלת מארז 5 - מכל הנתונים של קרטון חמים, לפי PACK5, כל מה שיש לו PACK5 > 0 (חוץ מחמגשית וגסטרונום)
+  // טבלת מארז 5 - מכל הנתונים של קרטון חמים, לפי PACK5, כל מה שיש לו PACK5 > 0 (חוץ מחמגשית, גסטרונום וצמחוני)
+  // חריג: אם פרמטר 6 למוצר (PSPEC6) מכיל "חבד" או "חב"ד", גם חמגשית נכללת
   const pack5Data = filteredData.filter(r => {
     const pack5 = parseFloat(r.PACK5 || r.pack5 || 0) || 0;
     if (pack5 <= 0) return false;
@@ -2885,10 +2958,28 @@ function applyTraysFilters() {
     const pm = String(r.PACKMETHODCODE || r.packMethodCode || '').trim().toLowerCase();
     const packDes = String(r.PACKDES || r.packDes || '').trim().toLowerCase();
     const pspec1 = String(r.PSPEC1 || r.pspec1 || '').trim().toLowerCase();
+    const pspec6 = String(r.PSPEC6 || r.pspec6 || '').trim().toLowerCase();
+    const spec2 = String(r.SPEC2 || r.spec2 || '').trim().toLowerCase();
+    const pspec2 = String(r.PSPEC2 || r.pspec2 || '').trim().toLowerCase();
     
-    // אם זה חמגשית - לא נכלל (בודק בכל השדות הרלוונטיים)
-    if (pm.includes('חמגשית') || packDes.includes('חמגשית') || pspec1.includes('חמגשית')) {
-      return false;
+    // בדיקה אם זה חמגשית
+    const isTray = pm.includes('חמגשית') || packDes.includes('חמגשית') || pspec1.includes('חמגשית');
+    
+    // בדיקה אם פרמטר 6 למוצר (PSPEC6) מכיל "חבד" או "חב"ד" (עם או בלי גרשיים)
+    // חשוב: בודקים רק PSPEC6 (פרמטר 6 למוצר), לא SPEC2 או PSPEC2
+    const pspec6Original = String(r.PSPEC6 || r.pspec6 || '').trim();
+    const isChabadInPSPEC6 = pspec6.includes('חבד') || pspec6Original.includes('חבד') ||
+                             pspec6.includes('חב"ד') || pspec6Original.includes('חב"ד') ||
+                             pspec6.includes('חב\'ד') || pspec6Original.includes('חב\'ד');
+    
+    // לוגים לבדיקה - רק עבור חמגשית
+    if (isTray) {
+      console.log(`🔍 מארז 5 - חמגשית: פריט="${String(r.PARTDES || r.partDes || '').trim()}", PACKMETHODCODE="${pm}", PSPEC6="${pspec6Original}", isChabadInPSPEC6=${isChabadInPSPEC6}, נכלל=${isChabadInPSPEC6}`);
+    }
+    
+    // אם זה חמגשית - בדוק אם זה חריג (חבד בפרמטר 6 למוצר)
+    if (isTray && !isChabadInPSPEC6) {
+      return false; // חמגשית רגילה - לא נכלל
     }
     
     // אם זה גסטרונום - לא נכלל (בודק בכל השדות הרלוונטיים)
@@ -2896,7 +2987,13 @@ function applyTraysFilters() {
       return false;
     }
     
-    // כל השאר נכלל - כל מה שיש לו PACK5 > 0 ולא חמגשית ולא גסטרונום
+    // אם זה צמחוני בפרמטר 6 - לא נכלל
+    if (pspec6.includes('צמחוני')) {
+      return false;
+    }
+    
+    // כל השאר נכלל - כל מה שיש לו PACK5 > 0 ולא גסטרונום ולא צמחוני
+    // (חמגשית נכללת רק אם זה חבד + עיקרי)
     return true;
   });
   if (pack5Data.length > 0) {
@@ -3011,7 +3108,8 @@ function applyTraysFilters() {
     html += '</tbody></table></div></div>';
   }
   
-  // טבלת מארז 7 - מכל הנתונים של קרטון חמים, לפי PACK7, כל מה שיש לו PACK7 > 0 (חוץ מחמגשית וגסטרונום)
+  // טבלת מארז 7 - מכל הנתונים של קרטון חמים, לפי PACK7, כל מה שיש לו PACK7 > 0 (חוץ מחמגשית, גסטרונום וצמחוני)
+  // חריג: אם הכשרות היא "חבד" ופרמטר 1 מכיל "עיקרי", גם חמגשית נכללת
   const pack7Data = filteredData.filter(r => {
     const pack7 = parseFloat(r.PACK7 || r.pack7 || 0) || 0;
     if (pack7 <= 0) return false;
@@ -3020,10 +3118,28 @@ function applyTraysFilters() {
     const pm = String(r.PACKMETHODCODE || r.packMethodCode || '').trim().toLowerCase();
     const packDes = String(r.PACKDES || r.packDes || '').trim().toLowerCase();
     const pspec1 = String(r.PSPEC1 || r.pspec1 || '').trim().toLowerCase();
+    const pspec6 = String(r.PSPEC6 || r.pspec6 || '').trim().toLowerCase();
+    const spec2 = String(r.SPEC2 || r.spec2 || '').trim().toLowerCase();
+    const pspec2 = String(r.PSPEC2 || r.pspec2 || '').trim().toLowerCase();
     
-    // אם זה חמגשית - לא נכלל (בודק בכל השדות הרלוונטיים)
-    if (pm.includes('חמגשית') || packDes.includes('חמגשית') || pspec1.includes('חמגשית')) {
-      return false;
+    // בדיקה אם זה חמגשית
+    const isTray = pm.includes('חמגשית') || packDes.includes('חמגשית') || pspec1.includes('חמגשית');
+    
+    // בדיקה אם פרמטר 6 למוצר (PSPEC6) מכיל "חבד" או "חב"ד" (עם או בלי גרשיים)
+    // חשוב: בודקים רק PSPEC6 (פרמטר 6 למוצר), לא SPEC2 או PSPEC2
+    const pspec6Original = String(r.PSPEC6 || r.pspec6 || '').trim();
+    const isChabadInPSPEC6 = pspec6.includes('חבד') || pspec6Original.includes('חבד') ||
+                             pspec6.includes('חב"ד') || pspec6Original.includes('חב"ד') ||
+                             pspec6.includes('חב\'ד') || pspec6Original.includes('חב\'ד');
+    
+    // לוגים לבדיקה - רק עבור חמגשית
+    if (isTray) {
+      console.log(`🔍 מארז 5 - חמגשית: פריט="${String(r.PARTDES || r.partDes || '').trim()}", PACKMETHODCODE="${pm}", PSPEC6="${pspec6Original}", isChabadInPSPEC6=${isChabadInPSPEC6}, נכלל=${isChabadInPSPEC6}`);
+    }
+    
+    // אם זה חמגשית - בדוק אם זה חריג (חבד בפרמטר 6 למוצר)
+    if (isTray && !isChabadInPSPEC6) {
+      return false; // חמגשית רגילה - לא נכלל
     }
     
     // אם זה גסטרונום - לא נכלל (בודק בכל השדות הרלוונטיים)
@@ -3031,7 +3147,13 @@ function applyTraysFilters() {
       return false;
     }
     
-    // כל השאר נכלל - כל מה שיש לו PACK7 > 0 ולא חמגשית ולא גסטרונום
+    // אם זה צמחוני בפרמטר 6 - לא נכלל
+    if (pspec6.includes('צמחוני')) {
+      return false;
+    }
+    
+    // כל השאר נכלל - כל מה שיש לו PACK7 > 0 ולא גסטרונום ולא צמחוני
+    // (חמגשית נכללת רק אם זה חבד + עיקרי)
     return true;
   });
   if (pack7Data.length > 0) {
