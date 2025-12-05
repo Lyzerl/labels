@@ -264,12 +264,12 @@ tr:nth-child(even) {
 }
 
 .label-row-no-allergen {
-  background-color: #ffcdd2 !important;
+  background-color: #ff5252 !important;
   color: #000 !important;
 }
 
 .label-row-vegetarian {
-  background-color: #c8e6c9 !important;
+  background-color: #66bb6a !important;
   color: #000 !important;
 }
 
@@ -3830,6 +3830,17 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       // רק פריטים שיש להם סוג קרטון
       if (!item.cartonType) return;
 
+      // סינון לפי labelsMode - אם זה "hot" או "cold", לסנן בהתאם
+      if (labelsMode === 'hot' || labelsMode === 'cold') {
+        const cartonTypeStr = String(item.cartonType || '').trim().toLowerCase();
+        const pspec6Str = String(item.pspec6 || item.PSPEC6 || '').trim().toLowerCase();
+        const isHot = cartonTypeStr.includes('חם') || cartonTypeStr.includes('חמים') || 
+                      pspec6Str.includes('חם') || pspec6Str.includes('חמים');
+        
+        if (labelsMode === 'hot' && !isHot) return; // אם ביקשנו רק חמים, לדלג על קרים
+        if (labelsMode === 'cold' && isHot) return; // אם ביקשנו רק קרים, לדלג על חמים
+      }
+
       // זיהוי אם זה חמגשית לפי PACKMETHODCODE, PACKDES, PSPEC1, או mainPackingMethod
       const packMethodCode = String(item.packMethodCode || '').toLowerCase();
       const packDes = String(item.packDes || '').toLowerCase();
@@ -3994,8 +4005,11 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
     };
 
     // פונקציה פנימית ליצירת מדבקה לפי שיטת אריזה
-    const renderLabelSticker = (itemsArray, isTray, traySize = '') => {
+    const renderLabelSticker = (itemsArray, isTray, traySize = '', currentLabelsMode = 'all') => {
       if (!itemsArray || itemsArray.length === 0) return;
+      
+      // בדיקה אם זה מדבקה קרה
+      const isColdLabel = currentLabelsMode === 'cold';
 
       // קביעת טקסט למטה לפי סוג לקוח - אם מתחיל ב"מילגם" אז מילגם, אחרת פרטיים
       const spec1 = String(order.spec1 || '').trim();
@@ -4054,61 +4068,104 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
 
       html += '<div class="label-card" style="border:2px solid #000 !important;padding:10px !important;background:#fff !important;direction:rtl !important;font-family:Arial,sans-serif !important;page-break-inside:avoid !important;min-height:200px !important;box-sizing:border-box !important;display:flex !important;flex-direction:column !important;">';
       
-      // אזור עליון - פרטים על הלקוח ולוגיסטיקה (עם גבול תחתון ברור)
-      html += '<div style="border-bottom:2px solid #000 !important;padding-bottom:8px !important;margin-bottom:8px !important;flex-shrink:0 !important;">';
-      html += '<div style="display:flex !important;justify-content:space-between !important;align-items:flex-start !important;gap:8px !important;">';
+      // אזור עליון - טבלה עם פרטי הלקוח ופרטי הלוגיסטיקה
+      html += '<table style="width:100% !important;border-collapse:collapse !important;margin-bottom:10px !important;border:1px solid #000 !important;flex-shrink:0 !important;">';
+      html += '<tbody>';
       
-      // לוגו כשרות משמאל - לפי SPEC2
+      // שורה ראשונה - לוגו כשרות ופרטי לקוח
+      html += '<tr>';
+      
+      // לוגו כשרות משמאל
       const safeAlt = kashrutLogoAlt.replace(/'/g, "&#39;").replace(/"/g, '&quot;');
       const allPaths = logoFileNames.map(f => getImagePath(f));
-      
-      html += '<div style="text-align:center !important;min-width:100px !important;max-width:100px !important;padding:6px 4px !important;border:1.5px solid #000 !important;border-radius:4px !important;background:#fff !important;display:flex !important;align-items:center !important;justify-content:center !important;flex-shrink:0 !important;">';
-      
-      // יצירת img עם onerror שינסה את כל השמות האפשריים
       const pathsStr = allPaths.map(p => `'${p.replace(/'/g, "\\'").replace(/"/g, '\\"')}'`).join(',');
       const imgOnError = `(function(){var img=this;var paths=[${pathsStr}];var idx=paths.indexOf(img.src);if(idx<paths.length-1){img.src=paths[idx+1];}else{img.style.display='none';img.parentElement.innerHTML='<div style=&quot;font-size:0.65em !important;color:#000 !important;font-weight:bold !important;line-height:1.3 !important;text-align:center !important;&quot;>${safeAlt}</div>';}})()`;
       
+      html += `<td rowspan="3" style="width:100px !important;text-align:center !important;padding:6px 4px !important;border:1px solid #000 !important;background:#fff !important;vertical-align:middle !important;">`;
       html += `<img src="${kashrutLogoPath}" alt="${safeAlt}" style="max-width:100% !important;max-height:85px !important;width:auto !important;height:auto !important;object-fit:contain !important;display:block !important;" onerror="${imgOnError}" />`;
-      html += '</div>';
+      html += '</td>';
       
-      // פרטים מימין - מסודרים כמו בתמונה
-      html += '<div style="text-align:right !important;flex:1 !important;font-size:0.75em !important;line-height:1.4 !important;">';
-      html += `<div style="margin-bottom:2px !important;font-weight:bold !important;font-size:0.8em !important;">${isTray ? (traySize === 'large' ? 'חמגשית גדולה' : 'חמגשית קטנה') : 'תפזורת'}</div>`;
-      html += `<div style="margin-bottom:2px !important;">15/62 | מס תחנה: ${order.pritDistrOrder || 0}</div>`;
-      html += `<div style="margin-bottom:2px !important;">קו חלוקה: ${order.distrLineDes || order.distrLineCode || ''}</div>`;
-      html += `<div style="margin-bottom:2px !important;">תאריך: ${order.dueDate || ''}</div>`;
-      html += `<div style="margin-bottom:2px !important;">שם מוסד: ${order.custDes || ''}</div>`;
-      html += `<div style="margin-bottom:2px !important;">כתובת: ${order.address || ''}</div>`;
-      html += `<div>סמל מוסד: ${order.codeDes || ''}</div>`;
-      html += '</div>';
-      html += '</div>';
-      html += '</div>';
+      // פורמט תאריך - DD/MM/YY
+      let formattedDate = '';
+      if (order.dueDate) {
+        try {
+          const date = new Date(order.dueDate);
+          if (!isNaN(date.getTime())) {
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = String(date.getFullYear()).slice(-2);
+            formattedDate = `${day}/${month}/${year}`;
+          } else {
+            formattedDate = order.dueDate;
+          }
+        } catch (e) {
+          formattedDate = order.dueDate;
+        }
+      }
       
-      // סה"כ הזמנה (בין האזורים)
-      html += `<div style="text-align:center !important;font-size:0.95em !important;font-weight:bold !important;margin:6px 0 !important;padding:4px !important;background:#e3f2fd !important;border:1px solid #000 !important;flex-shrink:0 !important;">סה"כ הזמנה: ${totalOrder.toFixed(0)}</div>`;
+      // עיבוד כיתה - אם זה גן אז "גן", אם זה בית ספר אז להציג את הכיתה כמו שהיא (כולל "א" או "ב")
+      let classText = '';
+      if (order.pritClassname) {
+        const className = String(order.pritClassname).trim();
+        const classNameLower = className.toLowerCase();
+        if (classNameLower.includes('גן')) {
+          classText = 'גן';
+        } else {
+          // אם זה בית ספר - להציג את הכיתה כמו שהיא (כולל "א" או "ב" אם יש)
+          classText = className;
+        }
+      }
       
-      // אזור שני - טבלת נתוני הזמנה (עם גבול עליון ברור)
-      html += '<div style="flex:1 !important;display:flex !important;flex-direction:column !important;">';
-      html += '<table class="label-card-table" style="width:100% !important;border-collapse:collapse !important;margin-top:0 !important;font-size:0.75em !important;border:1px solid #000 !important;flex:1 !important;">';
+      // בדיקת כתובת - אם אין כתובת, לנסות גם state
+      const addressText = order.address || order.state || '';
+      console.log('📍 כתובת להזמנה', order.orderName, ':', order.address, '| state:', order.state, '| תוצאה:', addressText);
+      
+      // פרטי לקוח ולוגיסטיקה - הגדלת טקסט משמעותית
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;"><strong>שם מוסד:</strong> ' + (order.custDes || '') + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
+      html += '</tr>';
+      
+      html += '<tr>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;"><strong>כתובת:</strong> ' + addressText + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;"><strong>מס תחנה:</strong> ' + (order.pritDistrOrder || 0) + '</td>';
+      html += '</tr>';
+      
+      html += '<tr>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;"><strong>מס לקוח:</strong> ' + (order.custName || '') + (classText ? ' | <strong>כיתה:</strong> ' + classText : '') + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;"><strong>תאריך:</strong> ' + formattedDate + '</td>';
+      html += '</tr>';
+      
+      html += '</tbody></table>';
+      
+      // אזור שני - טבלה עם פרטי אריזה - הגדלת טקסט משמעותית
+      html += '<table class="label-card-table" style="width:100% !important;border-collapse:collapse !important;margin-bottom:10px !important;font-size:1.1em !important;border:1px solid #000 !important;flex:1 !important;">';
       html += '<thead><tr>';
       
+      // חישוב כמה פריטים יש - אם יש יותר מ-3, נחלק לשתי שורות
+      const totalItems = itemsArray.length;
+      const itemsPerRow = totalItems > 3 ? Math.ceil(totalItems / 2) : totalItems;
+      
       if (isTray) {
-        // עבור חמגשית - 2 עמודות, צבע כותרת לפי גודל
+        // עבור חמגשית - 2 עמודות
+        // אם זה מדבקה קרה - רק "כמות", אחרת "חמגשית קטנה/גדולה"
         const headerBgColor = traySize === 'large' ? '#d3d3d3' : '#c8e6c9'; // גדולה=אפור, קטנה=ירוק
-        const headerText = traySize === 'large' ? 'חמגשית גדולה' : 'חמגשית קטנה';
-        html += `<th style="border:1px solid #000 !important;padding:4px !important;background:${headerBgColor} !important;text-align:center !important;font-weight:bold !important;font-size:0.8em !important;">${headerText}</th>`;
-        html += '<th style="border:1px solid #000 !important;padding:4px !important;background:#d3d3d3 !important;text-align:right !important;font-weight:bold !important;font-size:0.8em !important;">תיאור מוצר</th>';
+        const headerText = isColdLabel ? 'כמות' : (traySize === 'large' ? 'חמגשית גדולה' : 'חמגשית קטנה');
+        // סדר: מוצר מימין, כמות משמאל
+        html += '<th style="border:1px solid #000 !important;padding:6px !important;background:#d3d3d3 !important;text-align:right !important;font-weight:bold !important;font-size:1.2em !important;">תיאור מוצר</th>';
+        html += `<th style="border:1px solid #000 !important;padding:6px !important;background:${headerBgColor} !important;text-align:center !important;font-weight:bold !important;font-size:1.2em !important;">${headerText}</th>`;
       } else {
-        // עבור לא חמגשית - 3 עמודות: מיכלים, מארז קטן (5), מארז גדול (7)
-        html += '<th style="border:1px solid #000 !important;padding:4px !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:0.8em !important;">מיכלים</th>';
-        html += '<th style="border:1px solid #000 !important;padding:4px !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:0.8em !important;">מארז קטן</th>';
-        html += '<th style="border:1px solid #000 !important;padding:4px !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:0.8em !important;">מארז גדול</th>';
-        html += '<th style="border:1px solid #000 !important;padding:4px !important;background:#d3d3d3 !important;text-align:right !important;font-weight:bold !important;font-size:0.8em !important;">תיאור מוצר</th>';
+        // עבור לא חמגשית - 4 עמודות: תיאור מוצר, מיכלים, מארז קטן (5), מארז גדול (7)
+        // סדר: מוצר מימין, מספרים משמאל
+        html += '<th style="border:1px solid #000 !important;padding:6px !important;background:#d3d3d3 !important;text-align:right !important;font-weight:bold !important;font-size:1.2em !important;">תיאור מוצר</th>';
+        html += '<th style="border:1px solid #000 !important;padding:6px !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:1.2em !important;">מיכלים</th>';
+        html += '<th style="border:1px solid #000 !important;padding:6px !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:1.2em !important;">מארז קטן</th>';
+        html += '<th style="border:1px solid #000 !important;padding:6px !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:1.2em !important;">מארז גדול</th>';
       }
       
       html += '</tr></thead><tbody>';
       
-      itemsArray.forEach(item => {
+      // חלוקה לשתי שורות אם יש יותר מ-3 פריטים
+      const renderItemRow = (item) => {
         const rowClasses = [];
         let partDesText = item.itemsKey || item.partDes || '';
         
@@ -4122,40 +4179,72 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
           rowClasses.push('label-row-vegetarian');
         }
         
-        html += `<tr class="${rowClasses.join(' ')}">`;
+        // קביעת רקע תא לפי סוג השורה - צבע חזק יותר לאלרגני/צמחוני
+        const isNoAllergenRow = rowClasses.includes('label-row-no-allergen');
+        const isVegetarianRow = rowClasses.includes('label-row-vegetarian');
+        // צבעים חזקים יותר שיגברו על צבע החמגשית
+        const rowBgColor = isNoAllergenRow ? '#ff5252' : (isVegetarianRow ? '#66bb6a' : '#fff');
+        
+        let rowHtml = `<tr class="${rowClasses.join(' ')}">`;
         
         if (isTray) {
-          // עבור חמגשית - 2 עמודות
-          const cellBgColor = traySize === 'large' ? '#d3d3d3' : '#c8e6c9';
-          html += `<td style="border:1px solid #000 !important;padding:4px !important;text-align:center !important;font-weight:bold !important;background:${cellBgColor} !important;">${item.eatQuant ? item.eatQuant.toFixed(0) : (item.totalQuantity ? item.totalQuantity.toFixed(0) : '')}</td>`;
-          html += `<td style="border:1px solid #000 !important;padding:4px !important;text-align:right !important;background:#fff !important;">${partDesText}</td>`;
+          // עבור חמגשית - 2 עמודות: מוצר מימין, כמות משמאל
+          // אם יש אלרגני/צמחוני - רקע חזק על כל השורה כולל תא הכמות
+          const cellBgColor = (isNoAllergenRow || isVegetarianRow) ? rowBgColor : (traySize === 'large' ? '#d3d3d3' : '#c8e6c9');
+          rowHtml += `<td style="border:1px solid #000 !important;padding:6px !important;text-align:right !important;background:${rowBgColor} !important;font-size:1.1em !important;">${partDesText}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:6px !important;text-align:center !important;font-weight:bold !important;background:${cellBgColor} !important;font-size:1.1em !important;">${item.eatQuant ? item.eatQuant.toFixed(0) : (item.totalQuantity ? item.totalQuantity.toFixed(0) : '')}</td>`;
         } else {
-          // עבור לא חמגשית - 3 עמודות: מיכלים, מארז קטן (5), מארז גדול (7)
+          // עבור לא חמגשית - 4 עמודות: מוצר מימין, מספרים משמאל
           const containers = item.sumContainers ? item.sumContainers.toFixed(0) : '';
           const pack5 = item.sumPack5 ? item.sumPack5.toFixed(0) : '';
           const pack7 = item.sumPack7 ? item.sumPack7.toFixed(0) : '';
           
-          html += `<td style="border:1px solid #000 !important;padding:4px !important;text-align:center !important;background:#fff !important;">${containers}</td>`;
-          html += `<td style="border:1px solid #000 !important;padding:4px !important;text-align:center !important;background:#fff !important;">${pack5}</td>`;
-          html += `<td style="border:1px solid #000 !important;padding:4px !important;text-align:center !important;background:#fff !important;">${pack7}</td>`;
-          html += `<td style="border:1px solid #000 !important;padding:4px !important;text-align:right !important;background:#fff !important;">${partDesText}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:6px !important;text-align:right !important;background:${rowBgColor} !important;font-size:1.1em !important;">${partDesText}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:6px !important;text-align:center !important;background:${rowBgColor} !important;font-size:1.1em !important;">${containers}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:6px !important;text-align:center !important;background:${rowBgColor} !important;font-size:1.1em !important;">${pack5}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:6px !important;text-align:center !important;background:${rowBgColor} !important;font-size:1.1em !important;">${pack7}</td>`;
         }
         
-        html += '</tr>';
-      });
+        rowHtml += '</tr>';
+        return rowHtml;
+      };
+      
+      // אם יש יותר מ-3 פריטים, לחלק לשתי שורות
+      if (totalItems > 3) {
+        const firstRowItems = itemsArray.slice(0, itemsPerRow);
+        const secondRowItems = itemsArray.slice(itemsPerRow);
+        
+        // שורה ראשונה
+        firstRowItems.forEach(item => {
+          html += renderItemRow(item);
+        });
+        
+        // שורה שנייה - אם יש פריטים נוספים
+        if (secondRowItems.length > 0) {
+          // הוספת שורה ריקה להפרדה (אופציונלי)
+          secondRowItems.forEach(item => {
+            html += renderItemRow(item);
+          });
+        }
+      } else {
+        // אם יש 3 פריטים או פחות, להציג כרגיל
+        itemsArray.forEach(item => {
+          html += renderItemRow(item);
+        });
+      }
       
       html += '</tbody></table>';
-      html += '</div>'; // סיום אזור שני (טבלה)
       
-      // הערות מתחת לטבלה (בתוך אזור שני)
-      html += '<div style="margin-top:8px !important;font-size:0.75em !important;text-align:center !important;padding-top:6px !important;border-top:1px solid #ccc !important;flex-shrink:0 !important;">';
+      // אזור שלישי - מקום להערות - הגדלת טקסט משמעותית
+      html += '<div style="min-height:30px !important;margin-bottom:10px !important;padding:6px !important;border:1px solid #ccc !important;font-size:1.1em !important;flex-shrink:0 !important;">';
       // אם יש אלרגנים - להוסיף "ללא שומשום"
       if (hasNoAllergen) {
-        html += '<div style="margin-bottom:3px !important;color:#d32f2f !important;font-weight:bold !important;">ללא שומשום</div>';
+        html += '<div style="color:#d32f2f !important;font-weight:bold !important;font-size:1.1em !important;">ללא שומשום</div>';
       }
-      // קונטקט טקסט לפי סוג לקוח
-      html += `<div style="font-weight:bold !important;">${contactText}</div>`;
       html += '</div>';
+      
+      // אזור רביעי - קונטקט טקסט בתחתית - הגדלת טקסט משמעותית
+      html += `<div style="text-align:center !important;font-size:1.2em !important;font-weight:bold !important;padding:8px !important;border-top:2px solid #000 !important;flex-shrink:0 !important;">${contactText}</div>`;
       
       html += '</div>';
     };
@@ -4183,7 +4272,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       if (smallTrayItems.length > 0) {
         const groupedSmallTray = groupTrayItemsByMeal(smallTrayItems, order);
         if (groupedSmallTray.length > 0) {
-          renderLabelSticker(groupedSmallTray, true, 'small');
+          renderLabelSticker(groupedSmallTray, true, 'small', labelsMode);
         }
       }
       
@@ -4191,7 +4280,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       if (largeTrayItems.length > 0) {
         const groupedLargeTray = groupTrayItemsByMeal(largeTrayItems, order);
         if (groupedLargeTray.length > 0) {
-          renderLabelSticker(groupedLargeTray, true, 'large');
+          renderLabelSticker(groupedLargeTray, true, 'large', labelsMode);
         }
       }
     }
@@ -4202,7 +4291,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
         ...item,
         itemsKey: item.partDes || item.partName || ''
       }));
-      renderLabelSticker(nonTrayItemsArray, false);
+      renderLabelSticker(nonTrayItemsArray, false, '', labelsMode);
     }
   });
   
@@ -4656,8 +4745,8 @@ function downloadLabelsPDF() {
   printWindow.document.write('.label-card-table:first-of-type { margin-top: 0; }');
   printWindow.document.write('.label-card-table th, .label-card-table td { border: 1px solid #ccc; padding: 6px 8px; text-align: right; font-size: 10pt; }');
   printWindow.document.write('.label-card-table thead tr { background: #e3f2fd; }');
-  printWindow.document.write('.label-row-no-allergen { background-color: #ffcdd2 !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
-  printWindow.document.write('.label-row-vegetarian { background-color: #c8e6c9 !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+  printWindow.document.write('.label-row-no-allergen { background-color: #ff5252 !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+  printWindow.document.write('.label-row-vegetarian { background-color: #66bb6a !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
   printWindow.document.write('@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } h1 { display: none !important; } table { page-break-inside: auto; } tr { page-break-inside: avoid; } }');
   printWindow.document.write('@media print { .label-card { height: 148.5mm; min-height: 148.5mm; max-height: 148.5mm; display: flex; flex-direction: column; } .label-card:nth-of-type(even) { page-break-after: always; } .label-card:nth-of-type(odd) { page-break-after: auto; } .label-card:last-of-type { page-break-after: auto; } }');
   printWindow.document.write('</style>');
