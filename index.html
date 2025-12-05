@@ -650,6 +650,32 @@ tr:nth-child(even) {
     width: 100%;
     margin: 10px 0;
     display: block;
+    padding: 10px !important;
+  }
+  
+  /* רספונסיביות לטבלאות במדבקות */
+  .label-card > table:first-of-type {
+    font-size: 0.85em !important;
+  }
+  
+  .label-card > table:first-of-type th,
+  .label-card > table:first-of-type td {
+    padding: 4px !important;
+    font-size: 0.85em !important;
+  }
+  
+  .label-card-table {
+    font-size: 0.9em !important;
+  }
+  
+  .label-card-table th,
+  .label-card-table td {
+    padding: 4px !important;
+    font-size: 0.9em !important;
+  }
+  
+  .labels-print-wrapper {
+    gap: 15px !important;
   }
   
   .status {
@@ -876,6 +902,36 @@ tr:nth-child(even) {
   td {
     word-break: break-word;
     overflow-wrap: break-word;
+  }
+  
+  /* רספונסיביות נוספת למדבקות במובייל קטן */
+  .label-card {
+    padding: 8px !important;
+  }
+  
+  .label-card > table:first-of-type {
+    font-size: 0.75em !important;
+  }
+  
+  .label-card > table:first-of-type th,
+  .label-card > table:first-of-type td {
+    padding: 3px !important;
+    font-size: 0.75em !important;
+  }
+  
+  .label-card-table {
+    font-size: 0.8em !important;
+  }
+  
+  .label-card-table th,
+  .label-card-table td {
+    padding: 3px !important;
+    font-size: 0.8em !important;
+  }
+  
+  #labelsContainer {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 </style>
@@ -4066,10 +4122,10 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
         totalOrder = itemsArray.reduce((sum, item) => sum + (item.sumQuant || 0), 0);
       }
 
-      html += '<div class="label-card" style="border:2px solid #000 !important;padding:10px !important;background:#fff !important;direction:rtl !important;font-family:Arial,sans-serif !important;page-break-inside:avoid !important;min-height:200px !important;box-sizing:border-box !important;display:flex !important;flex-direction:column !important;">';
+      html += '<div class="label-card" style="border:2px solid #000 !important;padding:10px !important;background:#fff !important;direction:rtl !important;font-family:Arial,sans-serif !important;page-break-inside:avoid !important;min-height:200px !important;box-sizing:border-box !important;display:flex !important;flex-direction:column !important;overflow:hidden !important;">';
       
-      // אזור עליון - טבלה עם פרטי הלקוח ופרטי הלוגיסטיקה
-      html += '<table style="width:100% !important;border-collapse:collapse !important;margin-bottom:10px !important;border:1px solid #000 !important;flex-shrink:0 !important;">';
+      // אזור עליון - טבלה עם פרטי הלקוח ופרטי הלוגיסטיקה - גודל קבוע, לא דינמי
+      html += '<table style="width:100% !important;border-collapse:collapse !important;margin-bottom:15px !important;border:1px solid #000 !important;flex-shrink:0 !important;flex-grow:0 !important;">';
       html += '<tbody>';
       
       // שורה ראשונה - לוגו כשרות ופרטי לקוח
@@ -4081,8 +4137,8 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       const pathsStr = allPaths.map(p => `'${p.replace(/'/g, "\\'").replace(/"/g, '\\"')}'`).join(',');
       const imgOnError = `(function(){var img=this;var paths=[${pathsStr}];var idx=paths.indexOf(img.src);if(idx<paths.length-1){img.src=paths[idx+1];}else{img.style.display='none';img.parentElement.innerHTML='<div style=&quot;font-size:0.65em !important;color:#000 !important;font-weight:bold !important;line-height:1.3 !important;text-align:center !important;&quot;>${safeAlt}</div>';}})()`;
       
-      html += `<td rowspan="3" style="width:100px !important;text-align:center !important;padding:6px 4px !important;border:1px solid #000 !important;background:#fff !important;vertical-align:middle !important;">`;
-      html += `<img src="${kashrutLogoPath}" alt="${safeAlt}" style="max-width:100% !important;max-height:85px !important;width:auto !important;height:auto !important;object-fit:contain !important;display:block !important;" onerror="${imgOnError}" />`;
+      html += `<td rowspan="3" style="width:120px !important;text-align:center !important;padding:8px 6px !important;border:1px solid #000 !important;background:#fff !important;vertical-align:middle !important;">`;
+      html += `<img src="${kashrutLogoPath}" alt="${safeAlt}" style="max-width:100% !important;max-height:100px !important;width:auto !important;height:auto !important;object-fit:contain !important;display:block !important;" onerror="${imgOnError}" />`;
       html += '</td>';
       
       // פורמט תאריך - DD/MM/YY
@@ -4120,25 +4176,25 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       const addressText = order.address || order.state || '';
       console.log('📍 כתובת להזמנה', order.orderName, ':', order.address, '| state:', order.state, '| תוצאה:', addressText);
       
-      // פרטי לקוח ולוגיסטיקה - הגדלת טקסט משמעותית
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;"><strong>שם מוסד:</strong> ' + (order.custDes || '') + '</td>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
+      // פרטי לקוח ולוגיסטיקה - הגדלת טקסט משמעותית יותר
+      html += '<td style="text-align:right !important;padding:8px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.5 !important;"><strong>שם מוסד:</strong> ' + (order.custDes || '') + '</td>';
+      html += '<td style="text-align:right !important;padding:8px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.5 !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
       html += '</tr>';
       
       html += '<tr>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;"><strong>כתובת:</strong> ' + addressText + '</td>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;"><strong>מס תחנה:</strong> ' + (order.pritDistrOrder || 0) + '</td>';
+      html += '<td style="text-align:right !important;padding:8px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.5 !important;"><strong>כתובת:</strong> ' + addressText + '</td>';
+      html += '<td style="text-align:right !important;padding:8px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.5 !important;"><strong>מס תחנה:</strong> ' + (order.pritDistrOrder || 0) + '</td>';
       html += '</tr>';
       
       html += '<tr>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;"><strong>מס לקוח:</strong> ' + (order.custName || '') + (classText ? ' | <strong>כיתה:</strong> ' + classText : '') + '</td>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;"><strong>תאריך:</strong> ' + formattedDate + '</td>';
+      html += '<td style="text-align:right !important;padding:8px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.5 !important;"><strong>מס לקוח:</strong> ' + (order.custName || '') + (classText ? ' | <strong>כיתה:</strong> ' + classText : '') + '</td>';
+      html += '<td style="text-align:right !important;padding:8px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.5 !important;"><strong>תאריך:</strong> ' + formattedDate + '</td>';
       html += '</tr>';
       
       html += '</tbody></table>';
       
-      // אזור שני - טבלה עם פרטי אריזה - הגדלת טקסט משמעותית
-      html += '<table class="label-card-table" style="width:100% !important;border-collapse:collapse !important;margin-bottom:10px !important;font-size:1.1em !important;border:1px solid #000 !important;flex:1 !important;">';
+      // אזור שני - טבלה עם פרטי אריזה - הגדלת טקסט משמעותית יותר - הקטנת flex כדי שהטבלה העליונה תהיה גדולה יותר
+      html += '<table class="label-card-table" style="width:100% !important;border-collapse:collapse !important;margin-bottom:10px !important;font-size:1.3em !important;border:1px solid #000 !important;flex:0.7 !important;table-layout:auto !important;">';
       html += '<thead><tr>';
       
       // חישוב כמה פריטים יש - אם יש יותר מ-3, נחלק לשתי שורות
@@ -4151,15 +4207,15 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
         const headerBgColor = traySize === 'large' ? '#d3d3d3' : '#c8e6c9'; // גדולה=אפור, קטנה=ירוק
         const headerText = isColdLabel ? 'כמות' : (traySize === 'large' ? 'חמגשית גדולה' : 'חמגשית קטנה');
         // סדר: מוצר מימין, כמות משמאל
-        html += '<th style="border:1px solid #000 !important;padding:6px !important;background:#d3d3d3 !important;text-align:right !important;font-weight:bold !important;font-size:1.2em !important;">תיאור מוצר</th>';
-        html += `<th style="border:1px solid #000 !important;padding:6px !important;background:${headerBgColor} !important;text-align:center !important;font-weight:bold !important;font-size:1.2em !important;">${headerText}</th>`;
+        html += '<th style="border:1px solid #000 !important;padding:10px !important;background:#d3d3d3 !important;text-align:right !important;font-weight:bold !important;font-size:1.4em !important;">תיאור מוצר</th>';
+        html += `<th style="border:1px solid #000 !important;padding:10px !important;background:${headerBgColor} !important;text-align:center !important;font-weight:bold !important;font-size:1.4em !important;">${headerText}</th>`;
       } else {
         // עבור לא חמגשית - 4 עמודות: תיאור מוצר, מיכלים, מארז קטן (5), מארז גדול (7)
         // סדר: מוצר מימין, מספרים משמאל
-        html += '<th style="border:1px solid #000 !important;padding:6px !important;background:#d3d3d3 !important;text-align:right !important;font-weight:bold !important;font-size:1.2em !important;">תיאור מוצר</th>';
-        html += '<th style="border:1px solid #000 !important;padding:6px !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:1.2em !important;">מיכלים</th>';
-        html += '<th style="border:1px solid #000 !important;padding:6px !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:1.2em !important;">מארז קטן</th>';
-        html += '<th style="border:1px solid #000 !important;padding:6px !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:1.2em !important;">מארז גדול</th>';
+        html += '<th style="border:1px solid #000 !important;padding:10px !important;background:#d3d3d3 !important;text-align:right !important;font-weight:bold !important;font-size:1.4em !important;">תיאור מוצר</th>';
+        html += '<th style="border:1px solid #000 !important;padding:10px !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:1.4em !important;">מיכלים</th>';
+        html += '<th style="border:1px solid #000 !important;padding:10px !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:1.4em !important;">מארז קטן</th>';
+        html += '<th style="border:1px solid #000 !important;padding:10px !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:1.4em !important;">מארז גדול</th>';
       }
       
       html += '</tr></thead><tbody>';
@@ -4191,18 +4247,18 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
           // עבור חמגשית - 2 עמודות: מוצר מימין, כמות משמאל
           // אם יש אלרגני/צמחוני - רקע חזק על כל השורה כולל תא הכמות
           const cellBgColor = (isNoAllergenRow || isVegetarianRow) ? rowBgColor : (traySize === 'large' ? '#d3d3d3' : '#c8e6c9');
-          rowHtml += `<td style="border:1px solid #000 !important;padding:6px !important;text-align:right !important;background:${rowBgColor} !important;font-size:1.1em !important;">${partDesText}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:6px !important;text-align:center !important;font-weight:bold !important;background:${cellBgColor} !important;font-size:1.1em !important;">${item.eatQuant ? item.eatQuant.toFixed(0) : (item.totalQuantity ? item.totalQuantity.toFixed(0) : '')}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:10px !important;text-align:right !important;background:${rowBgColor} !important;font-size:1.3em !important;min-height:60px !important;height:60px !important;vertical-align:middle !important;line-height:1.5 !important;">${partDesText}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:10px !important;text-align:center !important;font-weight:bold !important;background:${cellBgColor} !important;font-size:1.3em !important;min-height:60px !important;height:60px !important;vertical-align:middle !important;">${item.eatQuant ? item.eatQuant.toFixed(0) : (item.totalQuantity ? item.totalQuantity.toFixed(0) : '')}</td>`;
         } else {
           // עבור לא חמגשית - 4 עמודות: מוצר מימין, מספרים משמאל
           const containers = item.sumContainers ? item.sumContainers.toFixed(0) : '';
           const pack5 = item.sumPack5 ? item.sumPack5.toFixed(0) : '';
           const pack7 = item.sumPack7 ? item.sumPack7.toFixed(0) : '';
           
-          rowHtml += `<td style="border:1px solid #000 !important;padding:6px !important;text-align:right !important;background:${rowBgColor} !important;font-size:1.1em !important;">${partDesText}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:6px !important;text-align:center !important;background:${rowBgColor} !important;font-size:1.1em !important;">${containers}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:6px !important;text-align:center !important;background:${rowBgColor} !important;font-size:1.1em !important;">${pack5}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:6px !important;text-align:center !important;background:${rowBgColor} !important;font-size:1.1em !important;">${pack7}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:10px !important;text-align:right !important;background:${rowBgColor} !important;font-size:1.3em !important;min-height:60px !important;height:60px !important;vertical-align:middle !important;line-height:1.5 !important;">${partDesText}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:10px !important;text-align:center !important;background:${rowBgColor} !important;font-size:1.3em !important;min-height:60px !important;height:60px !important;vertical-align:middle !important;">${containers}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:10px !important;text-align:center !important;background:${rowBgColor} !important;font-size:1.3em !important;min-height:60px !important;height:60px !important;vertical-align:middle !important;">${pack5}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:10px !important;text-align:center !important;background:${rowBgColor} !important;font-size:1.3em !important;min-height:60px !important;height:60px !important;vertical-align:middle !important;">${pack7}</td>`;
         }
         
         rowHtml += '</tr>';
@@ -4235,16 +4291,16 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       
       html += '</tbody></table>';
       
-      // אזור שלישי - מקום להערות - הגדלת טקסט משמעותית
-      html += '<div style="min-height:30px !important;margin-bottom:10px !important;padding:6px !important;border:1px solid #ccc !important;font-size:1.1em !important;flex-shrink:0 !important;">';
+      // אזור שלישי - מקום להערות - הגדלת טקסט משמעותית יותר
+      html += '<div style="min-height:35px !important;margin-bottom:10px !important;padding:8px !important;border:1px solid #ccc !important;font-size:1.3em !important;flex-shrink:0 !important;">';
       // אם יש אלרגנים - להוסיף "ללא שומשום"
       if (hasNoAllergen) {
-        html += '<div style="color:#d32f2f !important;font-weight:bold !important;font-size:1.1em !important;">ללא שומשום</div>';
+        html += '<div style="color:#d32f2f !important;font-weight:bold !important;font-size:1.3em !important;">ללא שומשום</div>';
       }
       html += '</div>';
       
-      // אזור רביעי - קונטקט טקסט בתחתית - הגדלת טקסט משמעותית
-      html += `<div style="text-align:center !important;font-size:1.2em !important;font-weight:bold !important;padding:8px !important;border-top:2px solid #000 !important;flex-shrink:0 !important;">${contactText}</div>`;
+      // אזור רביעי - קונטקט טקסט בתחתית - הגדלת טקסט משמעותית יותר
+      html += `<div style="text-align:center !important;font-size:1.4em !important;font-weight:bold !important;padding:10px !important;border-top:2px solid #000 !important;flex-shrink:0 !important;">${contactText}</div>`;
       
       html += '</div>';
     };
@@ -4728,7 +4784,7 @@ function downloadLabelsPDF() {
   printWindow.document.write('@page { size: A4; margin: 0; }');
   printWindow.document.write('* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
   printWindow.document.write('body { font-family: Arial, "DejaVu Sans", sans-serif; direction: rtl; margin: 0; padding: 0; font-size: 11pt; color: #000; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
-  printWindow.document.write('table { width: 100%; border-collapse: collapse; margin-bottom: 15px; page-break-inside: auto; }');
+  printWindow.document.write('table { border-collapse: collapse; margin-bottom: 15px; page-break-inside: auto; }');
   printWindow.document.write('tr { page-break-inside: avoid; page-break-after: auto; }');
   printWindow.document.write('thead { display: table-header-group; }');
   printWindow.document.write('tfoot { display: table-footer-group; }');
@@ -4736,19 +4792,30 @@ function downloadLabelsPDF() {
   printWindow.document.write('th { background-color: #4285f4; color: white; font-weight: bold; }');
   printWindow.document.write('tr:nth-child(even) { background-color: #f9f9f9; }');
   printWindow.document.write('.labels-print-wrapper { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; }');
-  printWindow.document.write('.label-card { border: 2px solid #333; border-radius: 12px; padding: 14px; background: #f9f9f9 !important; page-break-inside: avoid; width: 100%; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+  printWindow.document.write('.label-card { border: 2px solid #333; border-radius: 12px; padding: 14px; background: #f9f9f9 !important; page-break-inside: avoid; width: 100%; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; display: flex !important; flex-direction: column !important; overflow: hidden !important; box-sizing: border-box !important; }');
   printWindow.document.write('.label-card-hot { border-color: #ef6c00 !important; }');
   printWindow.document.write('.label-card-cold { border-color: #1976d2 !important; }');
   printWindow.document.write('.label-card-no-allergen { background: #ffd6d6 !important; border-color: #c62828 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
   printWindow.document.write('.label-card-vegetarian { background: #d6f5d6 !important; border-color: #2e7d32 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
-  printWindow.document.write('.label-card-table { width: 100%; border-collapse: collapse; margin-top: 10px; }');
+  // טבלת פרטי הלקוח - שמירה על רוחב אוטומטי - גודל קבוע, לא דינמי
+  printWindow.document.write('.label-card > table:first-of-type { width: 100% !important; border-collapse: collapse !important; margin-bottom: 15px !important; flex-grow: 0 !important; flex-shrink: 0 !important; }');
+  printWindow.document.write('.label-card > table:first-of-type th, .label-card > table:first-of-type td { font-size: 1.3em !important; padding: 8px !important; line-height: 1.5 !important; }');
+  // טבלת מוצרים - שמירה על הפרופורציות המקוריות - לא למתוח - הקטנת flex
+  printWindow.document.write('.label-card-table { width: 100% !important; max-width: 100% !important; border-collapse: collapse !important; margin-top: 10px !important; table-layout: auto !important; flex: 0.7 !important; }');
   printWindow.document.write('.label-card-table:first-of-type { margin-top: 0; }');
-  printWindow.document.write('.label-card-table th, .label-card-table td { border: 1px solid #ccc; padding: 6px 8px; text-align: right; font-size: 10pt; }');
+  printWindow.document.write('.label-card-table th, .label-card-table td { border: 1px solid #000 !important; padding: 10px !important; text-align: right !important; font-size: 1.3em !important; word-wrap: break-word !important; white-space: normal !important; min-height: 60px !important; height: 60px !important; vertical-align: middle !important; line-height: 1.5 !important; }');
   printWindow.document.write('.label-card-table thead tr { background: #e3f2fd; }');
+  printWindow.document.write('.label-card-table th { font-size: 1.4em !important; padding: 10px !important; }');
+  // שמירה על רוחב עמודות פרופורציונלי - עמודת מוצר תהיה רחבה יותר, עמודות מספרים צרות יותר
+  // לא נגדיר width ספציפי כדי שהטבלה תשמור על הפרופורציות הטבעיות שלה
+  printWindow.document.write('.label-card-table th:first-child, .label-card-table td:first-child { min-width: 50% !important; }');
+  printWindow.document.write('.label-card-table th:not(:first-child), .label-card-table td:not(:first-child) { width: auto !important; min-width: 60px !important; }');
   printWindow.document.write('.label-row-no-allergen { background-color: #ff5252 !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
   printWindow.document.write('.label-row-vegetarian { background-color: #66bb6a !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
   printWindow.document.write('@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } h1 { display: none !important; } table { page-break-inside: auto; } tr { page-break-inside: avoid; } }');
-  printWindow.document.write('@media print { .label-card { height: 148.5mm; min-height: 148.5mm; max-height: 148.5mm; display: flex; flex-direction: column; } .label-card:nth-of-type(even) { page-break-after: always; } .label-card:nth-of-type(odd) { page-break-after: auto; } .label-card:last-of-type { page-break-after: auto; } }');
+  printWindow.document.write('@media print { .label-card { height: 148.5mm; min-height: 148.5mm; max-height: 148.5mm; display: flex !important; flex-direction: column !important; } .label-card:nth-of-type(even) { page-break-after: always; } .label-card:nth-of-type(odd) { page-break-after: auto; } .label-card:last-of-type { page-break-after: auto; } }');
+  // שמירה על פרופורציות טבלאות בהדפסה - לא למתוח יותר מדי - שימוש ב-auto layout
+  printWindow.document.write('@media print { .label-card { overflow: hidden !important; box-sizing: border-box !important; } .label-card > table:first-of-type { width: 100% !important; margin-bottom: 15px !important; flex-grow: 0 !important; flex-shrink: 0 !important; } .label-card > table:first-of-type th, .label-card > table:first-of-type td { font-size: 1.3em !important; padding: 8px !important; line-height: 1.5 !important; } .label-card-table { width: 100% !important; max-width: 100% !important; table-layout: auto !important; flex: 0.7 !important; } .label-card-table th, .label-card-table td { font-size: 1.3em !important; padding: 10px !important; min-height: 60px !important; height: 60px !important; vertical-align: middle !important; line-height: 1.5 !important; } .label-card-table th { font-size: 1.4em !important; } .label-card-table th:first-child, .label-card-table td:first-child { min-width: 50% !important; } .label-card-table th:not(:first-child), .label-card-table td:not(:first-child) { width: auto !important; min-width: 60px !important; } }');
   printWindow.document.write('</style>');
   printWindow.document.write('</head>');
   printWindow.document.write('<body>');
