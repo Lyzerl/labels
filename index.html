@@ -1076,6 +1076,7 @@ tr:nth-child(even) {
 // ***** שים כאן את ה-URL של ה-Cloudflare Worker שלך! *****
 const PROXY_URL = 'https://priority-proxy.lyzer-64d.workers.dev';
 
+
 // רשימת השדות המדויקת שביקשת
 const SELECTED_FIELDS = [
   'ORDNAME',
@@ -2536,20 +2537,20 @@ function applyTraysFilters() {
       // עבור כל ארוחה בנפרד
       Object.entries(itemsByMeal).forEach(([mealName, mealItems]) => {
         // הפרדה בין פריטים רגילים לאלרגני
-        const normalItems = [];
-        const allergenItems = [];
-        
+    const normalItems = [];
+    const allergenItems = [];
+    
         mealItems.forEach(item => {
-          const pspec1 = String(item.PSPEC1 || item.pspec1 || '').trim().toLowerCase();
+      const pspec1 = String(item.PSPEC1 || item.pspec1 || '').trim().toLowerCase();
           if (pspec1.includes('ללא אלרגני') || pspec1.includes('לא אלרגני')) {
-            allergenItems.push(item);
-          } else {
-            normalItems.push(item);
-          }
-        });
-        
+        allergenItems.push(item);
+      } else {
+        normalItems.push(item);
+      }
+    });
+    
         // עיבוד פריטים רגילים
-        if (normalItems.length > 0) {
+    if (normalItems.length > 0) {
           // יצירת רשימת פריטים ייחודית (ללא כפילויות)
           const uniquePartDes = [...new Set(normalItems
             .map(item => String(item.PARTDES || item.partDes || '').trim())
@@ -2596,7 +2597,7 @@ function applyTraysFilters() {
         }
         
         // עיבוד פריטים אלרגני - מאחדים גם אם מארוחות שונות
-        if (allergenItems.length > 0) {
+    if (allergenItems.length > 0) {
           // יצירת רשימת פריטים ייחודית (ללא כפילויות)
           const uniquePartDes = [...new Set(allergenItems
             .map(item => String(item.PARTDES || item.partDes || '').trim())
@@ -2861,7 +2862,7 @@ function applyTraysFilters() {
       // Escape של תווים מיוחדים לשם הפריט
       const safeItemsKey = String(item.itemsKey || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
       
-      html += '<tr>';
+    html += '<tr>';
       html += `<td class="clickable-item" style="border:1px solid #ccc;padding:8px;text-align:right;font-size:0.85em;word-wrap:break-word;cursor:pointer;" onclick="openItemModal('${safeItemsKey}', '${itemKey}')">${item.itemsKey}</td>`;
       html += `<td class="clickable-item" style="border:1px solid #ccc;padding:8px;font-weight:bold;text-align:center;font-size:0.85em;cursor:pointer;" onclick="openItemModal('${safeItemsKey}', '${itemKey}')">${item.totalQuantity.toFixed(0)}</td>`;
       html += '</tr>';
@@ -2937,7 +2938,7 @@ function applyTraysFilters() {
         // נשתמש רק בערך הראשון שנמצא
         if (!orderMealItemMap.has(orderMealItemKey)) {
           orderMealItemMap.set(orderMealItemKey, containersValue);
-        } else {
+      } else {
           // אם יש כבר ערך, נדלג על השורה הזו (כי זה אותו פריט מאותה הזמנה ואותה ארוחה)
           console.log(`  ⚠️ דילוג על שורה ${idx + 1}: פריט="${partDes}" כבר קיים עבור הזמנה ${orderName} וארוחה "${mealName}"`);
         }
@@ -2998,9 +2999,9 @@ function applyTraysFilters() {
     html += '<tr>';
       html += `<td class="clickable-item" style="border:1px solid #ccc;padding:8px;text-align:right;font-size:0.85em;word-wrap:break-word;cursor:pointer;" onclick="openItemModal('${safePartDes}', '${itemKey}')">${item.partDes}</td>`;
       html += `<td class="clickable-item" style="border:1px solid #ccc;padding:8px;font-weight:bold;text-align:center;font-size:0.85em;cursor:pointer;" onclick="openItemModal('${safePartDes}', '${itemKey}')">${item.totalValue.toFixed(0)}</td>`;
-      html += '</tr>';
-    });
-    
+    html += '</tr>';
+  });
+  
     html += '</tbody></table></div></div>';
   }
   
@@ -3886,17 +3887,6 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       // רק פריטים שיש להם סוג קרטון
       if (!item.cartonType) return;
 
-      // סינון לפי labelsMode - אם זה "hot" או "cold", לסנן בהתאם
-      if (labelsMode === 'hot' || labelsMode === 'cold') {
-        const cartonTypeStr = String(item.cartonType || '').trim().toLowerCase();
-        const pspec6Str = String(item.pspec6 || item.PSPEC6 || '').trim().toLowerCase();
-        const isHot = cartonTypeStr.includes('חם') || cartonTypeStr.includes('חמים') || 
-                      pspec6Str.includes('חם') || pspec6Str.includes('חמים');
-        
-        if (labelsMode === 'hot' && !isHot) return; // אם ביקשנו רק חמים, לדלג על קרים
-        if (labelsMode === 'cold' && isHot) return; // אם ביקשנו רק קרים, לדלג על חמים
-      }
-
       // זיהוי אם זה חמגשית לפי PACKMETHODCODE, PACKDES, PSPEC1, או mainPackingMethod
       const packMethodCode = String(item.packMethodCode || '').toLowerCase();
       const packDes = String(item.packDes || '').toLowerCase();
@@ -3922,24 +3912,32 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
           packDes: item.packDes || item.PACKDES || ''
         });
       } else {
-        // עבור לא חמגשית - קיבוץ לפי partKey
+        // עבור לא חמגשית - קיבוץ לפי partKey (partName + partDes)
+        // אבל אם יש אותו פריט עם נתונים שונים (ארוחה שונה, אלרגני/לא), נשמור אותם בנפרד
       const partKey = `${item.partName}|${item.partDes}`;
         
         // זיהוי אם זה אלרגני או צמחוני
+        const pspec1Str = String(item.pspec1 || item.PSPEC1 || '').trim().toLowerCase();
+        const pspec6Str = String(item.pspec6 || item.PSPEC6 || '').trim().toLowerCase();
         const spec2Str = String(item.pspec2 || order.spec2 || '').toLowerCase();
         const partDesStr = String(item.partDes || '').toLowerCase();
         const partNameStr = String(item.partName || '').toLowerCase();
         
-        const isNoAllergenItem = spec2Str.includes('ללא אלרג') || spec2Str.includes('לא אלרג') ||
+        const isNoAllergenItem = pspec1Str.includes('ללא אלרגני') || pspec1Str.includes('לא אלרגני') ||
+                                  spec2Str.includes('ללא אלרג') || spec2Str.includes('לא אלרג') ||
                                   partDesStr.includes('ללא אלרג') || partDesStr.includes('לא אלרג') ||
                                   partNameStr.includes('ללא אלרג') || partNameStr.includes('לא אלרג') ||
                                   spec2Str.includes('אלרגני') || partDesStr.includes('אלרגני') || partNameStr.includes('אלרגני');
-        const isVegetarianItem = spec2Str.includes('צמחונ') || spec2Str.includes('טבעונ') ||
+        const isVegetarianItem = pspec6Str.includes('צמחוני') ||
+                                  spec2Str.includes('צמחונ') || spec2Str.includes('טבעונ') ||
                                   partDesStr.includes('צמחונ') || partDesStr.includes('טבעונ') ||
                                   partNameStr.includes('צמחונ') || partNameStr.includes('טבעונ');
         
-        if (!nonTrayItemsMap[partKey]) {
-          nonTrayItemsMap[partKey] = {
+        // יצירת מפתח ייחודי - כולל סימון אלרגני/צמחוני כדי להפריד ביניהם
+        const uniqueKey = isNoAllergenItem ? `${partKey}|אלרגני` : (isVegetarianItem ? `${partKey}|צמחוני` : partKey);
+        
+        if (!nonTrayItemsMap[uniqueKey]) {
+          nonTrayItemsMap[uniqueKey] = {
           partName: item.partName,
           partDes: item.partDes,
           cartonType: item.cartonType || '',
@@ -3953,29 +3951,29 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       }
       
       // סיכום הכמויות
-        nonTrayItemsMap[partKey].sumQuant += parseFloat(item.tQuant) || 0;
+        nonTrayItemsMap[uniqueKey].sumQuant += parseFloat(item.tQuant) || 0;
       
       // סיכום מיכלים - אם יש פרמטר 7 (CONTAINERS)
       if (item.containers !== '' && item.containers !== null && item.containers !== undefined) {
-          nonTrayItemsMap[partKey].sumContainers += parseFloat(item.containers) || 0;
+          nonTrayItemsMap[uniqueKey].sumContainers += parseFloat(item.containers) || 0;
       }
       
       // סיכום מארז 5 - אם יש פרמטר 8 (PACK5)
       if (item.pack5 !== '' && item.pack5 !== null && item.pack5 !== undefined) {
-          nonTrayItemsMap[partKey].sumPack5 += parseFloat(item.pack5) || 0;
+          nonTrayItemsMap[uniqueKey].sumPack5 += parseFloat(item.pack5) || 0;
       }
       
       // סיכום מארז 7 - אם יש פרמטר 8 (PACK7)
       if (item.pack7 !== '' && item.pack7 !== null && item.pack7 !== undefined) {
-          nonTrayItemsMap[partKey].sumPack7 += parseFloat(item.pack7) || 0;
+          nonTrayItemsMap[uniqueKey].sumPack7 += parseFloat(item.pack7) || 0;
         }
         
         // עדכון סטטוס אלרגני/צמחוני
         if (isNoAllergenItem) {
-          nonTrayItemsMap[partKey].hasNoAllergen = true;
+          nonTrayItemsMap[uniqueKey].hasNoAllergen = true;
         }
         if (isVegetarianItem) {
-          nonTrayItemsMap[partKey].isVegetarian = true;
+          nonTrayItemsMap[uniqueKey].isVegetarian = true;
         }
       }
     });
@@ -3999,60 +3997,71 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       
       const summary = [];
       
-      // עבור כל ארוחה בנפרד
+      // עבור כל ארוחה בנפרד - כל הפריטים יחד בשורה אחת עם "+" ביניהם
       Object.entries(itemsByMeal).forEach(([mealName, mealItems]) => {
-        // הפרדה בין פריטים רגילים לאלרגני
-        const normalItems = [];
-        const allergenItems = [];
+        // כל הפריטים יחד - ללא הפרדה לפי אלרגני
+        const allItems = mealItems;
         
-        mealItems.forEach(item => {
-          const pspec1 = String(item.pspec1 || item.PSPEC1 || '').trim().toLowerCase();
-          if (pspec1.includes('ללא אלרגני') || pspec1.includes('לא אלרגני')) {
-            allergenItems.push(item);
-          } else {
-            normalItems.push(item);
-          }
-        });
-        
-        // עיבוד פריטים רגילים
-        if (normalItems.length > 0) {
-          // הסרת כפילויות לפני יצירת המפתח
-          const uniqueItems = [...new Set(normalItems
-            .map(item => String(item.partDes || item.PARTDES || item.partName || item.PARTNAME || '').trim())
-            .filter(Boolean))];
+        // עיבוד כל הפריטים יחד - שורה אחת עם "+" ביניהם
+        if (allItems.length > 0) {
+          // איסוף כל שמות הפריטים (ללא כפילויות)
+          const uniquePartDes = [];
+          let hasNoAllergen = false;
+          let isVegetarian = false;
+          let eatQuantSmall = 0; // כמות לחמגשית קטנה
+          let eatQuantLarge = 0; // כמות לחמגשית גדולה
           
-          const itemsKey = uniqueItems.sort().join('+');
-          
-          // החמגשית נספרת פעם אחת לכל ארוחה - לוקחים את הכמות מהפריט הראשון
-          const quantity = parseFloat(normalItems[0]?.eatQuant || normalItems[0]?.EATQUANT || 0) || 0;
-          
-          summary.push({
-            itemsKey: itemsKey,
-            eatQuant: quantity,
-            totalQuantity: quantity,
-            hasNoAllergen: false,
-            isVegetarian: false
+          allItems.forEach((item, index) => {
+            const partDes = String(item.partDes || item.PARTDES || item.partName || item.PARTNAME || '').trim();
+            if (!partDes) return;
+            
+            // הוספת הפריט לרשימה (ללא כפילויות)
+            if (!uniquePartDes.includes(partDes)) {
+              uniquePartDes.push(partDes);
+            }
+            
+            // בדיקת אלרגני/צמחוני
+            const pspec1 = String(item.pspec1 || item.PSPEC1 || '').trim().toLowerCase();
+            if (pspec1.includes('ללא אלרגני') || pspec1.includes('לא אלרגני')) {
+              hasNoAllergen = true;
+            }
+            const pspec6 = String(item.pspec6 || item.PSPEC6 || '').trim().toLowerCase();
+            if (pspec6.includes('צמחוני')) {
+              isVegetarian = true;
+            }
+            
+            // זיהוי גודל חמגשית וסיכום כמות
+            const packDes = String(item.packDes || item.PACKDES || '').toLowerCase();
+            const packMethodCode = String(item.packMethodCode || item.PACKMETHODCODE || '').toLowerCase();
+            const isLarge = packDes.includes('גד') || packDes.includes('גדול') || packDes.includes('גדולה') ||
+                            packMethodCode.includes('גד') || packMethodCode.includes('גדול');
+            const eatQuant = parseFloat(item?.eatQuant || item?.EATQUANT || 0) || 0;
+            
+            if (isLarge) {
+              eatQuantLarge += eatQuant;
+            } else {
+              eatQuantSmall += eatQuant;
+            }
           });
-        }
-        
-        // עיבוד פריטים אלרגני
-        if (allergenItems.length > 0) {
-          // הסרת כפילויות לפני יצירת המפתח
-          const uniqueItems = [...new Set(allergenItems
-            .map(item => String(item.partDes || item.PARTDES || item.partName || item.PARTNAME || '').trim())
-            .filter(Boolean))];
           
-          const itemsKey = uniqueItems.sort().join('+');
+          // יצירת מפתח ייחודי לכל הפריטים יחד (מחוברים ב-"+")
+          const itemsKey = uniquePartDes.sort().join('+');
           
-          // סכימת הכמות מכל הפריטים בארוחה
-          const quantity = allergenItems.reduce((sum, item) => sum + (parseFloat(item?.eatQuant || item?.EATQUANT || 0) || 0), 0);
+          // אם יש אלרגני, להוסיף סימון
+          let finalItemsKey = itemsKey;
+      if (hasNoAllergen) {
+            finalItemsKey = itemsKey + ' (ללא אלרגנים)';
+          }
           
+          // הוספת פריט אחד עם כל הפריטים יחד
           summary.push({
-            itemsKey: itemsKey + ' (ללא אלרגנים)',
-            eatQuant: quantity,
-            totalQuantity: quantity,
-            hasNoAllergen: true,
-            isVegetarian: false
+            itemsKey: finalItemsKey,
+            eatQuant: eatQuantSmall + eatQuantLarge, // סה"כ כמות
+            eatQuantSmall: eatQuantSmall, // כמות לחמגשית קטנה
+            eatQuantLarge: eatQuantLarge, // כמות לחמגשית גדולה
+            totalQuantity: eatQuantSmall + eatQuantLarge,
+            hasNoAllergen: hasNoAllergen,
+            isVegetarian: isVegetarian
           });
         }
       });
@@ -4122,10 +4131,67 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
         totalOrder = itemsArray.reduce((sum, item) => sum + (item.sumQuant || 0), 0);
       }
 
-      html += '<div class="label-card" style="border:2px solid #000 !important;padding:10px !important;background:#fff !important;direction:rtl !important;font-family:Arial,sans-serif !important;page-break-inside:avoid !important;min-height:200px !important;box-sizing:border-box !important;display:flex !important;flex-direction:column !important;overflow:hidden !important;">';
+      // חישוב גובה שורה דינמי: (500px - 120px כותרת - 50px הערות - 40px פוטר) / מספר פריטים
+      const labelHeight = 500;
+      const headerHeight = 120; // הקטנתי מ-140 ל-120
+      const notesHeight = 50;
+      const footerHeight = 40;
+      const availableHeight = labelHeight - headerHeight - notesHeight - footerHeight;
+      const maxRowHeight = 40; // מקסימום 40px לשורה
+      const minRowHeight = 8; // מינימום 8px לשורה (הורדתי עוד יותר כדי שיכנסו יותר פריטים)
+      const allergenRowMinHeight = 20; // גובה מינימלי לשורות אלרגניות (הורדתי מ-22 ל-20)
+      const numberOfItems = itemsArray.length;
+      
+      // חישוב גובה שורה דינמי - כולל שורת כותרת
+      const totalRowsNeeded = numberOfItems + 1; // כולל כותרת
+      
+      // חישוב גובה שורה: אם יש הרבה פריטים, נצמצם את גובה השורות כדי שכולם יכנסו
+      let calculatedRowHeight = maxRowHeight;
+      if (numberOfItems > 0 && totalRowsNeeded > 0) {
+        // חישוב בסיסי - חלוקת הגובה הזמין בין כל השורות
+        // נשתמש ב-Math.floor כדי לוודא שכל השורות יכנסו
+        calculatedRowHeight = Math.floor(availableHeight / totalRowsNeeded);
+        
+        // אם יש פריטים אלרגניים, נבדוק אם צריך להקצות להם מקום נוסף
+        const allergenRowsCount = itemsArray.filter(item => item.hasNoAllergen || 
+          (item.itemsKey && (item.itemsKey.includes('אלרגני') || item.itemsKey.includes('ללא אלרגנים')))).length;
+        
+        if (allergenRowsCount > 0 && calculatedRowHeight < allergenRowMinHeight) {
+          // אם הגובה המחושב קטן מדי עבור שורות אלרגניות, נצטרך להקטין את כל השורות
+          // נחשב מחדש - נקצה מקום מינימלי לשורות אלרגניות ונחלק את השאר
+          const allergenRowsHeight = allergenRowsCount * allergenRowMinHeight;
+          const availableHeightForRegular = availableHeight - allergenRowsHeight;
+          const regularRowsCount = numberOfItems - allergenRowsCount;
+          const regularRowsNeeded = regularRowsCount + 1; // כולל כותרת
+          
+          if (regularRowsNeeded > 0) {
+            const regularRowHeight = Math.floor(availableHeightForRegular / regularRowsNeeded);
+            // נשתמש בגובה הקטן יותר, אבל לא פחות מ-10px
+            calculatedRowHeight = Math.max(minRowHeight, regularRowHeight);
+          } else {
+            calculatedRowHeight = allergenRowMinHeight;
+          }
+        }
+        
+        // אבל לא פחות מ-10px ולא יותר מ-40px
+        calculatedRowHeight = Math.max(minRowHeight, Math.min(maxRowHeight, calculatedRowHeight));
+        
+        // בדיקה נוספת - אם יש יותר מדי שורות, נקטין עוד יותר
+        // נחשב את הגובה הכולל הנדרש ונוודא שהוא לא עולה על הגובה הזמין
+        const totalHeightNeeded = (numberOfItems * calculatedRowHeight) + calculatedRowHeight; // כולל כותרת
+        if (totalHeightNeeded > availableHeight && calculatedRowHeight > minRowHeight) {
+          // נקטין את הגובה עד שכל השורות יכנסו
+          calculatedRowHeight = Math.floor(availableHeight / totalRowsNeeded);
+          calculatedRowHeight = Math.max(minRowHeight, calculatedRowHeight);
+        }
+      }
+      
+      const rowHeight = calculatedRowHeight;
+      
+      html += '<div class="label-card" style="border:2px solid #000 !important;padding:10px !important;background:#fff !important;direction:rtl !important;font-family:Arial,sans-serif !important;page-break-inside:avoid !important;height:500px !important;box-sizing:border-box !important;display:flex !important;flex-direction:column !important;overflow:hidden !important;position:relative !important;">';
       
       // אזור עליון - טבלה עם פרטי הלקוח ופרטי הלוגיסטיקה - גודל קבוע, לא דינמי
-      html += '<table style="width:100% !important;border-collapse:collapse !important;margin-bottom:15px !important;border:1px solid #000 !important;flex-shrink:0 !important;flex-grow:0 !important;">';
+      html += `<table style="width:100% !important;border-collapse:collapse !important;margin-bottom:15px !important;border:1px solid #000 !important;flex-shrink:0 !important;flex-grow:0 !important;height:${headerHeight}px !important;min-height:${headerHeight}px !important;">`;
       html += '<tbody>';
       
       // שורה ראשונה - לוגו כשרות ופרטי לקוח
@@ -4135,10 +4201,10 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       const safeAlt = kashrutLogoAlt.replace(/'/g, "&#39;").replace(/"/g, '&quot;');
       const allPaths = logoFileNames.map(f => getImagePath(f));
       const pathsStr = allPaths.map(p => `'${p.replace(/'/g, "\\'").replace(/"/g, '\\"')}'`).join(',');
-      const imgOnError = `(function(){var img=this;var paths=[${pathsStr}];var idx=paths.indexOf(img.src);if(idx<paths.length-1){img.src=paths[idx+1];}else{img.style.display='none';img.parentElement.innerHTML='<div style=&quot;font-size:0.65em !important;color:#000 !important;font-weight:bold !important;line-height:1.3 !important;text-align:center !important;&quot;>${safeAlt}</div>';}})()`;
+      const imgOnError = `(function(){var img=this;var paths=[${pathsStr}];var idx=paths.indexOf(img.src);if(idx<paths.length-1){img.src=paths[idx+1];}else{if(img && img.parentElement){img.style.display='none';img.parentElement.innerHTML='<div style=&quot;font-size:0.65em !important;color:#000 !important;font-weight:bold !important;line-height:1.3 !important;text-align:center !important;&quot;>${safeAlt}</div>';}}})()`;
       
-      html += `<td rowspan="3" style="width:120px !important;text-align:center !important;padding:8px 6px !important;border:1px solid #000 !important;background:#fff !important;vertical-align:middle !important;">`;
-      html += `<img src="${kashrutLogoPath}" alt="${safeAlt}" style="max-width:100% !important;max-height:100px !important;width:auto !important;height:auto !important;object-fit:contain !important;display:block !important;" onerror="${imgOnError}" />`;
+      html += `<td rowspan="3" style="width:100px !important;text-align:center !important;padding:4px !important;border:1px solid #000 !important;background:#fff !important;vertical-align:middle !important;">`;
+      html += `<img src="${kashrutLogoPath}" alt="${safeAlt}" style="max-width:100% !important;max-height:70px !important;width:auto !important;height:auto !important;object-fit:contain !important;display:block !important;" onerror="${imgOnError}" />`;
       html += '</td>';
       
       // פורמט תאריך - DD/MM/YY
@@ -4176,46 +4242,74 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       const addressText = order.address || order.state || '';
       console.log('📍 כתובת להזמנה', order.orderName, ':', order.address, '| state:', order.state, '| תוצאה:', addressText);
       
-      // פרטי לקוח ולוגיסטיקה - הגדלת טקסט משמעותית יותר
-      html += '<td style="text-align:right !important;padding:8px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.5 !important;"><strong>שם מוסד:</strong> ' + (order.custDes || '') + '</td>';
-      html += '<td style="text-align:right !important;padding:8px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.5 !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
+      // פרטי לקוח ולוגיסטיקה - הקטנתי את הטקסט והריווח
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>שם מוסד:</strong> ' + (order.custDes || '') + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
       html += '</tr>';
       
       html += '<tr>';
-      html += '<td style="text-align:right !important;padding:8px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.5 !important;"><strong>כתובת:</strong> ' + addressText + '</td>';
-      html += '<td style="text-align:right !important;padding:8px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.5 !important;"><strong>מס תחנה:</strong> ' + (order.pritDistrOrder || 0) + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>כתובת:</strong> ' + addressText + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>מס תחנה:</strong> ' + (order.pritDistrOrder || 0) + '</td>';
       html += '</tr>';
       
       html += '<tr>';
-      html += '<td style="text-align:right !important;padding:8px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.5 !important;"><strong>מס לקוח:</strong> ' + (order.custName || '') + (classText ? ' | <strong>כיתה:</strong> ' + classText : '') + '</td>';
-      html += '<td style="text-align:right !important;padding:8px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.5 !important;"><strong>תאריך:</strong> ' + formattedDate + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>מס לקוח:</strong> ' + (order.custName || '') + (classText ? ' | <strong>כיתה:</strong> ' + classText : '') + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>תאריך:</strong> ' + formattedDate + '</td>';
       html += '</tr>';
       
       html += '</tbody></table>';
+
+      // אזור שני - טבלה עם פרטי אריזה - גובה דינמי, מוגבל לגובה הזמין
+      // rowHeight כבר חושב נכון בהתאם למספר הפריטים, אז נשתמש בו ישירות
+      const finalRowHeight = rowHeight;
       
-      // אזור שני - טבלה עם פרטי אריזה - הגדלת טקסט משמעותית יותר - הקטנת flex כדי שהטבלה העליונה תהיה גדולה יותר
-      html += '<table class="label-card-table" style="width:100% !important;border-collapse:collapse !important;margin-bottom:10px !important;font-size:1.3em !important;border:1px solid #000 !important;flex:0.7 !important;table-layout:auto !important;">';
+      // חישוב padding וגודל טקסט דינמי - אם יש הרבה פריטים, נקטין את ה-padding והטקסט
+      // חישוב דינמי יותר - בהתאם לגובה השורה
+      let headerPadding, headerFontSize;
+      if (finalRowHeight < 15) {
+        headerPadding = '2px';
+        headerFontSize = '0.9em';
+      } else if (finalRowHeight < 20) {
+        headerPadding = '3px';
+        headerFontSize = '1.0em';
+      } else if (finalRowHeight < 25) {
+        headerPadding = '4px';
+        headerFontSize = '1.1em';
+      } else if (finalRowHeight < 30) {
+        headerPadding = '6px';
+        headerFontSize = '1.2em';
+      } else {
+        headerPadding = '8px';
+        headerFontSize = '1.4em';
+      }
+      
+      // עטיפה ב-div שמגביל את הגובה כדי שהטבלה לא תעבור את הפוטר
+      html += `<div style="flex:1 !important;max-height:${availableHeight}px !important;min-height:0 !important;display:flex !important;flex-direction:column !important;overflow:hidden !important;position:relative !important;">`;
+      html += `<table class="label-card-table" style="width:100% !important;border-collapse:collapse !important;margin-bottom:10px !important;border:1px solid #000 !important;table-layout:auto !important;display:table !important;">`;
       html += '<thead><tr>';
+      
+      // בדיקה אם יש גם חמגשית וגם תפזורת (mixed mode)
+      const hasTrayItems = itemsArray.some(item => item.isTray === true);
+      const hasNonTrayItems = itemsArray.some(item => item.isTray === false || !item.isTray);
+      const isMixedMode = hasTrayItems && hasNonTrayItems;
       
       // חישוב כמה פריטים יש - אם יש יותר מ-3, נחלק לשתי שורות
       const totalItems = itemsArray.length;
       const itemsPerRow = totalItems > 3 ? Math.ceil(totalItems / 2) : totalItems;
       
-      if (isTray) {
-        // עבור חמגשית - 2 עמודות
-        // אם זה מדבקה קרה - רק "כמות", אחרת "חמגשית קטנה/גדולה"
-        const headerBgColor = traySize === 'large' ? '#d3d3d3' : '#c8e6c9'; // גדולה=אפור, קטנה=ירוק
-        const headerText = isColdLabel ? 'כמות' : (traySize === 'large' ? 'חמגשית גדולה' : 'חמגשית קטנה');
-        // סדר: מוצר מימין, כמות משמאל
-        html += '<th style="border:1px solid #000 !important;padding:10px !important;background:#d3d3d3 !important;text-align:right !important;font-weight:bold !important;font-size:1.4em !important;">תיאור מוצר</th>';
-        html += `<th style="border:1px solid #000 !important;padding:10px !important;background:${headerBgColor} !important;text-align:center !important;font-weight:bold !important;font-size:1.4em !important;">${headerText}</th>`;
+      // כותרת טבלה - אם יש גם חמגשית וגם תפזורת, נציג את כל העמודות
+      if (isMixedMode || (hasTrayItems && !hasNonTrayItems)) {
+        // מצב מעורב או רק חמגשית - נציג טבלה עם כל העמודות
+        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:right !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">תיאור מוצר</th>`;
+        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">מיכלים</th>`;
+        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">מארז קטן</th>`;
+        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">מארז גדול</th>`;
       } else {
-        // עבור לא חמגשית - 4 עמודות: תיאור מוצר, מיכלים, מארז קטן (5), מארז גדול (7)
-        // סדר: מוצר מימין, מספרים משמאל
-        html += '<th style="border:1px solid #000 !important;padding:10px !important;background:#d3d3d3 !important;text-align:right !important;font-weight:bold !important;font-size:1.4em !important;">תיאור מוצר</th>';
-        html += '<th style="border:1px solid #000 !important;padding:10px !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:1.4em !important;">מיכלים</th>';
-        html += '<th style="border:1px solid #000 !important;padding:10px !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:1.4em !important;">מארז קטן</th>';
-        html += '<th style="border:1px solid #000 !important;padding:10px !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:1.4em !important;">מארז גדול</th>';
+        // רק תפזורת - 4 עמודות: תיאור מוצר, מיכלים, מארז קטן (5), מארז גדול (7)
+        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:right !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">תיאור מוצר</th>`;
+        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">מיכלים</th>`;
+        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">מארז קטן</th>`;
+        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">מארז גדול</th>`;
       }
       
       html += '</tr></thead><tbody>';
@@ -4224,6 +4318,18 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       const renderItemRow = (item) => {
         const rowClasses = [];
         let partDesText = item.itemsKey || item.partDes || '';
+        
+        
+        // אם partDesText ריק, ננסה לקחת מ-partName
+        if (!partDesText && item.partName) {
+          partDesText = item.partName;
+        }
+        
+        // אם עדיין ריק, נציג הודעה
+        if (!partDesText) {
+          console.warn('renderItemRow - partDesText ריק עבור פריט:', item);
+          partDesText = 'פריט ללא תיאור';
+        }
         
         // זיהוי אם זה אלרגני או צמחוני
         if (item.hasNoAllergen || partDesText.includes('אלרגני') || partDesText.includes('ללא אלרגנים')) {
@@ -4243,111 +4349,217 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
         
         let rowHtml = `<tr class="${rowClasses.join(' ')}">`;
         
-        if (isTray) {
-          // עבור חמגשית - 2 עמודות: מוצר מימין, כמות משמאל
-          // אם יש אלרגני/צמחוני - רקע חזק על כל השורה כולל תא הכמות
-          const cellBgColor = (isNoAllergenRow || isVegetarianRow) ? rowBgColor : (traySize === 'large' ? '#d3d3d3' : '#c8e6c9');
-          rowHtml += `<td style="border:1px solid #000 !important;padding:10px !important;text-align:right !important;background:${rowBgColor} !important;font-size:1.3em !important;min-height:60px !important;height:60px !important;vertical-align:middle !important;line-height:1.5 !important;">${partDesText}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:10px !important;text-align:center !important;font-weight:bold !important;background:${cellBgColor} !important;font-size:1.3em !important;min-height:60px !important;height:60px !important;vertical-align:middle !important;">${item.eatQuant ? item.eatQuant.toFixed(0) : (item.totalQuantity ? item.totalQuantity.toFixed(0) : '')}</td>`;
+        // חישוב padding וגודל טקסט דינמי - אם יש הרבה פריטים, נקטין את ה-padding והטקסט
+        // חישוב דינמי יותר - בהתאם לגובה השורה
+        // עבור שורות אלרגניות - נשתמש בגובה מינימלי גדול יותר, אבל לא יותר מדי
+        const isAllergenRow = item.hasNoAllergen || partDesText.includes('אלרגני') || partDesText.includes('ללא אלרגנים');
+        const allergenRowMinHeight = 20; // גובה מינימלי לשורות אלרגניות (הורדתי מ-22 ל-20)
+        const effectiveRowHeight = isAllergenRow ? Math.max(finalRowHeight, allergenRowMinHeight) : finalRowHeight;
+        
+        let cellPadding, cellFontSize, cellLineHeight;
+        if (effectiveRowHeight < 10) {
+          cellPadding = '1px';
+          cellFontSize = '0.7em';
+          cellLineHeight = '1.0';
+        } else if (effectiveRowHeight < 12) {
+          cellPadding = '1px';
+          cellFontSize = '0.75em';
+          cellLineHeight = '1.0';
+        } else if (effectiveRowHeight < 15) {
+          cellPadding = '2px';
+          cellFontSize = '0.85em';
+          cellLineHeight = '1.1';
+        } else if (effectiveRowHeight < 18) {
+          cellPadding = '3px';
+          cellFontSize = '0.9em';
+          cellLineHeight = '1.15';
+        } else if (effectiveRowHeight < 22) {
+          cellPadding = '3px';
+          cellFontSize = '0.95em';
+          cellLineHeight = '1.2';
+        } else if (effectiveRowHeight < 25) {
+          cellPadding = '4px';
+          cellFontSize = '1.0em';
+          cellLineHeight = '1.25';
+        } else if (effectiveRowHeight < 30) {
+          cellPadding = '5px';
+          cellFontSize = '1.1em';
+          cellLineHeight = '1.3';
         } else {
-          // עבור לא חמגשית - 4 עמודות: מוצר מימין, מספרים משמאל
+          cellPadding = '6px';
+          cellFontSize = '1.2em';
+          cellLineHeight = '1.3';
+        }
+        
+        // בדיקה אם זה פריט חמגשית או תפזורת
+        const itemIsTray = item.isTray === true;
+        
+        if (itemIsTray) {
+          // עבור חמגשית - 4 עמודות: מוצר, מיכלים (ריק), מארז קטן/גדול
+          const traySize = item.traySize || 'small';
+          const eatQuant = item.eatQuant || item.totalQuantity || 0;
+          const pack5 = traySize === 'small' ? eatQuant : 0;
+          const pack7 = traySize === 'large' ? eatQuant : 0;
+          
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:right !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${partDesText}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;"></td>`; // מיכלים ריק
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack5 > 0 ? pack5.toFixed(0) : ''}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack7 > 0 ? pack7.toFixed(0) : ''}</td>`;
+        } else {
+          // עבור תפזורת - 4 עמודות: מוצר מימין, מספרים משמאל
           const containers = item.sumContainers ? item.sumContainers.toFixed(0) : '';
           const pack5 = item.sumPack5 ? item.sumPack5.toFixed(0) : '';
           const pack7 = item.sumPack7 ? item.sumPack7.toFixed(0) : '';
           
-          rowHtml += `<td style="border:1px solid #000 !important;padding:10px !important;text-align:right !important;background:${rowBgColor} !important;font-size:1.3em !important;min-height:60px !important;height:60px !important;vertical-align:middle !important;line-height:1.5 !important;">${partDesText}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:10px !important;text-align:center !important;background:${rowBgColor} !important;font-size:1.3em !important;min-height:60px !important;height:60px !important;vertical-align:middle !important;">${containers}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:10px !important;text-align:center !important;background:${rowBgColor} !important;font-size:1.3em !important;min-height:60px !important;height:60px !important;vertical-align:middle !important;">${pack5}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:10px !important;text-align:center !important;background:${rowBgColor} !important;font-size:1.3em !important;min-height:60px !important;height:60px !important;vertical-align:middle !important;">${pack7}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:right !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${partDesText}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${containers}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack5}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack7}</td>`;
         }
         
         rowHtml += '</tr>';
         return rowHtml;
       };
       
-      // אם יש יותר מ-3 פריטים, לחלק לשתי שורות
-      if (totalItems > 3) {
-        const firstRowItems = itemsArray.slice(0, itemsPerRow);
-        const secondRowItems = itemsArray.slice(itemsPerRow);
-        
-        // שורה ראשונה
-        firstRowItems.forEach(item => {
-          html += renderItemRow(item);
-        });
-        
-        // שורה שנייה - אם יש פריטים נוספים
-        if (secondRowItems.length > 0) {
-          // הוספת שורה ריקה להפרדה (אופציונלי)
-          secondRowItems.forEach(item => {
-            html += renderItemRow(item);
-          });
-        }
-      } else {
-        // אם יש 3 פריטים או פחות, להציג כרגיל
-        itemsArray.forEach(item => {
-          html += renderItemRow(item);
-        });
-      }
+      // הצגת כל הפריטים במדבקה אחת - ללא הגבלה, גובה דינמי
+      itemsArray.forEach(item => {
+        html += renderItemRow(item);
+      });
       
       html += '</tbody></table>';
+      html += '</div>'; // סוגר את ה-div שמגביל את הגובה
       
-      // אזור שלישי - מקום להערות - הגדלת טקסט משמעותית יותר
-      html += '<div style="min-height:35px !important;margin-bottom:10px !important;padding:8px !important;border:1px solid #ccc !important;font-size:1.3em !important;flex-shrink:0 !important;">';
+      // אזור שלישי - מקום להערות - הגדלת טקסט משמעותית יותר (גובה קבוע)
+      html += `<div style="height:${notesHeight}px !important;min-height:${notesHeight}px !important;margin-bottom:10px !important;padding:8px !important;border:1px solid #ccc !important;font-size:1.3em !important;flex-shrink:0 !important;box-sizing:border-box !important;">`;
       // אם יש אלרגנים - להוסיף "ללא שומשום"
       if (hasNoAllergen) {
         html += '<div style="color:#d32f2f !important;font-weight:bold !important;font-size:1.3em !important;">ללא שומשום</div>';
       }
       html += '</div>';
       
-      // אזור רביעי - קונטקט טקסט בתחתית - הגדלת טקסט משמעותית יותר
-      html += `<div style="text-align:center !important;font-size:1.4em !important;font-weight:bold !important;padding:10px !important;border-top:2px solid #000 !important;flex-shrink:0 !important;">${contactText}</div>`;
+      // אזור רביעי - קונטקט טקסט בתחתית (position absolute - תמיד בתחתית)
+      html += `<div class="label-footer" style="position:absolute !important;bottom:0 !important;left:0 !important;right:0 !important;width:100% !important;text-align:center !important;font-size:0.85em !important;font-weight:normal !important;padding:6px !important;border-top:1px solid #ccc !important;background:#fff !important;box-sizing:border-box !important;height:${footerHeight}px !important;display:flex !important;flex-direction:column !important;justify-content:center !important;align-items:center !important;">${contactText}</div>`;
       
       html += '</div>';
     };
 
-    // עבור חמגשית - צריך לקבץ כמו בדוח אריזה חמה
-    if (trayItemsRaw.length > 0) {
-      // חלוקה לפי גודל חמגשית (קטנה/גדולה)
-      const smallTrayItems = [];
-      const largeTrayItems = [];
-      
-      trayItemsRaw.forEach(item => {
-        const packDes = String(item.packDes || item.PACKDES || '').toLowerCase();
-        const packMethodCode = String(item.packMethodCode || item.PACKMETHODCODE || '').toLowerCase();
-        const isLarge = packDes.includes('גד') || packDes.includes('גדול') || packDes.includes('גדולה') ||
-                        packMethodCode.includes('גד') || packMethodCode.includes('גדול');
+    // פונקציה עזר לזיהוי אם פריט הוא קר או חם
+    const isHotItem = (item) => {
+      const cartonTypeStr = String(item.cartonType || '').trim().toLowerCase();
+      const pspec6Str = String(item.pspec6 || item.PSPEC6 || '').trim().toLowerCase();
+      return cartonTypeStr.includes('חם') || cartonTypeStr.includes('חמים') || 
+             pspec6Str.includes('חם') || pspec6Str.includes('חמים');
+    };
+    
+    // קיבוץ כל הפריטים מאותה הזמנה יחד - הפרדה רק לפי חם/קר
+    // חלוקה לפי קר/חם
+    const hotTrayItems = [];
+    const coldTrayItems = [];
+    const hotNonTrayItems = [];
+    const coldNonTrayItems = [];
+    
+    // קיבוץ פריטי חמגשית לפי חם/קר
+    trayItemsRaw.forEach(item => {
+      if (isHotItem(item)) {
+        hotTrayItems.push(item);
+      } else {
+        coldTrayItems.push(item);
+      }
+    });
+    
+    // קיבוץ פריטי תפזורת לפי חם/קר
+    Object.entries(nonTrayItemsMap).forEach(([key, item]) => {
+      if (isHotItem(item)) {
+        hotNonTrayItems.push({
+          ...item,
+          itemsKey: item.partDes || item.partName || ''
+        });
+      } else {
+        coldNonTrayItems.push({
+          ...item,
+          itemsKey: item.partDes || item.partName || ''
+        });
+      }
+    });
+    
+    // יצירת מדבקה אחת לכל הזמנה - עבור חמים
+    if ((hotTrayItems.length > 0 || hotNonTrayItems.length > 0) && (labelsMode === 'all' || labelsMode === 'hot')) {
+      // קיבוץ כל פריטי החמגשית החמים
+      const allHotTrayItems = [];
+      if (hotTrayItems.length > 0) {
+        // חלוקה לפי גודל חמגשית (קטנה/גדולה)
+        const smallTrayItems = [];
+        const largeTrayItems = [];
         
-        if (isLarge) {
-          largeTrayItems.push(item);
-        } else {
-          smallTrayItems.push(item);
+        hotTrayItems.forEach(item => {
+          const packDes = String(item.packDes || item.PACKDES || '').toLowerCase();
+          const packMethodCode = String(item.packMethodCode || item.PACKMETHODCODE || '').toLowerCase();
+          const isLarge = packDes.includes('גד') || packDes.includes('גדול') || packDes.includes('גדולה') ||
+                          packMethodCode.includes('גד') || packMethodCode.includes('גדול');
+          
+          if (isLarge) {
+            largeTrayItems.push(item);
+          } else {
+            smallTrayItems.push(item);
+          }
+        });
+        
+        // קיבוץ פריטים לפי ארוחה
+        if (smallTrayItems.length > 0) {
+          const groupedSmallTray = groupTrayItemsByMeal(smallTrayItems, order);
+          allHotTrayItems.push(...groupedSmallTray.map(item => ({...item, isTray: true, traySize: 'small'})));
         }
-      });
-      
-      // קיבוץ פריטים כמו בדוח אריזה חמה - עבור חמגשית קטנה
-      if (smallTrayItems.length > 0) {
-        const groupedSmallTray = groupTrayItemsByMeal(smallTrayItems, order);
-        if (groupedSmallTray.length > 0) {
-          renderLabelSticker(groupedSmallTray, true, 'small', labelsMode);
+        if (largeTrayItems.length > 0) {
+          const groupedLargeTray = groupTrayItemsByMeal(largeTrayItems, order);
+          allHotTrayItems.push(...groupedLargeTray.map(item => ({...item, isTray: true, traySize: 'large'})));
         }
       }
       
-      // קיבוץ פריטים כמו בדוח אריזה חמה - עבור חמגשית גדולה
-      if (largeTrayItems.length > 0) {
-        const groupedLargeTray = groupTrayItemsByMeal(largeTrayItems, order);
-        if (groupedLargeTray.length > 0) {
-          renderLabelSticker(groupedLargeTray, true, 'large', labelsMode);
-        }
+      // יצירת מדבקה אחת עם כל הפריטים (חמגשית ותפזורת)
+      const allHotItems = [...allHotTrayItems, ...hotNonTrayItems.map(item => ({...item, isTray: false}))];
+      if (allHotItems.length > 0) {
+        renderLabelSticker(allHotItems, false, '', 'hot'); // false = mixed mode (יכול להכיל גם חמגשית וגם תפזורת)
       }
     }
     
-    // עבור לא חמגשית - פשוט להציג את הפריטים
-    if (Object.keys(nonTrayItemsMap).length > 0) {
-      const nonTrayItemsArray = Object.values(nonTrayItemsMap).map(item => ({
-        ...item,
-        itemsKey: item.partDes || item.partName || ''
-      }));
-      renderLabelSticker(nonTrayItemsArray, false, '', labelsMode);
+    // יצירת מדבקה אחת לכל הזמנה - עבור קרים
+    if ((coldTrayItems.length > 0 || coldNonTrayItems.length > 0) && (labelsMode === 'all' || labelsMode === 'cold')) {
+      // קיבוץ כל פריטי החמגשית הקרים
+      const allColdTrayItems = [];
+      if (coldTrayItems.length > 0) {
+        // חלוקה לפי גודל חמגשית (קטנה/גדולה)
+        const smallTrayItems = [];
+        const largeTrayItems = [];
+        
+        coldTrayItems.forEach(item => {
+          const packDes = String(item.packDes || item.PACKDES || '').toLowerCase();
+          const packMethodCode = String(item.packMethodCode || item.PACKMETHODCODE || '').toLowerCase();
+          const isLarge = packDes.includes('גד') || packDes.includes('גדול') || packDes.includes('גדולה') ||
+                          packMethodCode.includes('גד') || packMethodCode.includes('גדול');
+          
+          if (isLarge) {
+            largeTrayItems.push(item);
+          } else {
+            smallTrayItems.push(item);
+          }
+        });
+        
+        // קיבוץ פריטים לפי ארוחה
+        if (smallTrayItems.length > 0) {
+          const groupedSmallTray = groupTrayItemsByMeal(smallTrayItems, order);
+          allColdTrayItems.push(...groupedSmallTray.map(item => ({...item, isTray: true, traySize: 'small'})));
+        }
+        if (largeTrayItems.length > 0) {
+          const groupedLargeTray = groupTrayItemsByMeal(largeTrayItems, order);
+          allColdTrayItems.push(...groupedLargeTray.map(item => ({...item, isTray: true, traySize: 'large'})));
+        }
+      }
+      
+      // יצירת מדבקה אחת עם כל הפריטים (חמגשית ותפזורת)
+      const allColdItems = [...allColdTrayItems, ...coldNonTrayItems.map(item => ({...item, isTray: false}))];
+      if (allColdItems.length > 0) {
+        renderLabelSticker(allColdItems, false, '', 'cold'); // false = mixed mode (יכול להכיל גם חמגשית וגם תפזורת)
+      }
     }
   });
   
@@ -4813,9 +5025,9 @@ function downloadLabelsPDF() {
   printWindow.document.write('.label-row-no-allergen { background-color: #ff5252 !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
   printWindow.document.write('.label-row-vegetarian { background-color: #66bb6a !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
   printWindow.document.write('@media print { body { margin: 0; padding: 0; } .no-print { display: none !important; } h1 { display: none !important; } table { page-break-inside: auto; } tr { page-break-inside: avoid; } }');
-  printWindow.document.write('@media print { .label-card { height: 148.5mm; min-height: 148.5mm; max-height: 148.5mm; display: flex !important; flex-direction: column !important; } .label-card:nth-of-type(even) { page-break-after: always; } .label-card:nth-of-type(odd) { page-break-after: auto; } .label-card:last-of-type { page-break-after: auto; } }');
+  printWindow.document.write('@media print { .label-card { height: 500px !important; min-height: 500px !important; max-height: 500px !important; display: flex !important; flex-direction: column !important; position: relative !important; overflow: hidden !important; } .label-card:nth-of-type(even) { page-break-after: always; } .label-card:nth-of-type(odd) { page-break-after: auto; } .label-card:last-of-type { page-break-after: auto; } }');
   // שמירה על פרופורציות טבלאות בהדפסה - לא למתוח יותר מדי - שימוש ב-auto layout
-  printWindow.document.write('@media print { .label-card { overflow: hidden !important; box-sizing: border-box !important; } .label-card > table:first-of-type { width: 100% !important; margin-bottom: 15px !important; flex-grow: 0 !important; flex-shrink: 0 !important; } .label-card > table:first-of-type th, .label-card > table:first-of-type td { font-size: 1.3em !important; padding: 8px !important; line-height: 1.5 !important; } .label-card-table { width: 100% !important; max-width: 100% !important; table-layout: auto !important; flex: 0.7 !important; } .label-card-table th, .label-card-table td { font-size: 1.3em !important; padding: 10px !important; min-height: 60px !important; height: 60px !important; vertical-align: middle !important; line-height: 1.5 !important; } .label-card-table th { font-size: 1.4em !important; } .label-card-table th:first-child, .label-card-table td:first-child { min-width: 50% !important; } .label-card-table th:not(:first-child), .label-card-table td:not(:first-child) { width: auto !important; min-width: 60px !important; } }');
+  printWindow.document.write('@media print { .label-card { overflow: hidden !important; box-sizing: border-box !important; } .label-card > table:first-of-type { width: 100% !important; margin-bottom: 15px !important; flex-grow: 0 !important; flex-shrink: 0 !important; height: 140px !important; min-height: 140px !important; } .label-card > table:first-of-type th, .label-card > table:first-of-type td { font-size: 1.3em !important; padding: 8px !important; line-height: 1.5 !important; } .label-card-table { width: 100% !important; max-width: 100% !important; table-layout: auto !important; flex: 1 !important; max-height: 270px !important; overflow: hidden !important; } .label-card-table th, .label-card-table td { font-size: 1.3em !important; padding: 10px !important; vertical-align: middle !important; line-height: 1.5 !important; max-height: 40px !important; } .label-card-table th { font-size: 1.4em !important; } .label-card-table th:first-child, .label-card-table td:first-child { min-width: 50% !important; } .label-card-table th:not(:first-child), .label-card-table td:not(:first-child) { width: auto !important; min-width: 60px !important; } .label-footer { position: absolute !important; bottom: 0 !important; left: 0 !important; right: 0 !important; width: 100% !important; height: 40px !important; font-size: 0.85em !important; } }');
   printWindow.document.write('</style>');
   printWindow.document.write('</head>');
   printWindow.document.write('<body>');
