@@ -4037,10 +4037,15 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
                             packMethodCode.includes('גד') || packMethodCode.includes('גדול');
             const eatQuant = parseFloat(item?.eatQuant || item?.EATQUANT || 0) || 0;
             
+            // נשתמש בכמות מהפריט הראשון (כי כל הפריטים באותה ארוחה צריכים להיות עם אותה כמות)
             if (isLarge) {
-              eatQuantLarge += eatQuant;
+              if (eatQuantLarge === 0 && eatQuant > 0) {
+                eatQuantLarge = eatQuant; // רק אם עדיין לא נקבעה כמות
+              }
             } else {
-              eatQuantSmall += eatQuant;
+              if (eatQuantSmall === 0 && eatQuant > 0) {
+                eatQuantSmall = eatQuant; // רק אם עדיין לא נקבעה כמות
+              }
             }
           });
           
@@ -4054,15 +4059,54 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
           }
           
           // הוספת פריט אחד עם כל הפריטים יחד
-          summary.push({
-            itemsKey: finalItemsKey,
-            eatQuant: eatQuantSmall + eatQuantLarge, // סה"כ כמות
-            eatQuantSmall: eatQuantSmall, // כמות לחמגשית קטנה
-            eatQuantLarge: eatQuantLarge, // כמות לחמגשית גדולה
-            totalQuantity: eatQuantSmall + eatQuantLarge,
-            hasNoAllergen: hasNoAllergen,
-            isVegetarian: isVegetarian
-          });
+          // אם יש גם קטנה וגם גדולה, ניצור שני פריטים נפרדים
+          if (eatQuantSmall > 0 && eatQuantLarge > 0) {
+            // יש גם קטנה וגם גדולה - שני פריטים נפרדים
+            summary.push({
+              itemsKey: finalItemsKey,
+              eatQuant: eatQuantSmall,
+              eatQuantSmall: eatQuantSmall,
+              eatQuantLarge: 0,
+              totalQuantity: eatQuantSmall,
+              hasNoAllergen: hasNoAllergen,
+              isVegetarian: isVegetarian,
+              traySize: 'small'
+            });
+            summary.push({
+              itemsKey: finalItemsKey,
+              eatQuant: eatQuantLarge,
+              eatQuantSmall: 0,
+              eatQuantLarge: eatQuantLarge,
+              totalQuantity: eatQuantLarge,
+              hasNoAllergen: hasNoAllergen,
+              isVegetarian: isVegetarian,
+              traySize: 'large'
+            });
+          } else if (eatQuantSmall > 0) {
+            // רק קטנה
+            summary.push({
+              itemsKey: finalItemsKey,
+              eatQuant: eatQuantSmall,
+              eatQuantSmall: eatQuantSmall,
+              eatQuantLarge: 0,
+              totalQuantity: eatQuantSmall,
+              hasNoAllergen: hasNoAllergen,
+              isVegetarian: isVegetarian,
+              traySize: 'small'
+            });
+          } else if (eatQuantLarge > 0) {
+            // רק גדולה
+            summary.push({
+              itemsKey: finalItemsKey,
+              eatQuant: eatQuantLarge,
+              eatQuantSmall: 0,
+              eatQuantLarge: eatQuantLarge,
+              totalQuantity: eatQuantLarge,
+              hasNoAllergen: hasNoAllergen,
+              isVegetarian: isVegetarian,
+              traySize: 'large'
+            });
+          }
         }
       });
       
@@ -4297,8 +4341,31 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       const totalItems = itemsArray.length;
       const itemsPerRow = totalItems > 3 ? Math.ceil(totalItems / 2) : totalItems;
       
-      // כותרת טבלה - אם יש גם חמגשית וגם תפזורת, נציג את כל העמודות
-      if (isMixedMode || (hasTrayItems && !hasNonTrayItems)) {
+      // כותרת טבלה - אם יש רק חמגשית (ללא תפזורת), נציג 2 עמודות בלבד
+      if (hasTrayItems && !hasNonTrayItems && !isMixedMode) {
+        // רק חמגשית - נציג 2 עמודות: כמות ותיאור מוצר
+        // בדיקה אם יש גם קטנות וגם גדולות
+        const trayItems = itemsArray.filter(item => item.isTray === true);
+        const hasSmall = trayItems.some(item => item.traySize === 'small' || (item.eatQuantSmall > 0 && item.eatQuantLarge === 0));
+        const hasLarge = trayItems.some(item => item.traySize === 'large' || (item.eatQuantLarge > 0 && item.eatQuantSmall === 0));
+        
+        // אם יש רק קטנות - ירוק, אם יש רק גדולות - אפור, אם יש גם וגם - נציג כל קבוצה בנפרד
+        let headerBgColor = '#c8e6c9'; // ירוק - ברירת מחדל
+        let headerText = 'חמגשית קטנה';
+        if (hasLarge && !hasSmall) {
+          headerBgColor = '#d3d3d3'; // אפור - רק גדולות
+          headerText = 'חמגשית גדולה';
+        } else if (hasSmall && !hasLarge) {
+          headerBgColor = '#c8e6c9'; // ירוק - רק קטנות
+          headerText = 'חמגשית קטנה';
+        } else {
+          // יש גם וגם - נציג "כמות" (כי כל קבוצה תוצג בנפרד)
+          headerText = 'כמות';
+        }
+        
+        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#e0e0e0 !important;text-align:right !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">תיאור מוצר</th>`;
+        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:${headerBgColor} !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">${headerText}</th>`;
+      } else if (isMixedMode || (hasTrayItems && !hasNonTrayItems)) {
         // מצב מעורב או רק חמגשית - נציג טבלה עם כל העמודות
         html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:right !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">תיאור מוצר</th>`;
         html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">מיכלים</th>`;
@@ -4394,8 +4461,29 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
         // בדיקה אם זה פריט חמגשית או תפזורת
         const itemIsTray = item.isTray === true;
         
-        if (itemIsTray) {
-          // עבור חמגשית - 4 עמודות: מוצר, מיכלים (ריק), מארז קטן/גדול
+        // בדיקה אם יש רק חמגשית (ללא תפזורת) - נשתמש במשתנים שנקבעו לפני הפונקציה
+        const isTrayOnly = hasTrayItems && !hasNonTrayItems && !isMixedMode;
+        
+        if (itemIsTray && isTrayOnly) {
+          // עבור חמגשית בלבד - 2 עמודות: כמות ותיאור מוצר
+          const traySize = item.traySize || (item.eatQuantSmall > 0 && item.eatQuantLarge === 0 ? 'small' : 'large');
+          const eatQuant = item.eatQuant || item.totalQuantity || 0;
+          
+          // זיהוי גודל חמגשית - קטנה=ירוק, גדולה=אפור
+          // אבל אם זה אלרגני או צמחוני, נשתמש ב-rowBgColor
+          let quantityBgColor = traySize === 'large' ? '#d3d3d3' : '#c8e6c9'; // גדולה=אפור, קטנה=ירוק
+          let productBgColor = '#e0e0e0'; // רקע רגיל לתיאור מוצר
+          
+          // אם זה אלרגני או צמחוני, נשתמש ב-rowBgColor לכל התאים
+          if (isNoAllergenRow || isVegetarianRow) {
+            quantityBgColor = rowBgColor;
+            productBgColor = rowBgColor;
+          }
+          
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:right !important;background:${productBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${partDesText}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${quantityBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${eatQuant > 0 ? eatQuant.toFixed(0) : ''}</td>`;
+        } else if (itemIsTray) {
+          // עבור חמגשית במצב מעורב - 4 עמודות: מוצר, מיכלים (ריק), מארז קטן/גדול
           const traySize = item.traySize || 'small';
           const eatQuant = item.eatQuant || item.totalQuantity || 0;
           const pack5 = traySize === 'small' ? eatQuant : 0;
