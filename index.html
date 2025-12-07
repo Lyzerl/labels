@@ -4101,7 +4101,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
         // אם זה נתיב file:// (קובץ מקומי)
         if (window.location.protocol === 'file:') {
           // נשתמש בנתיב יחסי
-          return './images/' + fileName;
+          return './' + fileName;
         } else {
           // אם זה http/https - נשתמש בנתיב יחסי למיקום הנוכחי
           const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
@@ -5454,6 +5454,7 @@ window.showTab = function(tabName, button) {
 
 </body>
 </html>
+
 
 
 
