@@ -1393,12 +1393,11 @@ async function fetchData() {
     return;
   }
   
-  // בניית הפילטר - נסה פורמט תאריך שונה
+  // בניית הפילטר
   const dateStr = dateInput + 'T00:00:00Z';
-  // נסה בלי מרכאות - אולי השרת לא צריך אותם
   let filter = `$filter=DUEDATE eq ${dateStr}`;
   
-  // הוספת פילטר סניף - BRANCHNAME הוא string אז צריך להמיר מספר למחרוזת
+  // הוספת פילטר סניף
   if (branchSelect === 'south') {
     filter += ` and BRANCHNAME le '1'`;
   } else if (branchSelect === 'north') {
@@ -1408,111 +1407,87 @@ async function fetchData() {
   console.log('Filter:', filter);
   
   // איפוס
+  const startTime = Date.now();
   statusDiv.className = 'status loading';
-  statusDiv.innerHTML = '<div class="loader"></div><p>טוען נתונים...</p>';
+  statusDiv.innerHTML = '<div class="loader"></div><p>טוען נתונים מהשרת...</p>';
   fetchBtn.disabled = true;
   downloadBtn.disabled = true;
   recordCount.textContent = '0';
   pageCountEl.textContent = '0';
   tableContainer.innerHTML = '';
   currentData = [];
-  currentStructuredData = {}; // איפוס גם נתונים מובנים
+  currentStructuredData = {};
   
   try {
     let allData = [];
-    let pageSize = 100;
-    let skip = 0;
     let pageNum = 0;
-    let hasMore = true;
+    let fetchId = null;
     
-    while (hasMore && pageNum < 400) {
-      pageNum++;
-      const fullFilter = `${filter}&$top=${pageSize}&$skip=${skip}`;
-      const url = `${PROXY_URL}?filter=${encodeURIComponent(fullFilter)}`;
-      
-      console.log(`Fetching page ${pageNum}...`);
-      statusDiv.innerHTML = `<div class="loader"></div><p>טוען דף ${pageNum}... (${allData.length} רשומות)</p>`;
-      
-      let response;
+    // ========== משיכה יציבה - כל ה-pagination בצד השרת ==========
+    // בקשה אחת לשרת שמחזיר את כל הנתונים
+    const url = `${PROXY_URL}?filter=${encodeURIComponent(filter)}&fetchAll=true`;
+    
+    console.log('🔒 Stable fetch - single request to server');
+    console.log('URL:', url);
+    
+    let response;
+    try {
+      response = await fetch(url);
+    } catch (fetchError) {
+      console.error('Fetch error:', fetchError);
+      throw new Error(`שגיאת רשת: ${fetchError.message}. בדוק את החיבור לשרת.`);
+    }
+    
+    if (!response.ok) {
+      let errorText = '';
       try {
-        response = await fetch(url);
-      } catch (fetchError) {
-        console.error('Fetch error:', fetchError);
-        throw new Error(`שגיאת רשת: ${fetchError.message}. בדוק את החיבור לשרת.`);
+        errorText = await response.text();
+        console.error('Response error:', errorText);
+      } catch (e) {
+        errorText = 'לא ניתן לקרוא את התשובה';
       }
       
-      if (!response.ok) {
-        // נסה לקרוא את התשובה מהשרת כדי לראות מה הבעיה
-        let errorText = '';
-        try {
-          errorText = await response.text();
-          console.error('Response error:', errorText);
-        } catch (e) {
-          errorText = 'לא ניתן לקרוא את התשובה';
-        }
-        
-        // הודעת שגיאה ברורה יותר
-        if (response.status === 502) {
-          throw new Error('שגיאת שרת (502 Bad Gateway): השרת לא מגיב. נסה שוב מאוחר יותר.');
-        } else if (response.status === 503) {
-          throw new Error('השרת זמנית לא זמין (503). נסה שוב מאוחר יותר.');
-        } else {
-          throw new Error(`שגיאת שרת ${response.status}: ${errorText.substring(0, 200)}`);
-        }
-      }
-      
-      const jsonData = await response.json();
-      const data = jsonData.value || jsonData;
-      
-      if (!data || data.length === 0) {
-        hasMore = false;
+      if (response.status === 502) {
+        throw new Error('שגיאת שרת (502 Bad Gateway): השרת לא מגיב. נסה שוב מאוחר יותר.');
+      } else if (response.status === 503) {
+        throw new Error('השרת זמנית לא זמין (503). נסה שוב מאוחר יותר.');
       } else {
-        // הוספת הנתונים כמו שהם - ללא שינויים
-        // יצירת עותקים עמוקים כדי לא לשנות את הנתונים המקוריים
-        const dataCopy = data.map(row => {
-          // יצירת עותק עמוק של כל השורה
-          const newRow = {};
-          Object.keys(row).forEach(key => {
-            newRow[key] = row[key];
-          });
-          return newRow;
-        });
-        
-        // לוגים לבדיקה - הדפסת דוגמה מהדף הראשון
-        if (pageNum === 1 && dataCopy.length > 0) {
-          console.log('📊 דוגמה לנתונים מהדף הראשון (3 שורות ראשונות):');
-          dataCopy.slice(0, 3).forEach((row, idx) => {
-            console.log(`  שורה ${idx + 1} מהשרת:`, {
-              ORDNAME: row.ORDNAME,
-              PARTDES: row.PARTDES,
-              PARTNAME: row.PARTNAME,
-              EATQUANT: row.EATQUANT,
-              TQUANT: row.TQUANT,
-              PACKMETHODCODE: row.PACKMETHODCODE
-            });
-          });
-        }
-        
-        // הוספת הנתונים בסדר שבו הם הגיעו מהשרת (ללא שינויים)
-        allData = allData.concat(dataCopy);
-        recordCount.textContent = allData.length;
-        pageCountEl.textContent = pageNum;
-        
-        // לוג לבדיקה - הדפסת כמה שורות מהדף הנוכחי
-        if (pageNum <= 3) {
-          console.log(`📄 דף ${pageNum}: ${dataCopy.length} שורות`);
-          if (dataCopy.length > 0) {
-            console.log(`  דוגמה ראשונה: ORDNAME=${dataCopy[0].ORDNAME}, PARTDES=${dataCopy[0].PARTDES}, PARTNAME=${dataCopy[0].PARTNAME}`);
-          }
-        }
-        
-        if (data.length < pageSize) {
-          hasMore = false;
-        } else {
-          skip += pageSize;
-          await new Promise(r => setTimeout(r, 100));
-        }
+        throw new Error(`שגיאת שרת ${response.status}: ${errorText.substring(0, 200)}`);
       }
+    }
+    
+    const jsonData = await response.json();
+    allData = jsonData.value || jsonData;
+    
+    // שמירת מטא-דאטה מהשרת
+    if (jsonData.meta) {
+      fetchId = jsonData.meta.fetchId;
+      pageNum = jsonData.meta.pagesLoaded || 1;
+      console.log('📦 Server meta:', jsonData.meta);
+    } else {
+      fetchId = 'local-' + Date.now();
+      pageNum = 1;
+    }
+    
+    // עדכון התצוגה
+    const fetchDuration = ((Date.now() - startTime) / 1000).toFixed(1);
+    recordCount.textContent = allData.length;
+    pageCountEl.textContent = pageNum;
+    
+    console.log(`✅ Fetch complete: ${allData.length} records, ${fetchDuration}s, ID: ${fetchId}`);
+    
+    // לוגים לבדיקה
+    if (allData.length > 0) {
+      console.log('📊 דוגמה לנתונים (3 שורות ראשונות):');
+      allData.slice(0, 3).forEach((row, idx) => {
+        console.log(`  שורה ${idx + 1}:`, {
+          ORDNAME: row.ORDNAME,
+          PARTDES: row.PARTDES,
+          PARTNAME: row.PARTNAME,
+          EATQUANT: row.EATQUANT,
+          TQUANT: row.TQUANT
+        });
+      });
     }
     
     if (allData.length === 0) {
@@ -1635,7 +1610,8 @@ async function fetchData() {
       // הצגת טאבים
       document.getElementById('tabsContainer').style.display = 'flex';
       statusDiv.className = 'status success';
-      statusDiv.textContent = `✓ הצלחה! נמשכו ${allData.length} רשומות (${Object.keys(structuredData).length} הזמנות, ${SELECTED_FIELDS.length} עמודות)`;
+      const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+      statusDiv.innerHTML = `✓ הצלחה! נמשכו <strong>${allData.length}</strong> רשומות (<strong>${Object.keys(structuredData).length}</strong> הזמנות) בזמן <strong>${totalTime}</strong> שניות<br><small style="color:#666;">מזהה משיכה: ${fetchId || 'לא זמין'}</small>`;
       downloadBtn.disabled = false;
     }
     
@@ -1814,7 +1790,7 @@ function createTable(data) {
       search: 'חיפוש בכל העמודות:',
       searchPlaceholder: 'הקלד לחיפוש...'
     },
-    pageLength: 25,
+    paging: false, // ללא עמודים - טבלה אחת גדולה
     order: [], // ללא מיון - השורות יוצגו בסדר שבו הן הגיעו מהשרת
     ordering: true, // מאפשר למשתמש למיין ידנית
     scrollX: true,
