@@ -1262,6 +1262,10 @@ tr:nth-child(even) {
 </div>
 
 <script>
+// ביטול console.log לשיפור ביצועים (Production mode)
+console.log = function() {};
+console.warn = function() {};
+
 // ***** שים כאן את ה-URL של ה-Cloudflare Worker שלך! *****
 const PROXY_URL = 'https://priority-proxy.lyzer-64d.workers.dev';
 
@@ -1488,21 +1492,7 @@ function organizeAsNoSQL(rawData) {
     });
   });
   
-  if (ordersWithTrays.length > 0) {
-    console.log('📊 הזמנות עם חמגשיות:', ordersWithTrays.length);
-    ordersWithTrays.forEach(order => {
-      const trayItems = order.items.filter(item => {
-        const pm = String(item.packMethodCode || '').trim().toLowerCase();
-        return pm.includes('חמגשית');
-      });
-      console.log(`  הזמנה ${order.orderName}: סה"כ ${order.items.length} פריטים, ${trayItems.length} חמגשיות`);
-      if (trayItems.length > 0) {
-        trayItems.forEach(item => {
-          console.log(`    - ${item.partDes} (${item.packMethodCode})`);
-        });
-      }
-    });
-  }
+  // Debug logs removed for performance
   
   return orders;
 }
@@ -1684,124 +1674,32 @@ async function fetchData() {
       statusDiv.textContent = 'לא נמצאו נתונים';
       tableContainer.innerHTML = '<p style="text-align:center;padding:50px;color:#999;">לא נמצאו הזמנות</p>';
     } else {
-      // שמירת הנתונים הגולמיים בנפרד - לא ישתנו לעולם
-      // יצירת עותק עמוק אמיתי באמצעות JSON (הדרך הבטוחה ביותר)
-      const allDataRaw = JSON.parse(JSON.stringify(allData));
+      // עיבוד מהיר - עותק אחד בלבד
+      statusDiv.innerHTML = '<div class="loader"></div><p>מעבד נתונים...</p>';
       
-      // ביצוע חישובים - מיכלים ומארזים
-      // חשוב: יצירת עותק עמוק של הנתונים לפני חישובים כדי לא לשנות את המקור
-      statusDiv.innerHTML = '<div class="loader"></div><p>מבצע חישובים...</p>';
+      // ביצוע חישובים ישירות על הנתונים
+      const allDataWithCalculations = calculateContainersAndPacks(allData);
       
-      // יצירת עותק עמוק של כל הנתונים לפני חישובים (עוד פעם, רק כדי להיות בטוחים)
-      const allDataForCalculations = JSON.parse(JSON.stringify(allData));
-      
-      // ביצוע חישובים על העותק בלבד
-      const allDataWithCalculations = calculateContainersAndPacks(allDataForCalculations);
-      
-      // המרה למבנה NoSQL - קיבוץ לפי הזמנה (על העותק עם החישובים)
+      // המרה למבנה NoSQL
       const structuredData = organizeAsNoSQL(allDataWithCalculations);
       
-      // שמירת הנתונים המקוריים (ללא חישובים) לבדיקה
-      // והנתונים עם חישובים לטבלה הכללית ולדוחות
-      // חשוב: allDataRaw הוא עותק עמוק אמיתי שלא ישתנה לעולם
-      // שמירה בסדר המקורי מהשרת - ללא שינויים
-      currentData = allDataWithCalculations; // נתונים עם חישובים לטבלה הכללית (כדי לראות CONTAINERS, PACK5, PACK7)
-      currentStructuredData = structuredData; // שמירת הנתונים המובנים
+      // שמירת הנתונים
+      currentData = allDataWithCalculations;
+      currentStructuredData = structuredData;
       
-      // שמירה גלובלית לבדיקה
-      window.allDataRaw = allDataRaw; // נתונים גולמיים לבדיקה (ללא חישובים)
-      window.allDataWithCalculations = allDataWithCalculations; // נתונים עם חישובים לבדיקה
-      window.allDataOriginal = JSON.parse(JSON.stringify(allData)); // עותק נוסף לבדיקה
-      
-      // בדיקה שהנתונים הגולמיים לא השתנו אחרי החישובים
-      if (allDataRaw.length > 0 && allData.length > 0) {
-        const firstRaw = allDataRaw[0];
-        const firstOriginal = allData[0];
-        if (firstRaw.ORDNAME !== firstOriginal.ORDNAME || 
-            firstRaw.PARTDES !== firstOriginal.PARTDES ||
-            firstRaw.PARTNAME !== firstOriginal.PARTNAME) {
-          console.error('❌ נתונים גולמיים השתנו! זה לא אמור לקרות!');
-        } else {
-          console.log('✅ בדיקה: נתונים גולמיים לא השתנו');
-        }
-        
-        // בדיקת סדר - השוואת 5 שורות ראשונות
-        let orderChanged = false;
-        for (let i = 0; i < Math.min(5, allDataRaw.length, allData.length); i++) {
-          if (allDataRaw[i].ORDNAME !== allData[i].ORDNAME || 
-              allDataRaw[i].PARTDES !== allData[i].PARTDES ||
-              allDataRaw[i].PARTNAME !== allData[i].PARTNAME) {
-            orderChanged = true;
-            console.warn(`⚠️ סדר השתנה בשורה ${i}:`, {
-              raw: {ORDNAME: allDataRaw[i].ORDNAME, PARTDES: allDataRaw[i].PARTDES},
-              original: {ORDNAME: allData[i].ORDNAME, PARTDES: allData[i].PARTDES}
-            });
-            break;
-          }
-        }
-        if (!orderChanged) {
-          console.log('✅ בדיקה: סדר הנתונים נשמר');
-        }
-      }
-      
-      console.log('✅ נתונים נמשכו:', allData.length, 'רשומות');
-      console.log('✅ נתונים מובנים:', Object.keys(structuredData).length, 'הזמנות');
-      console.log('✅ טבלה כללית תציג:', allDataWithCalculations.length, 'רשומות עם חישובים (CONTAINERS, PACK5, PACK7)');
-      console.log('✅ נתונים גולמיים נשמרו ב-allDataRaw לבדיקה:', allDataRaw.length, 'רשומות');
-      
-      // בדיקת דוגמה - הדפסת כמה שורות ראשונות כדי לוודא שהנתונים נכונים
-      if (allDataRaw.length > 0) {
-        console.log('📊 דוגמה לנתונים ראשונים מהשרת (3 שורות):');
-        allDataRaw.slice(0, 3).forEach((row, idx) => {
-          console.log(`  שורה ${idx + 1}:`, {
-            ORDNAME: row.ORDNAME,
-            PARTDES: row.PARTDES,
-            PARTNAME: row.PARTNAME,
-            EATQUANT: row.EATQUANT,
-            TQUANT: row.TQUANT
-          });
-        });
-      }
-      
-      // בדיקת שיטות אריזה בנתונים הגולמיים
-      if (allDataRaw.length > 0) {
-        const rawPackMethods = [...new Set(allDataRaw.map(r => String(r.PACKMETHODCODE || '').trim()).filter(Boolean))];
-        console.log('📊 שיטות אריזה בנתונים הגולמיים:', rawPackMethods);
-        const rawTrayCount = allDataRaw.filter(r => {
-          const pm = String(r.PACKMETHODCODE || '').trim();
-          return pm === 'חמגשית 101' || pm.includes('חמגשית 101');
-        }).length;
-        console.log('📊 מספר שורות עם חמגשית 101 בנתונים הגולמיים:', rawTrayCount);
-      }
-      
-      // בדיקת דוגמה להזמנה
-      const sampleOrder = Object.values(structuredData)[0];
-      if (sampleOrder) {
-        console.log('✅ דוגמה להזמנה:', {
-          orderName: sampleOrder.orderName,
-          itemsCount: sampleOrder.items.length,
-          sampleItems: sampleOrder.items.slice(0, 2).map(item => ({
-            partDes: item.partDes,
-            packMethodCode: item.packMethodCode,
-            pspec1: item.pspec1
-          }))
-        });
-      }
-      
-      // הצגת הטבלה הכללית עם הנתונים עם חישובים (כדי לראות CONTAINERS, PACK5, PACK7)
-      // הנתונים הגולמיים נשמרים ב-allDataRaw לבדיקה
+      // הצגת הטבלה והדוחות
       createTable(allDataWithCalculations);
-      // יצירת דוחות נוספים מהנתונים המובנים
       createSummaryReport(structuredData);
       createTraysReport(structuredData);
       createAllergensReport(structuredData);
       createLabelsReport(structuredData);
       createAllergenLabelsReport(structuredData);
+      
       // הצגת טאבים
       document.getElementById('tabsContainer').style.display = 'flex';
       statusDiv.className = 'status success';
       const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-      statusDiv.innerHTML = `✓ הצלחה! נמשכו <strong>${allData.length}</strong> רשומות (<strong>${Object.keys(structuredData).length}</strong> הזמנות) בזמן <strong>${totalTime}</strong> שניות<br><small style="color:#666;">מזהה משיכה: ${fetchId || 'לא זמין'}</small>`;
+      statusDiv.innerHTML = `✓ הצלחה! נמשכו <strong>${allData.length}</strong> רשומות (<strong>${Object.keys(structuredData).length}</strong> הזמנות) בזמן <strong>${totalTime}</strong> שניות`;
       downloadBtn.disabled = false;
     }
     
@@ -1814,51 +1712,6 @@ async function fetchData() {
   }
 }
 
-// פונקציית דיבוג ידנית להשוואת נתוני הזמנה בין Priority לבין הטבלה שלנו
-// שימוש מהקונסול: debugOrder('SO123456')
-function debugOrder(orderName) {
-  const code = String(orderName || '').trim();
-  if (!code) {
-    console.warn('debugOrder: יש להעביר מספר הזמנה תקין');
-    return;
-  }
-
-  const raw = (window.allDataRaw || []).filter(r => String(r.ORDNAME || '').trim() === code);
-  const withCalc = (window.allDataWithCalculations || []).filter(r => String(r.ORDNAME || '').trim() === code);
-
-  console.log('🔍 debugOrder - הזמנה:', code);
-  console.log('📊 נתונים גולמיים מהשרת (allDataRaw):', raw.length, 'שורות');
-  raw.forEach((row, idx) => {
-    console.log(`  RAW #${idx + 1}`, {
-      ORDNAME: row.ORDNAME,
-      PARTDES: row.PARTDES,
-      PARTNAME: row.PARTNAME,
-      PACKMETHODCODE: row.PACKMETHODCODE,
-      MEALNAME: row.MEALNAME,
-      EATQUANT: row.EATQUANT,
-      TQUANT: row.TQUANT
-    });
-  });
-
-  console.log('📊 נתונים אחרי חישובים (allDataWithCalculations):', withCalc.length, 'שורות');
-  withCalc.forEach((row, idx) => {
-    console.log(`  CALC #${idx + 1}`, {
-      ORDNAME: row.ORDNAME,
-      PARTDES: row.PARTDES,
-      PARTNAME: row.PARTNAME,
-      PACKMETHODCODE: row.PACKMETHODCODE,
-      MEALNAME: row.MEALNAME,
-      EATQUANT: row.EATQUANT,
-      TQUANT: row.TQUANT,
-      CONTAINERS: row.CONTAINERS,
-      PACK5: row.PACK5,
-      PACK7: row.PACK7
-    });
-  });
-
-  console.log('✅ סיום debugOrder להזמנה', code, '- השווה מול Priority לראות אם העיוות קיים כבר בנתונים הגולמיים או נוצר אחרי החישובים.');
-}
-
 function createTable(data) {
   const tableContainer = document.getElementById('tableContainer');
   
@@ -1868,108 +1721,34 @@ function createTable(data) {
     dataTable = null;
   }
   
-  // שימוש בשדות הנבחרים
   const headers = SELECTED_FIELDS;
   
-  // בניית הטבלה - כל שורה = פריט
-  // חשוב: הנתונים מוצגים עם חישובים (CONTAINERS, PACK5, PACK7) שנוספו על בסיס הנתונים מהשרת
-  // הנתונים הגולמיים נשמרים ב-allDataRaw לבדיקה
+  // בניית הטבלה
   let html = '<table id="mainTable" class="display nowrap" style="width:100%"><thead><tr>';
   
-  // יצירת כותרות בעברית
+  // כותרות
   headers.forEach(h => {
-    const hebrewName = FIELD_NAMES_HEBREW[h] || h;
-    html += `<th>${hebrewName}</th>`;
+    html += `<th>${FIELD_NAMES_HEBREW[h] || h}</th>`;
   });
   
   html += '</tr></thead><tbody>';
   
-  // יצירת שורות מהנתונים - מוצגים בדיוק כמו שהם, ללא שינויים
-  // חשוב: הנתונים מוצגים בסדר שבו הם הגיעו מהשרת, ללא שינויים
-  // בדיקת כפילויות לפי ORDNAME + PARTDES + PARTNAME
-  const seenRows = new Map();
-  const duplicateRows = [];
-  
-  // שמירת סדר המקורי - ללא שינויים
-  data.forEach((row, index) => {
-    const rowKey = `${row.ORDNAME || ''}|${row.PARTDES || ''}|${row.PARTNAME || ''}`;
-    
-    if (seenRows.has(rowKey)) {
-      duplicateRows.push({
-        index: index,
-        rowKey: rowKey,
-        existingIndex: seenRows.get(rowKey),
-        ordName: row.ORDNAME,
-        partDes: row.PARTDES,
-        partName: row.PARTNAME
-      });
-    } else {
-      seenRows.set(rowKey, index);
-    }
-    
-    // יצירת שורה - בדיוק כמו שהנתונים הגיעו מהשרת
+  // שורות - ישירות ללא בדיקות מיותרות
+  data.forEach(row => {
     html += '<tr>';
     headers.forEach(field => {
-      // הצגת הערך בדיוק כמו שהוא - ללא עיבוד או שינויים
-      // שימוש ישיר בערך מהנתונים הגולמיים
       let value = row[field] !== undefined && row[field] !== null ? row[field] : '';
-      
-      // עיבוד מיוחד לפרמטר 7 - הצגה עם 2 ספרות אחרי הנקודה
       if (field === 'Y_9964_5_ESH' && value !== '') {
         const numValue = parseFloat(value);
-        if (!isNaN(numValue)) {
-          value = numValue.toFixed(2);
-        }
+        if (!isNaN(numValue)) value = numValue.toFixed(2);
       }
-      
       html += `<td>${value}</td>`;
     });
     html += '</tr>';
   });
   
-  // לוג לבדיקה - הדפסת 3 שורות ראשונות כדי לוודא שהסדר נכון
-  if (data.length > 0) {
-    console.log('📊 טבלה כללית - 3 שורות ראשונות (לבדיקת סדר):');
-    data.slice(0, 3).forEach((row, idx) => {
-      console.log(`  שורה ${idx + 1}: ORDNAME=${row.ORDNAME}, PARTDES=${row.PARTDES}, PARTNAME=${row.PARTNAME}`);
-    });
-  }
-  
-  if (duplicateRows.length > 0) {
-    console.warn('⚠️ נמצאו שורות כפולות בטבלה הכללית:', duplicateRows.length);
-    duplicateRows.slice(0, 10).forEach(dup => {
-      console.warn(`  שורה ${dup.index}: ${dup.rowKey} (קיימת גם בשורה ${dup.existingIndex})`);
-    });
-  }
-  
   html += '</tbody></table>';
   tableContainer.innerHTML = html;
-  
-  console.log('📊 טבלה כללית - סה"כ שורות עם חישובים:', data.length, '(כולל CONTAINERS, PACK5, PACK7)');
-  
-  // בדיקת הזמנות עם חמגשיות בטבלה הכללית
-  const ordersWithTraysInTable = {};
-  data.forEach(row => {
-    const pm = String(row.PACKMETHODCODE || '').trim().toLowerCase();
-    if (pm.includes('חמגשית')) {
-      const orderName = String(row.ORDNAME || '').trim();
-      if (!ordersWithTraysInTable[orderName]) {
-        ordersWithTraysInTable[orderName] = [];
-      }
-      ordersWithTraysInTable[orderName].push({
-        partDes: row.PARTDES || '',
-        packMethodCode: row.PACKMETHODCODE || '',
-        eatQuant: row.EATQUANT || 0
-      });
-    }
-  });
-  
-  if (Object.keys(ordersWithTraysInTable).length > 0) {
-    console.log('📊 טבלה כללית - הזמנות עם חמגשיות:', Object.keys(ordersWithTraysInTable).length);
-    Object.entries(ordersWithTraysInTable).forEach(([orderName, items]) => {
-      console.log(`  הזמנה ${orderName}: ${items.length} פריטי חמגשית`);
-    });
-  }
   
   // יצירת טבלת DataTables עם סינונים וחיפוש
   // חשוב: order: [] מבטיח שהשורות יוצגו בסדר שבו הן הגיעו, ללא מיון
