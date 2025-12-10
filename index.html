@@ -934,6 +934,168 @@ tr:nth-child(even) {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+/* מדבקות אלרגנים - 32 בעמוד A4 (4 עמודות × 8 שורות) */
+.allergen-labels-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  direction: rtl;
+}
+
+.allergen-page-header {
+  width: 210mm;
+  padding: 3mm 0;
+  text-align: center;
+  font-weight: bold;
+  font-size: 12pt;
+  background: #f0f0f0;
+  border: 1px solid #333;
+  margin-bottom: 0;
+}
+
+.allergen-labels-page {
+  width: 210mm;
+  height: 283mm; /* 297mm - 5mm top - 9mm bottom */
+  padding: 0;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(4, 52.5mm); /* 4 עמודות */
+  grid-template-rows: repeat(8, 35.375mm); /* 8 שורות - 283mm / 8 */
+  justify-content: center;
+  align-content: start;
+  background: white;
+  margin-bottom: 15px;
+  page-break-after: always;
+  border: 1px solid #ccc;
+}
+
+.allergen-label {
+  width: 52.5mm;
+  height: 35.375mm;
+  border: 1px solid #333;
+  box-sizing: border-box;
+  padding: 1.5mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-family: Arial, sans-serif;
+  font-size: 7pt;
+  direction: rtl;
+  background: white;
+  overflow: hidden;
+}
+
+.allergen-label-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid #333;
+  padding-bottom: 0.5mm;
+  margin-bottom: 0.5mm;
+}
+
+.allergen-label-top-info {
+  text-align: right;
+}
+
+.allergen-label-route-station {
+  font-size: 10pt;
+  font-weight: bold;
+  line-height: 1.2;
+}
+
+.allergen-label-date-info {
+  text-align: left;
+  font-size: 7pt;
+  line-height: 1.2;
+}
+
+.allergen-label-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1mm;
+}
+
+.allergen-label-customer {
+  font-size: 14pt;
+  font-weight: bold;
+  text-align: center;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.allergen-label-address {
+  font-size: 11pt;
+  font-weight: bold;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.allergen-label-class {
+  font-size: 12pt;
+  font-weight: bold;
+  text-align: center;
+}
+
+.allergen-label-footer {
+  border-top: 1px solid #333;
+  padding-top: 0.5mm;
+  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.allergen-label-dish {
+  font-size: 8pt;
+  line-height: 1.1;
+  flex: 1;
+  text-align: center;
+}
+
+.allergen-label-quantity {
+  font-size: 8pt;
+  font-weight: bold;
+}
+
+@media print {
+  .allergen-page-header {
+    display: none !important;
+  }
+  
+  .allergen-labels-page {
+    margin: 0;
+    padding: 0;
+    page-break-after: always;
+    box-shadow: none;
+    border: none;
+    height: 279mm;
+  }
+  
+  .allergen-label {
+    border: 1px solid #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  #tabAllergenLabels .report-controls,
+  #tabAllergenLabels .labels-actions {
+    display: none !important;
+  }
+}
+
+@media screen {
+  .allergen-labels-page {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+}
 </style>
 </head>
 <body>
@@ -980,6 +1142,7 @@ tr:nth-child(even) {
     <button class="tab-btn" onclick="showTab('trays', this)">🔥 דוח אריזה חמה</button>
     <button class="tab-btn" onclick="showTab('allergens', this)">🚫 דוח אלרגנים</button>
     <button class="tab-btn" onclick="showTab('labels', this)">🏷️ דוח מדבקות</button>
+    <button class="tab-btn" onclick="showTab('allergenLabels', this)">🥜 מדבקות אלרגנים</button>
   </div>
 
   <!-- תוכן טאבים -->
@@ -1050,12 +1213,36 @@ tr:nth-child(even) {
       <select id="packingMethodFilter">
         <option value="">הכל</option>
       </select>
+      <label>סדר מיון:</label>
+      <select id="labelsSortModeFilter">
+        <option value="distribution">קו חלוקה + סדר הפצה</option>
+        <option value="loading">לפי סדר העמסה</option>
+      </select>
     </div>
     <div class="labels-actions">
       <button class="btn download" onclick="downloadLabelsCSV()" id="downloadLabelsBtn">📥 הורד CSV</button>
       <button class="btn download" onclick="downloadLabelsPDF()" id="downloadLabelsPDFBtn">📄 הורד PDF</button>
     </div>
     <div class="table-container" id="labelsContainer"></div>
+  </div>
+
+  <div id="tabAllergenLabels" class="tab-content">
+    <div class="report-controls">
+      <label>קו חלוקה:</label>
+      <select id="allergenLabelsDistrLineFilter">
+        <option value="">הכל</option>
+      </select>
+      <label>סדר מיון:</label>
+      <select id="allergenLabelsSortFilter">
+        <option value="distribution">קו חלוקה + סדר הפצה</option>
+        <option value="customer">לפי שם לקוח</option>
+      </select>
+    </div>
+    <div class="labels-actions">
+      <button class="btn download" onclick="printAllergenLabels()" id="printAllergenLabelsBtn">🖨️ הדפס מדבקות</button>
+      <button class="btn download" onclick="downloadAllergenLabelsPDF()" id="downloadAllergenLabelsPDFBtn">📄 הורד PDF</button>
+    </div>
+    <div class="table-container" id="allergenLabelsContainer"></div>
   </div>
 </div>
 
@@ -1607,6 +1794,7 @@ async function fetchData() {
       createTraysReport(structuredData);
       createAllergensReport(structuredData);
       createLabelsReport(structuredData);
+      createAllergenLabelsReport(structuredData);
       // הצגת טאבים
       document.getElementById('tabsContainer').style.display = 'flex';
       statusDiv.className = 'status success';
@@ -3701,11 +3889,15 @@ function createLabelsReport(data) {
     packingMethodSelect.appendChild(option);
   });
   
+  // בורר סדר מיון
+  const sortModeSelect = document.getElementById('labelsSortModeFilter');
+  
   // פונקציה לסינון
   const applyFilters = () => {
     const selectedLine = distrLineSelect.value;
     const selectedPackingMethod = packingMethodSelect.value;
     const labelsMode = labelsTempSelect.value || 'all';
+    const sortMode = sortModeSelect ? sortModeSelect.value : 'distribution';
     
     if (orders) {
       // עבודה עם מבנה NoSQL
@@ -3734,7 +3926,7 @@ function createLabelsReport(data) {
         }));
       }
       
-      renderLabelsTableNoSQL(filteredOrders, container, labelsMode);
+      renderLabelsTableNoSQL(filteredOrders, container, labelsMode, sortMode);
     } else {
       let filtered = flatData;
       if (selectedLine) {
@@ -3778,10 +3970,12 @@ function createLabelsReport(data) {
   distrLineSelect.onchange = applyFilters;
   packingMethodSelect.onchange = applyFilters;
   labelsTempSelect.onchange = applyFilters;
+  if (sortModeSelect) sortModeSelect.onchange = applyFilters;
   
   // הצגה ראשונית
   if (orders) {
-    renderLabelsTableNoSQL(orders, container, labelsTempSelect.value || 'all');
+    const initialSortMode = sortModeSelect ? sortModeSelect.value : 'distribution';
+    renderLabelsTableNoSQL(orders, container, labelsTempSelect.value || 'all', initialSortMode);
     window.labelsData = orders;
   } else {
     renderLabelsTable(flatData, container);
@@ -3790,20 +3984,143 @@ function createLabelsReport(data) {
 }
 
 // רינדור דוח מדבקות ממבנה NoSQL (יותר נקי ויעיל)
-function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
-  // המרה למערך ומיון לפי קו חלוקה, סדר הפצה והזמנה
-  let ordersArray = Object.values(orders).sort((a, b) => {
-    if (a.distrLineCode !== b.distrLineCode) return (a.distrLineCode || '').localeCompare(b.distrLineCode || '');
-    if (a.pritDistrOrder !== b.pritDistrOrder) return (a.pritDistrOrder || 0) - (b.pritDistrOrder || 0);
-    return (a.orderName || '').localeCompare(b.orderName || '');
-  });
+function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode = 'distribution') {
+  // פונקציה לזיהוי כשרות - האם זה חב"ד או בד"ץ
+  const isChabad = (order) => {
+    const spec2 = String(order.spec2 || '').trim().toLowerCase();
+    // בדיקה אם הכשרות מכילה חב"ד
+    if (spec2.includes('חבד') || spec2.includes('חב"ד') || spec2.includes('חב\'ד') ||
+        spec2.includes('נחלת') || spec2.includes('ירוסלבסקי')) {
+      return true;
+    }
+    // בדיקה גם ברמת הפריט - pspec6
+    const hasAnyChabadItem = order.items && order.items.some(item => {
+      const pspec6 = String(item.pspec6 || '').trim().toLowerCase();
+      return pspec6.includes('חבד') || pspec6.includes('חב"ד') || pspec6.includes('חב\'ד');
+    });
+    return hasAnyChabadItem;
+  };
+  
+  // פונקציה לזיהוי שיטת אריזה - האם זה חמגשית או תפזורת
+  const isTrayOrder = (order) => {
+    // בדיקה אם ההזמנה מכילה פריטי חמגשית
+    if (!order.items) return false;
+    return order.items.some(item => {
+      const packMethodCode = String(item.packMethodCode || '').toLowerCase();
+      const packDes = String(item.packDes || '').toLowerCase();
+      const pspec1 = String(item.pspec1 || '').toLowerCase();
+      return packMethodCode.includes('חמגשית') || packDes.includes('חמגשית') || pspec1.includes('חמגשית');
+    });
+  };
   
   // סינון רק לקוחות מילגם - כל מה שמתחיל ב"מילגם" (גם "מילגם צפון" וכו')
+  let ordersArray = Object.values(orders);
   const totalBeforeFilter = ordersArray.length;
   ordersArray = ordersArray.filter(order => {
     const spec1 = String(order.spec1 || '').trim();
     return spec1.startsWith('מילגם');
   });
+  
+  // מיון לפי סדר המבוקש
+  if (sortMode === 'loading') {
+    // מיון לפי סדר העמסה - קיבוץ לפי כשרות ושיטת אריזה עם המשכיות
+    
+    // קיבוץ לפי קו חלוקה
+    const ordersByDistrLine = {};
+    ordersArray.forEach(order => {
+      const lineCode = order.distrLineCode || 'ללא_קו';
+      if (!ordersByDistrLine[lineCode]) {
+        ordersByDistrLine[lineCode] = [];
+      }
+      ordersByDistrLine[lineCode].push(order);
+    });
+    
+    // מיון קווי החלוקה
+    const sortedLines = Object.keys(ordersByDistrLine).sort();
+    
+    // מיון מתקדם עם המשכיות בין קווים
+    // הקטגוריות: תפזורת-בדץ (0), חמגשית-בדץ (1), חמגשית-חבד (2), תפזורת-חבד (3)
+    // הסדר הבסיסי: 0 → 1 → 2 → 3
+    // בקו הבא - ממשיכים מאותה כשרות וסוג
+    let lastKashrut = 'badatz'; // מתחילים עם בדץ
+    let lastPackType = 'tafzoret'; // מתחילים עם תפזורת
+    
+    ordersArray = []; // נאפס ונבנה מחדש
+    
+    sortedLines.forEach((lineCode, lineIndex) => {
+      const lineOrders = ordersByDistrLine[lineCode];
+      
+      // חלוקה ל-4 קטגוריות
+      const categories = {
+        'tafzoret-badatz': [],
+        'tray-badatz': [],
+        'tray-chabad': [],
+        'tafzoret-chabad': []
+      };
+      
+      lineOrders.forEach(order => {
+        const chabad = isChabad(order);
+        const tray = isTrayOrder(order);
+        
+        if (!tray && !chabad) {
+          categories['tafzoret-badatz'].push(order);
+        } else if (tray && !chabad) {
+          categories['tray-badatz'].push(order);
+        } else if (tray && chabad) {
+          categories['tray-chabad'].push(order);
+        } else {
+          categories['tafzoret-chabad'].push(order);
+        }
+      });
+      
+      // מיון בתוך כל קטגוריה לפי סדר הפצה
+      Object.keys(categories).forEach(cat => {
+        categories[cat].sort((a, b) => {
+          if (a.pritDistrOrder !== b.pritDistrOrder) return (a.pritDistrOrder || 0) - (b.pritDistrOrder || 0);
+          return (a.orderName || '').localeCompare(b.orderName || '');
+        });
+      });
+      
+      // קביעת סדר הקטגוריות לפי המשכיות מהקו הקודם
+      let categoryOrder;
+      if (lastKashrut === 'badatz' && lastPackType === 'tafzoret') {
+        // סדר: תפזורת-בדץ → חמגשית-בדץ → חמגשית-חבד → תפזורת-חבד
+        categoryOrder = ['tafzoret-badatz', 'tray-badatz', 'tray-chabad', 'tafzoret-chabad'];
+      } else if (lastKashrut === 'badatz' && lastPackType === 'tray') {
+        // סדר: חמגשית-בדץ → תפזורת-בדץ → תפזורת-חבד → חמגשית-חבד
+        categoryOrder = ['tray-badatz', 'tafzoret-badatz', 'tafzoret-chabad', 'tray-chabad'];
+      } else if (lastKashrut === 'chabad' && lastPackType === 'tray') {
+        // סדר: חמגשית-חבד → תפזורת-חבד → תפזורת-בדץ → חמגשית-בדץ
+        categoryOrder = ['tray-chabad', 'tafzoret-chabad', 'tafzoret-badatz', 'tray-badatz'];
+      } else { // chabad + tafzoret
+        // סדר: תפזורת-חבד → חמגשית-חבד → חמגשית-בדץ → תפזורת-בדץ
+        categoryOrder = ['tafzoret-chabad', 'tray-chabad', 'tray-badatz', 'tafzoret-badatz'];
+      }
+      
+      // הוספה לפי הסדר שנקבע
+      categoryOrder.forEach(cat => {
+        ordersArray.push(...categories[cat]);
+      });
+      
+      // עדכון הכשרות והסוג האחרונים לקו הבא
+      // מחפשים את הקטגוריה האחרונה שבאמת הייתה לה הזמנות
+      for (let i = categoryOrder.length - 1; i >= 0; i--) {
+        if (categories[categoryOrder[i]].length > 0) {
+          const lastCat = categoryOrder[i];
+          lastKashrut = lastCat.includes('chabad') ? 'chabad' : 'badatz';
+          lastPackType = lastCat.includes('tray') ? 'tray' : 'tafzoret';
+          break;
+        }
+      }
+    });
+  } else {
+    // מיון רגיל - לפי קו חלוקה, סדר הפצה והזמנה
+    ordersArray.sort((a, b) => {
+      if (a.distrLineCode !== b.distrLineCode) return (a.distrLineCode || '').localeCompare(b.distrLineCode || '');
+      if (a.pritDistrOrder !== b.pritDistrOrder) return (a.pritDistrOrder || 0) - (b.pritDistrOrder || 0);
+      return (a.orderName || '').localeCompare(b.orderName || '');
+    });
+  }
   
   console.log('📊 דוח מדבקות - סה"כ הזמנות לפני סינון:', totalBeforeFilter);
   console.log('📊 דוח מדבקות - סה"כ הזמנות אחרי סינון מילגם:', ordersArray.length);
@@ -4221,10 +4538,13 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
       const safeAlt = kashrutLogoAlt.replace(/'/g, "&#39;").replace(/"/g, '&quot;');
       const allPaths = logoFileNames.map(f => getImagePath(f));
       const pathsStr = allPaths.map(p => `'${p.replace(/'/g, "\\'").replace(/"/g, '\\"')}'`).join(',');
-      const imgOnError = `(function(){var img=this;var paths=[${pathsStr}];var idx=paths.indexOf(img.src);if(idx<paths.length-1){img.src=paths[idx+1];}else{if(img && img.parentElement){img.style.display='none';img.parentElement.innerHTML='<div style=&quot;font-size:0.65em !important;color:#000 !important;font-weight:bold !important;line-height:1.3 !important;text-align:center !important;&quot;>${safeAlt}</div>';}}})()`;
+      const imgOnError = `(function(){var img=this;var paths=[${pathsStr}];var idx=paths.indexOf(img.src);if(idx<paths.length-1){img.src=paths[idx+1];}else{if(img && img.parentElement && img.parentElement.parentElement){img.parentElement.parentElement.innerHTML='<div style=&quot;display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;&quot;><div style=&quot;font-size:0.65em !important;color:#000 !important;font-weight:bold !important;line-height:1.3 !important;text-align:center !important;&quot;>${safeAlt}</div><div style=&quot;font-size:0.9em !important;font-weight:bold !important;color:#000 !important;margin-top:3px !important;&quot;>בשרי</div></div>';}}})()`;
       
       html += `<td rowspan="3" style="width:100px !important;text-align:center !important;padding:4px !important;border:1px solid #000 !important;background:#fff !important;vertical-align:middle !important;">`;
-      html += `<img src="${kashrutLogoPath}" alt="${safeAlt}" style="max-width:100% !important;max-height:70px !important;width:auto !important;height:auto !important;object-fit:contain !important;display:block !important;" onerror="${imgOnError}" />`;
+      html += `<div style="display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;">`;
+      html += `<img src="${kashrutLogoPath}" alt="${safeAlt}" style="max-width:100% !important;max-height:65px !important;width:auto !important;height:auto !important;object-fit:contain !important;display:block !important;" onerror="${imgOnError}" />`;
+      html += `<div style="font-size:0.9em !important;font-weight:bold !important;color:#000 !important;margin-top:3px !important;">בשרי</div>`;
+      html += `</div>`;
       html += '</td>';
       
       // פורמט תאריך - DD/MM/YY
@@ -4342,17 +4662,19 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
         html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#e0e0e0 !important;text-align:right !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">תיאור מוצר</th>`;
         html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:${headerBgColor} !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">${headerText}</th>`;
       } else if (isMixedMode || (hasTrayItems && !hasNonTrayItems)) {
-        // מצב מעורב או רק חמגשית - נציג טבלה עם כל העמודות
+        // מצב מעורב או רק חמגשית - נציג טבלה עם כל העמודות, כמות בצד שמאל
         html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:right !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">תיאור מוצר</th>`;
         html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">מיכלים</th>`;
         html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">מארז קטן</th>`;
         html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">מארז גדול</th>`;
+        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">משקל</th>`;
       } else {
-        // רק תפזורת - 4 עמודות: תיאור מוצר, מיכלים, מארז קטן (5), מארז גדול (7)
+        // רק תפזורת - 5 עמודות: תיאור מוצר, מיכלים, מארז קטן (5), מארז גדול (7), כמות (בצד שמאל)
         html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:right !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">תיאור מוצר</th>`;
         html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">מיכלים</th>`;
         html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">מארז קטן</th>`;
         html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">מארז גדול</th>`;
+        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">משקל</th>`;
       }
       
       html += '</tr></thead><tbody>';
@@ -4459,7 +4781,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:right !important;background:${productBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${partDesText}</td>`;
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${quantityBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${eatQuant > 0 ? eatQuant.toFixed(0) : ''}</td>`;
         } else if (itemIsTray) {
-          // עבור חמגשית במצב מעורב - 4 עמודות: מוצר, מיכלים (ריק), מארז קטן/גדול
+          // עבור חמגשית במצב מעורב - 5 עמודות: מוצר, מיכלים (ריק), מארז קטן/גדול, כמות (ריק בצד שמאל)
           const traySize = item.traySize || 'small';
           const eatQuant = item.eatQuant || item.totalQuantity || 0;
           const pack5 = traySize === 'small' ? eatQuant : 0;
@@ -4469,8 +4791,12 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;"></td>`; // מיכלים ריק
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack5 > 0 ? pack5.toFixed(0) : ''}</td>`;
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack7 > 0 ? pack7.toFixed(0) : ''}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;"></td>`; // כמות ריק לחמגשית
         } else {
-          // עבור תפזורת - 4 עמודות: מוצר מימין, מספרים משמאל
+          // עבור תפזורת - 5 עמודות: מוצר מימין, מיכלים, מארז קטן, מארז גדול, כמות (בצד שמאל)
+          // כמות - TQUANT מהשרת, עם עשרוניות אם יש
+          const rawQuantity = item.sumQuant || 0;
+          const quantity = rawQuantity > 0 ? (rawQuantity % 1 === 0 ? rawQuantity.toFixed(0) : rawQuantity.toFixed(2)) : '';
           const containers = item.sumContainers ? item.sumContainers.toFixed(0) : '';
           const pack5 = item.sumPack5 ? item.sumPack5.toFixed(0) : '';
           const pack7 = item.sumPack7 ? item.sumPack7.toFixed(0) : '';
@@ -4479,6 +4805,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all') {
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${containers}</td>`;
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack5}</td>`;
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack7}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${quantity}</td>`;
         }
         
         rowHtml += '</tr>';
@@ -5693,6 +6020,327 @@ function downloadPackingCSV() {
   link.href = URL.createObjectURL(blob);
   link.download = `packing_optimization_${document.getElementById('dateInput').value}.csv`;
   link.click();
+}
+
+// ========================================
+// מדבקות אלרגנים - 32 בעמוד A4
+// ========================================
+
+// דוח מדבקות אלרגנים
+function createAllergenLabelsReport(data) {
+  const container = document.getElementById('allergenLabelsContainer');
+  const distrLineSelect = document.getElementById('allergenLabelsDistrLineFilter');
+  const sortSelect = document.getElementById('allergenLabelsSortFilter');
+  
+  if (!container) {
+    console.error('❌ אלמנט לא נמצא למדבקות אלרגנים');
+    return;
+  }
+  
+  if (!data || (Array.isArray(data) && data.length === 0) || (!Array.isArray(data) && Object.keys(data).length === 0)) {
+    console.warn('⚠️ אין נתונים למדבקות אלרגנים');
+    container.innerHTML = '<p style="text-align:center;padding:50px;color:#999;">אין נתונים להצגה</p>';
+    return;
+  }
+  
+  // המרה לנתונים שטוחים
+  let flatData = Array.isArray(data) ? data : Object.values(data).flatMap(order => {
+    if (!order || !order.items || !Array.isArray(order.items)) {
+      return [];
+    }
+    return order.items.map(item => ({
+      ...item,
+      orderName: order.orderName,
+      custDes: order.custDes || '',
+      custName: order.custName || '',
+      distrLineCode: order.distrLineCode || '',
+      distrLineDes: order.distrLineDes || '',
+      pritDistrOrder: order.pritDistrOrder || 0,
+      pritClassname: order.pritClassname || '',
+      dueDate: order.dueDate || '',
+      spec1: order.spec1 || '',
+      spec2: order.spec2 || ''
+    }));
+  });
+  
+  // סינון רק פריטים ללא אלרגנים (אלרגני סיני מוקפץ וכו')
+  const allergenFreeData = flatData.filter(r => {
+    const pspec1 = String(r.pspec1 || r.PSPEC1 || '').trim().toLowerCase();
+    return pspec1.includes('ללא אלרגני') || pspec1.includes('לא אלרגני') || pspec1.includes('אלרגני');
+  });
+  
+  console.log('📊 מדבקות אלרגנים - סה"כ נתונים:', flatData.length, 'פריטים ללא אלרגנים:', allergenFreeData.length);
+  
+  // איסוף קווי חלוקה ייחודיים
+  const distrLines = [...new Set(allergenFreeData.map(r => r.distrLineCode || r.DISTRLINECODE || '').filter(Boolean))].sort();
+  distrLineSelect.innerHTML = '<option value="">הכל</option>';
+  distrLines.forEach(line => {
+    const option = document.createElement('option');
+    option.value = line;
+    option.textContent = line;
+    distrLineSelect.appendChild(option);
+  });
+  
+  // פונקציה לרינדור המדבקות
+  const renderAllergenLabels = () => {
+    const selectedLine = distrLineSelect.value;
+    const sortMode = sortSelect.value;
+    
+    let filteredData = allergenFreeData;
+    
+    if (selectedLine) {
+      filteredData = filteredData.filter(r => (r.distrLineCode || r.DISTRLINECODE) === selectedLine);
+    }
+    
+    if (filteredData.length === 0) {
+      container.innerHTML = '<p style="text-align:center;padding:50px;color:#999;">לא נמצאו פריטים ללא אלרגנים</p>';
+      return;
+    }
+    
+    // קיבוץ לפי הזמנה (לקוח) ומנה
+    const groupedLabels = {};
+    filteredData.forEach(item => {
+      const orderKey = item.orderName || item.ORDNAME || '';
+      const partDes = String(item.partDes || item.PARTDES || '').trim();
+      const eatQuant = parseInt(item.eatQuant || item.EATQUANT || 0) || 0;
+      
+      if (eatQuant <= 0) return;
+      
+      const key = `${orderKey}|${partDes}`;
+      
+      if (!groupedLabels[key]) {
+        groupedLabels[key] = {
+          orderName: orderKey,
+          custDes: item.custDes || item.CUSTDES || '',
+          custName: item.custName || item.CUSTNAME || '',
+          distrLineCode: item.distrLineCode || item.DISTRLINECODE || '',
+          distrLineDes: item.distrLineDes || item.DISTRLINEDES || '',
+          pritDistrOrder: item.pritDistrOrder || item.PRIT_DISTRORDER || 0,
+          pritClassname: item.pritClassname || item.PRIT_CLASSNAME || '',
+          dueDate: item.dueDate || item.DUEDATE || '',
+          address: item.address || item.ADDRESS || item.state || item.STATE || '',
+          partDes: partDes,
+          quantity: eatQuant
+        };
+      } else {
+        // אם יש כפילות, נוסיף לכמות
+        groupedLabels[key].quantity += eatQuant;
+      }
+    });
+    
+    // המרה למערך ומיון לפי קו חלוקה וסדר הפצה
+    let labelsArray = Object.values(groupedLabels);
+    
+    labelsArray.sort((a, b) => {
+      const lineCompare = (a.distrLineCode || '').localeCompare(b.distrLineCode || '', 'he');
+      if (lineCompare !== 0) return lineCompare;
+      return (a.pritDistrOrder || 0) - (b.pritDistrOrder || 0);
+    });
+    
+    // קיבוץ לפי קו חלוקה - כל קו חלוקה יקבל דפים נפרדים
+    const labelsByDistrLine = {};
+    labelsArray.forEach(item => {
+      const lineKey = item.distrLineCode || 'ללא קו';
+      if (!labelsByDistrLine[lineKey]) {
+        labelsByDistrLine[lineKey] = {
+          distrLineCode: item.distrLineCode,
+          distrLineDes: item.distrLineDes,
+          labels: []
+        };
+      }
+      // יצירת מדבקות - כל מדבקה כמספר הכמות (כמות 2 = 2 מדבקות זהות)
+      for (let i = 0; i < item.quantity; i++) {
+        labelsByDistrLine[lineKey].labels.push({
+          ...item,
+          labelNumber: item.quantity // הכמות הכוללת מוצגת בכל מדבקה
+        });
+      }
+    });
+    
+    // חלוקה לדפים - 32 מדבקות בכל דף, דף נפרד לכל קו חלוקה
+    const LABELS_PER_PAGE = 32;
+    const allPages = []; // מערך של {distrLine, distrLineDes, labels}
+    let totalLabels = 0;
+    
+    Object.values(labelsByDistrLine).forEach(lineData => {
+      // חלוקת המדבקות של קו החלוקה לדפים של 32
+      for (let i = 0; i < lineData.labels.length; i += LABELS_PER_PAGE) {
+        allPages.push({
+          distrLineCode: lineData.distrLineCode,
+          distrLineDes: lineData.distrLineDes,
+          labels: lineData.labels.slice(i, i + LABELS_PER_PAGE)
+        });
+      }
+      totalLabels += lineData.labels.length;
+    });
+    
+    // פורמט תאריך
+    const formatDate = (dateStr) => {
+      if (!dateStr) return '';
+      try {
+        const date = new Date(dateStr);
+        if (!isNaN(date.getTime())) {
+          const day = String(date.getDate()).padStart(2, '0');
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const year = String(date.getFullYear()).slice(-2);
+          return `${day}/${month}/${year}`;
+        }
+      } catch (e) {}
+      return dateStr;
+    };
+    
+    // עיבוד כיתה
+    const formatClass = (className) => {
+      if (!className) return '';
+      const cls = String(className).trim().toLowerCase();
+      if (cls.includes('גן')) return 'גן';
+      return String(className).trim();
+    };
+    
+    // יצירת HTML - דף נפרד לכל קו חלוקה
+    let html = '<div class="allergen-labels-container">';
+    
+    allPages.forEach((pageData, pageIndex) => {
+      // כותרת קו חלוקה לפני הדף
+      html += `<div class="allergen-page-header" style="width:210mm;padding:5mm 0;text-align:center;font-weight:bold;font-size:14pt;border-bottom:2px solid #333;margin-bottom:5px;page-break-before:${pageIndex > 0 ? 'always' : 'auto'};">
+        קו חלוקה: ${pageData.distrLineDes || pageData.distrLineCode || 'ללא קו'}
+      </div>`;
+      
+      html += '<div class="allergen-labels-page">';
+      
+      pageData.labels.forEach(label => {
+        html += `
+          <div class="allergen-label">
+            <div class="allergen-label-header">
+              <div class="allergen-label-top-info">
+                <div class="allergen-label-route-station">${label.distrLineDes || label.distrLineCode || ''} | ${label.pritDistrOrder || ''}</div>
+              </div>
+              <div class="allergen-label-date-info">
+                <div>${formatDate(label.dueDate)}</div>
+                <div>רכסים</div>
+              </div>
+            </div>
+            <div class="allergen-label-body">
+              <div class="allergen-label-customer">${label.custDes || ''}</div>
+              <div class="allergen-label-address">${label.address || ''}</div>
+              ${label.pritClassname ? `<div class="allergen-label-class">${formatClass(label.pritClassname)}</div>` : ''}
+            </div>
+            <div class="allergen-label-footer">
+              <div class="allergen-label-dish">אלרגני סיני מוקפץ</div>
+              <div class="allergen-label-quantity">${label.labelNumber}</div>
+            </div>
+          </div>
+        `;
+      });
+      
+      html += '</div>';
+    });
+    
+    html += '</div>';
+    
+    // סיכום
+    html += `<div style="margin-top:20px;padding:15px;background:#f5f5f5;border-radius:8px;text-align:center;">
+      <strong>סה"כ:</strong> ${totalLabels} מדבקות | ${allPages.length} דפים | ${Object.keys(labelsByDistrLine).length} קווי חלוקה
+    </div>`;
+    
+    container.innerHTML = html;
+    window.allergenLabelsData = labelsArray;
+    window.allergenLabelsAllLabels = allPages;
+  };
+  
+  // הוספת event listeners
+  distrLineSelect.onchange = renderAllergenLabels;
+  sortSelect.onchange = renderAllergenLabels;
+  
+  // רינדור ראשוני
+  renderAllergenLabels();
+}
+
+// הדפסת מדבקות אלרגנים - באמצעות הדפסה כמו דוח מדבקות
+function printAllergenLabels() {
+  const container = document.getElementById('allergenLabelsContainer');
+  
+  if (!container || !container.innerHTML || container.innerHTML.trim() === '') {
+    alert('אין מדבקות להדפסה');
+    return;
+  }
+  
+  // יצירת חלון חדש להדפסה
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('לא ניתן לפתוח חלון חדש. אנא אפשר חלונות קופצים בדפדפן.');
+    return;
+  }
+  
+  const dateValue = document.getElementById('dateInput').value || new Date().toISOString().split('T')[0];
+  
+  // יצירת עותק של התוכן עם ניקוי
+  const contentClone = container.cloneNode(true);
+  
+  // הסרת scripts ואלמנטים לא נחוצים
+  const scripts = contentClone.querySelectorAll('script');
+  scripts.forEach(script => script.remove());
+  
+  // הסרת כותרות דפים וסיכום
+  const headers = contentClone.querySelectorAll('.allergen-page-header');
+  headers.forEach(h => h.remove());
+  const summary = contentClone.querySelector('div[style*="background:#f5f5f5"]');
+  if (summary) summary.remove();
+  
+  const containerHTML = contentClone.innerHTML;
+  
+  if (!containerHTML || containerHTML.trim() === '') {
+    alert('אין תוכן להדפסה');
+    printWindow.close();
+    return;
+  }
+  
+  // יצירת HTML להדפסה
+  printWindow.document.open('text/html', 'replace');
+  printWindow.document.write('<!DOCTYPE html>');
+  printWindow.document.write('<html lang="he" dir="rtl">');
+  printWindow.document.write('<head>');
+  printWindow.document.write('<meta charset="UTF-8">');
+  printWindow.document.write('<title>מדבקות אלרגנים - ' + dateValue + '</title>');
+  printWindow.document.write('<style>');
+  // הגדרות דף A4 ללא שוליים - מונע headers/footers של הדפדפן
+  printWindow.document.write('@page { size: 210mm 297mm; margin: 0 !important; padding: 0 !important; }');
+  printWindow.document.write('* { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }');
+  printWindow.document.write('html { margin: 0 !important; padding: 0 !important; }');
+  printWindow.document.write('body { font-family: Arial, sans-serif; direction: rtl; margin: 0 !important; padding: 0 !important; background: white; width: 210mm; height: 297mm; }');
+  printWindow.document.write('.allergen-labels-container { margin: 0; padding: 0; }');
+  printWindow.document.write('.allergen-page-header { display: none !important; }');
+  // דף מדבקות: 210mm רוחב, גובה 297mm, שוליים 5mm למעלה ו-9mm למטה = 283mm לתוכן
+  printWindow.document.write('.allergen-labels-page { width: 210mm; height: 297mm; margin: 0; padding: 5mm 0 9mm 0; box-sizing: border-box; display: grid; grid-template-columns: repeat(4, 52.5mm); grid-template-rows: repeat(8, 35.375mm); justify-content: start; align-content: start; background: white; page-break-after: always; page-break-inside: avoid; }');
+  printWindow.document.write('.allergen-label { width: 52.5mm; height: 35.375mm; border: 1px solid #000; box-sizing: border-box; padding: 1.5mm; display: flex; flex-direction: column; justify-content: space-between; font-family: Arial, sans-serif; font-size: 7pt; direction: rtl; background: white; overflow: hidden; }');
+  printWindow.document.write('.allergen-label-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #000; padding-bottom: 0.5mm; margin-bottom: 0.5mm; }');
+  printWindow.document.write('.allergen-label-top-info { text-align: right; }');
+  printWindow.document.write('.allergen-label-route-station { font-size: 10pt; font-weight: bold; line-height: 1.2; }');
+  printWindow.document.write('.allergen-label-date-info { text-align: left; font-size: 7pt; line-height: 1.2; }');
+  printWindow.document.write('.allergen-label-body { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1mm; }');
+  printWindow.document.write('.allergen-label-customer { font-size: 14pt; font-weight: bold; text-align: center; line-height: 1.1; }');
+  printWindow.document.write('.allergen-label-address { font-size: 11pt; font-weight: bold; text-align: center; line-height: 1.1; }');
+  printWindow.document.write('.allergen-label-class { font-size: 12pt; font-weight: bold; text-align: center; }');
+  printWindow.document.write('.allergen-label-footer { border-top: 1px solid #000; padding-top: 0.5mm; text-align: center; display: flex; justify-content: space-between; align-items: center; }');
+  printWindow.document.write('.allergen-label-dish { font-size: 8pt; line-height: 1.1; flex: 1; text-align: center; }');
+  printWindow.document.write('.allergen-label-quantity { font-size: 8pt; font-weight: bold; }');
+  printWindow.document.write('@media print { @page { margin: 0 !important; } html, body { margin: 0 !important; padding: 0 !important; width: 210mm !important; height: 297mm !important; } .allergen-labels-page { page-break-after: always; } .allergen-labels-page:last-child { page-break-after: auto; } }');
+  printWindow.document.write('</style>');
+  printWindow.document.write('</head>');
+  printWindow.document.write('<body>');
+  printWindow.document.write(containerHTML);
+  printWindow.document.write('<script>');
+  printWindow.document.write('window.onload = function() { setTimeout(function() { window.print(); }, 500); };');
+  printWindow.document.write('<\/script>');
+  printWindow.document.write('</body>');
+  printWindow.document.write('</html>');
+  printWindow.document.close();
+}
+
+// הורדת PDF למדבקות אלרגנים - באמצעות הדפסה כמו דוח מדבקות
+function downloadAllergenLabelsPDF() {
+  // משתמשים באותה פונקציה כי הדפסה ל-PDF זה אותו דבר
+  printAllergenLabels();
 }
 
 // טעינת הגדרות כשמשנים טאב
