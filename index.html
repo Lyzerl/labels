@@ -957,13 +957,14 @@ tr:nth-child(even) {
 
 .allergen-labels-page {
   width: 210mm;
-  height: 283mm; /* 297mm - 5mm top - 9mm bottom */
+  height: 297mm;
   padding: 0;
+  margin: 0;
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: repeat(4, 52.5mm); /* 4 עמודות */
-  grid-template-rows: repeat(8, 35.375mm); /* 8 שורות - 283mm / 8 */
-  justify-content: center;
+  grid-template-columns: repeat(2, 105mm); /* 2 עמודות */
+  grid-template-rows: repeat(3, 99mm); /* 3 שורות */
+  justify-content: start;
   align-content: start;
   background: white;
   margin-bottom: 15px;
@@ -972,16 +973,16 @@ tr:nth-child(even) {
 }
 
 .allergen-label {
-  width: 52.5mm;
-  height: 35.375mm;
+  width: 105mm;
+  height: 99mm;
   border: 1px solid #333;
   box-sizing: border-box;
-  padding: 1.5mm;
+  padding: 4mm;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   font-family: Arial, sans-serif;
-  font-size: 7pt;
+  font-size: 10pt;
   direction: rtl;
   background: white;
   overflow: hidden;
@@ -992,8 +993,8 @@ tr:nth-child(even) {
   justify-content: space-between;
   align-items: flex-start;
   border-bottom: 1px solid #333;
-  padding-bottom: 0.5mm;
-  margin-bottom: 0.5mm;
+  padding-bottom: 2mm;
+  margin-bottom: 2mm;
 }
 
 .allergen-label-top-info {
@@ -1001,15 +1002,15 @@ tr:nth-child(even) {
 }
 
 .allergen-label-route-station {
-  font-size: 10pt;
+  font-size: 18pt;
   font-weight: bold;
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
 .allergen-label-date-info {
   text-align: left;
-  font-size: 7pt;
-  line-height: 1.2;
+  font-size: 14pt;
+  line-height: 1.3;
 }
 
 .allergen-label-body {
@@ -1018,35 +1019,35 @@ tr:nth-child(even) {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 1mm;
+  gap: 3mm;
 }
 
 .allergen-label-customer {
-  font-size: 14pt;
+  font-size: 22pt;
   font-weight: bold;
   text-align: center;
-  line-height: 1.1;
+  line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
 }
 
 .allergen-label-address {
-  font-size: 11pt;
+  font-size: 16pt;
   font-weight: bold;
   text-align: center;
-  line-height: 1.1;
+  line-height: 1.2;
 }
 
 .allergen-label-class {
-  font-size: 12pt;
+  font-size: 18pt;
   font-weight: bold;
   text-align: center;
 }
 
 .allergen-label-footer {
   border-top: 1px solid #333;
-  padding-top: 0.5mm;
+  padding-top: 2mm;
   text-align: center;
   display: flex;
   justify-content: space-between;
@@ -1054,14 +1055,15 @@ tr:nth-child(even) {
 }
 
 .allergen-label-dish {
-  font-size: 8pt;
-  line-height: 1.1;
+  font-size: 16pt;
+  font-weight: bold;
+  line-height: 1.2;
   flex: 1;
   text-align: center;
 }
 
 .allergen-label-quantity {
-  font-size: 8pt;
+  font-size: 16pt;
   font-weight: bold;
 }
 
@@ -4013,13 +4015,9 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
     });
   };
   
-  // סינון רק לקוחות מילגם - כל מה שמתחיל ב"מילגם" (גם "מילגם צפון" וכו')
+  // הצגת כל הלקוחות (ללא סינון מילגם)
   let ordersArray = Object.values(orders);
   const totalBeforeFilter = ordersArray.length;
-  ordersArray = ordersArray.filter(order => {
-    const spec1 = String(order.spec1 || '').trim();
-    return spec1.startsWith('מילגם');
-  });
   
   // מיון לפי סדר המבוקש
   if (sortMode === 'loading') {
@@ -4122,14 +4120,12 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
     });
   }
   
-  console.log('📊 דוח מדבקות - סה"כ הזמנות לפני סינון:', totalBeforeFilter);
-  console.log('📊 דוח מדבקות - סה"כ הזמנות אחרי סינון מילגם:', ordersArray.length);
+  console.log('📊 דוח מדבקות - סה"כ הזמנות:', ordersArray.length);
   
   if (ordersArray.length === 0) {
     container.innerHTML = '<div style="text-align:center;padding:50px;color:#d32f2f;background:#ffebee;border:2px solid #d32f2f;border-radius:8px;margin:20px;">' +
-      '<h3 style="color:#d32f2f;margin-bottom:10px;">⚠️ לא נמצאו הזמנות ללקוחות מילגם</h3>' +
-      `<p>סה"כ הזמנות במערכת: ${totalBeforeFilter}</p>` +
-      '<p style="font-size:0.9em;margin-top:10px;">אנא ודא שיש הזמנות עם SPEC1 = "מילגם"</p>' +
+      '<h3 style="color:#d32f2f;margin-bottom:10px;">⚠️ לא נמצאו הזמנות</h3>' +
+      '<p style="font-size:0.9em;margin-top:10px;">אנא ודא שיש הזמנות בתאריך שנבחר</p>' +
       '</div>';
     return;
   }
@@ -4543,7 +4539,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       html += `<td rowspan="3" style="width:100px !important;text-align:center !important;padding:4px !important;border:1px solid #000 !important;background:#fff !important;vertical-align:middle !important;">`;
       html += `<div style="display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;">`;
       html += `<img src="${kashrutLogoPath}" alt="${safeAlt}" style="max-width:100% !important;max-height:65px !important;width:auto !important;height:auto !important;object-fit:contain !important;display:block !important;" onerror="${imgOnError}" />`;
-      html += `<div style="font-size:0.9em !important;font-weight:bold !important;color:#000 !important;margin-top:3px !important;">בשרי</div>`;
+      html += `<div style="font-size:1.1em !important;font-weight:bold !important;color:#000 !important;margin-top:3px !important;">בשרי</div>`;
       html += `</div>`;
       html += '</td>';
       
@@ -4582,22 +4578,26 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       const addressText = order.address || order.state || '';
       console.log('📍 כתובת להזמנה', order.orderName, ':', order.address, '| state:', order.state, '| תוצאה:', addressText);
       
-      // פרטי לקוח ולוגיסטיקה - הקטנתי את הטקסט והריווח
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>שם מוסד:</strong> ' + (order.custDes || '') + '</td>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
+      // פרטי לקוח ולוגיסטיקה - פונט מוגדל
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.4 !important;"><strong>שם מוסד:</strong> ' + (order.custDes || '') + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.4 !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
       html += '</tr>';
       
       html += '<tr>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>כתובת:</strong> ' + addressText + '</td>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>מס תחנה:</strong> ' + (order.pritDistrOrder || 0) + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.4 !important;"><strong>כתובת:</strong> ' + addressText + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.4 !important;"><strong>מס תחנה:</strong> ' + (order.pritDistrOrder || 0) + '</td>';
       html += '</tr>';
       
       html += '<tr>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>מס לקוח:</strong> ' + (order.custName || '') + (classText ? ' | <strong>כיתה:</strong> ' + classText : '') + '</td>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>תאריך:</strong> ' + formattedDate + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.4 !important;"><strong>מס לקוח:</strong> ' + (order.custName || '') + (classText ? ' | <strong>כיתה:</strong> ' + classText : '') + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.3em !important;line-height:1.4 !important;"><strong>תאריך:</strong> ' + formattedDate + '</td>';
       html += '</tr>';
       
       html += '</tbody></table>';
+
+      // שורת מספר מנות - בין הכותרת לטבלת הפריטים
+      const eatQuantValue = order.eatQuant || 0;
+      html += `<div style="text-align:center !important;padding:6px 10px !important;margin-bottom:8px !important;background:#f5f5f5 !important;border:1px solid #000 !important;border-radius:4px !important;font-size:1.5em !important;font-weight:bold !important;">מספר מנות: ${eatQuantValue > 0 ? eatQuantValue : '-'}</div>`;
 
       // אזור שני - טבלה עם פרטי אריזה - גובה דינמי, מוגבל לגובה הזמין
       // rowHeight כבר חושב נכון בהתאם למספר הפריטים, אז נשתמש בו ישירות
@@ -4722,37 +4722,38 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
         const effectiveRowHeight = isAllergenRow ? Math.max(finalRowHeight, allergenRowMinHeight) : finalRowHeight;
         
         let cellPadding, cellFontSize, cellLineHeight;
+        // פונטים מוגדלים באופן יחסי
         if (effectiveRowHeight < 10) {
           cellPadding = '1px';
-          cellFontSize = '0.7em';
+          cellFontSize = '0.9em';
           cellLineHeight = '1.0';
         } else if (effectiveRowHeight < 12) {
           cellPadding = '1px';
-          cellFontSize = '0.75em';
+          cellFontSize = '0.95em';
           cellLineHeight = '1.0';
         } else if (effectiveRowHeight < 15) {
           cellPadding = '2px';
-          cellFontSize = '0.85em';
+          cellFontSize = '1.05em';
           cellLineHeight = '1.1';
         } else if (effectiveRowHeight < 18) {
           cellPadding = '3px';
-          cellFontSize = '0.9em';
+          cellFontSize = '1.1em';
           cellLineHeight = '1.15';
         } else if (effectiveRowHeight < 22) {
           cellPadding = '3px';
-          cellFontSize = '0.95em';
+          cellFontSize = '1.15em';
           cellLineHeight = '1.2';
         } else if (effectiveRowHeight < 25) {
           cellPadding = '4px';
-          cellFontSize = '1.0em';
+          cellFontSize = '1.2em';
           cellLineHeight = '1.25';
         } else if (effectiveRowHeight < 30) {
           cellPadding = '5px';
-          cellFontSize = '1.1em';
+          cellFontSize = '1.3em';
           cellLineHeight = '1.3';
         } else {
           cellPadding = '6px';
-          cellFontSize = '1.2em';
+          cellFontSize = '1.4em';
           cellLineHeight = '1.3';
         }
         
@@ -4788,10 +4789,10 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           const pack7 = traySize === 'large' ? eatQuant : 0;
           
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:right !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${partDesText}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;"></td>`; // מיכלים ריק
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;"></td>`; // מיכלים ריק
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack5 > 0 ? pack5.toFixed(0) : ''}</td>`;
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack7 > 0 ? pack7.toFixed(0) : ''}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;"></td>`; // כמות ריק לחמגשית
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;"></td>`; // כמות ריק לחמגשית
         } else {
           // עבור תפזורת - 5 עמודות: מוצר מימין, מיכלים, מארז קטן, מארז גדול, כמות (בצד שמאל)
           // כמות - TQUANT מהשרת, עם עשרוניות אם יש
@@ -4802,10 +4803,10 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           const pack7 = item.sumPack7 ? item.sumPack7.toFixed(0) : '';
           
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:right !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${partDesText}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${containers}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack5}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack7}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${quantity}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${containers}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack5}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack7}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${quantity}</td>`;
         }
         
         rowHtml += '</tr>';
@@ -4820,16 +4821,16 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       html += '</tbody></table>';
       html += '</div>'; // סוגר את ה-div שמגביל את הגובה
       
-      // אזור שלישי - מקום להערות - הגדלת טקסט משמעותית יותר (גובה קבוע)
-      html += `<div style="height:${notesHeight}px !important;min-height:${notesHeight}px !important;margin-bottom:10px !important;padding:8px !important;border:1px solid #ccc !important;font-size:1.3em !important;flex-shrink:0 !important;box-sizing:border-box !important;">`;
+      // אזור שלישי - מקום להערות - פונט מוגדל (גובה קבוע)
+      html += `<div style="height:${notesHeight}px !important;min-height:${notesHeight}px !important;margin-bottom:10px !important;padding:8px !important;border:1px solid #ccc !important;font-size:1.5em !important;flex-shrink:0 !important;box-sizing:border-box !important;">`;
       // אם יש אלרגנים - להוסיף "ללא שומשום"
       if (hasNoAllergen) {
-        html += '<div style="color:#d32f2f !important;font-weight:bold !important;font-size:1.3em !important;">ללא שומשום</div>';
+        html += '<div style="color:#d32f2f !important;font-weight:bold !important;font-size:1.5em !important;">ללא שומשום</div>';
       }
       html += '</div>';
       
       // אזור רביעי - קונטקט טקסט בתחתית (position absolute - תמיד בתחתית)
-      html += `<div class="label-footer" style="position:absolute !important;bottom:0 !important;left:0 !important;right:0 !important;width:100% !important;text-align:center !important;font-size:0.85em !important;font-weight:normal !important;padding:6px !important;border-top:1px solid #ccc !important;background:#fff !important;box-sizing:border-box !important;height:${footerHeight}px !important;display:flex !important;flex-direction:column !important;justify-content:center !important;align-items:center !important;">${contactText}</div>`;
+      html += `<div class="label-footer" style="position:absolute !important;bottom:0 !important;left:0 !important;right:0 !important;width:100% !important;text-align:center !important;font-size:1.0em !important;font-weight:normal !important;padding:6px !important;border-top:1px solid #ccc !important;background:#fff !important;box-sizing:border-box !important;height:${footerHeight}px !important;display:flex !important;flex-direction:column !important;justify-content:center !important;align-items:center !important;">${contactText}</div>`;
       
       html += '</div>';
     };
@@ -6157,8 +6158,8 @@ function createAllergenLabelsReport(data) {
       }
     });
     
-    // חלוקה לדפים - 32 מדבקות בכל דף, דף נפרד לכל קו חלוקה
-    const LABELS_PER_PAGE = 32;
+    // חלוקה לדפים - 6 מדבקות בכל דף (2 עמודות × 3 שורות), דף נפרד לכל קו חלוקה
+    const LABELS_PER_PAGE = 6;
     const allPages = []; // מערך של {distrLine, distrLineDes, labels}
     let totalLabels = 0;
     
@@ -6310,20 +6311,20 @@ function printAllergenLabels() {
   printWindow.document.write('body { font-family: Arial, sans-serif; direction: rtl; margin: 0 !important; padding: 0 !important; background: white; width: 210mm; height: 297mm; }');
   printWindow.document.write('.allergen-labels-container { margin: 0; padding: 0; }');
   printWindow.document.write('.allergen-page-header { display: none !important; }');
-  // דף מדבקות: 210mm רוחב, גובה 297mm, שוליים 5mm למעלה ו-9mm למטה = 283mm לתוכן
-  printWindow.document.write('.allergen-labels-page { width: 210mm; height: 297mm; margin: 0; padding: 5mm 0 9mm 0; box-sizing: border-box; display: grid; grid-template-columns: repeat(4, 52.5mm); grid-template-rows: repeat(8, 35.375mm); justify-content: start; align-content: start; background: white; page-break-after: always; page-break-inside: avoid; }');
-  printWindow.document.write('.allergen-label { width: 52.5mm; height: 35.375mm; border: 1px solid #000; box-sizing: border-box; padding: 1.5mm; display: flex; flex-direction: column; justify-content: space-between; font-family: Arial, sans-serif; font-size: 7pt; direction: rtl; background: white; overflow: hidden; }');
-  printWindow.document.write('.allergen-label-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #000; padding-bottom: 0.5mm; margin-bottom: 0.5mm; }');
+  // דף מדבקות: 210mm × 297mm, 2 עמודות × 3 שורות, כל מדבקה 105mm × 99mm, ללא שוליים מהצדדים
+  printWindow.document.write('.allergen-labels-page { width: 210mm; height: 297mm; margin: 0; padding: 0; box-sizing: border-box; display: grid; grid-template-columns: repeat(2, 105mm); grid-template-rows: repeat(3, 99mm); justify-content: start; align-content: start; background: white; page-break-after: always; page-break-inside: avoid; }');
+  printWindow.document.write('.allergen-label { width: 105mm; height: 99mm; border: 1px solid #000; box-sizing: border-box; padding: 4mm; display: flex; flex-direction: column; justify-content: space-between; font-family: Arial, sans-serif; font-size: 10pt; direction: rtl; background: white; overflow: hidden; }');
+  printWindow.document.write('.allergen-label-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #000; padding-bottom: 2mm; margin-bottom: 2mm; }');
   printWindow.document.write('.allergen-label-top-info { text-align: right; }');
-  printWindow.document.write('.allergen-label-route-station { font-size: 10pt; font-weight: bold; line-height: 1.2; }');
-  printWindow.document.write('.allergen-label-date-info { text-align: left; font-size: 7pt; line-height: 1.2; }');
-  printWindow.document.write('.allergen-label-body { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1mm; }');
-  printWindow.document.write('.allergen-label-customer { font-size: 14pt; font-weight: bold; text-align: center; line-height: 1.1; }');
-  printWindow.document.write('.allergen-label-address { font-size: 11pt; font-weight: bold; text-align: center; line-height: 1.1; }');
-  printWindow.document.write('.allergen-label-class { font-size: 12pt; font-weight: bold; text-align: center; }');
-  printWindow.document.write('.allergen-label-footer { border-top: 1px solid #000; padding-top: 0.5mm; text-align: center; display: flex; justify-content: space-between; align-items: center; }');
-  printWindow.document.write('.allergen-label-dish { font-size: 8pt; line-height: 1.1; flex: 1; text-align: center; }');
-  printWindow.document.write('.allergen-label-quantity { font-size: 8pt; font-weight: bold; }');
+  printWindow.document.write('.allergen-label-route-station { font-size: 18pt; font-weight: bold; line-height: 1.3; }');
+  printWindow.document.write('.allergen-label-date-info { text-align: left; font-size: 14pt; line-height: 1.3; }');
+  printWindow.document.write('.allergen-label-body { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 3mm; }');
+  printWindow.document.write('.allergen-label-customer { font-size: 22pt; font-weight: bold; text-align: center; line-height: 1.2; }');
+  printWindow.document.write('.allergen-label-address { font-size: 16pt; font-weight: bold; text-align: center; line-height: 1.2; }');
+  printWindow.document.write('.allergen-label-class { font-size: 18pt; font-weight: bold; text-align: center; }');
+  printWindow.document.write('.allergen-label-footer { border-top: 1px solid #000; padding-top: 2mm; text-align: center; display: flex; justify-content: space-between; align-items: center; }');
+  printWindow.document.write('.allergen-label-dish { font-size: 16pt; font-weight: bold; line-height: 1.2; flex: 1; text-align: center; }');
+  printWindow.document.write('.allergen-label-quantity { font-size: 16pt; font-weight: bold; }');
   printWindow.document.write('@media print { @page { margin: 0 !important; } html, body { margin: 0 !important; padding: 0 !important; width: 210mm !important; height: 297mm !important; } .allergen-labels-page { page-break-after: always; } .allergen-labels-page:last-child { page-break-after: auto; } }');
   printWindow.document.write('</style>');
   printWindow.document.write('</head>');
