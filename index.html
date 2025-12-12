@@ -957,13 +957,14 @@ tr:nth-child(even) {
 
 .allergen-labels-page {
   width: 210mm;
-  height: 283mm; /* 297mm - 5mm top - 9mm bottom */
+  height: 297mm;
   padding: 0;
+  margin: 0;
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: repeat(4, 52.5mm); /* 4 עמודות */
-  grid-template-rows: repeat(8, 35.375mm); /* 8 שורות - 283mm / 8 */
-  justify-content: center;
+  grid-template-columns: repeat(2, 105mm); /* 2 עמודות */
+  grid-template-rows: repeat(3, 99mm); /* 3 שורות */
+  justify-content: start;
   align-content: start;
   background: white;
   margin-bottom: 15px;
@@ -972,16 +973,16 @@ tr:nth-child(even) {
 }
 
 .allergen-label {
-  width: 52.5mm;
-  height: 35.375mm;
+  width: 105mm;
+  height: 99mm;
   border: 1px solid #333;
   box-sizing: border-box;
-  padding: 1.5mm;
+  padding: 4mm;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   font-family: Arial, sans-serif;
-  font-size: 7pt;
+  font-size: 10pt;
   direction: rtl;
   background: white;
   overflow: hidden;
@@ -992,8 +993,8 @@ tr:nth-child(even) {
   justify-content: space-between;
   align-items: flex-start;
   border-bottom: 1px solid #333;
-  padding-bottom: 0.5mm;
-  margin-bottom: 0.5mm;
+  padding-bottom: 2mm;
+  margin-bottom: 2mm;
 }
 
 .allergen-label-top-info {
@@ -1001,15 +1002,15 @@ tr:nth-child(even) {
 }
 
 .allergen-label-route-station {
-  font-size: 10pt;
+  font-size: 18pt;
   font-weight: bold;
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
 .allergen-label-date-info {
   text-align: left;
-  font-size: 7pt;
-  line-height: 1.2;
+  font-size: 14pt;
+  line-height: 1.3;
 }
 
 .allergen-label-body {
@@ -1018,35 +1019,35 @@ tr:nth-child(even) {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 1mm;
+  gap: 3mm;
 }
 
 .allergen-label-customer {
-  font-size: 14pt;
+  font-size: 22pt;
   font-weight: bold;
   text-align: center;
-  line-height: 1.1;
+  line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
 }
 
 .allergen-label-address {
-  font-size: 11pt;
+  font-size: 16pt;
   font-weight: bold;
   text-align: center;
-  line-height: 1.1;
+  line-height: 1.2;
 }
 
 .allergen-label-class {
-  font-size: 12pt;
+  font-size: 18pt;
   font-weight: bold;
   text-align: center;
 }
 
 .allergen-label-footer {
   border-top: 1px solid #333;
-  padding-top: 0.5mm;
+  padding-top: 2mm;
   text-align: center;
   display: flex;
   justify-content: space-between;
@@ -1054,14 +1055,15 @@ tr:nth-child(even) {
 }
 
 .allergen-label-dish {
-  font-size: 8pt;
-  line-height: 1.1;
+  font-size: 16pt;
+  font-weight: bold;
+  line-height: 1.2;
   flex: 1;
   text-align: center;
 }
 
 .allergen-label-quantity {
-  font-size: 8pt;
+  font-size: 16pt;
   font-weight: bold;
 }
 
@@ -1260,6 +1262,10 @@ tr:nth-child(even) {
 </div>
 
 <script>
+// ביטול console.log לשיפור ביצועים (Production mode)
+console.log = function() {};
+console.warn = function() {};
+
 // ***** שים כאן את ה-URL של ה-Cloudflare Worker שלך! *****
 const PROXY_URL = 'https://priority-proxy.lyzer-64d.workers.dev';
 
@@ -1486,21 +1492,7 @@ function organizeAsNoSQL(rawData) {
     });
   });
   
-  if (ordersWithTrays.length > 0) {
-    console.log('📊 הזמנות עם חמגשיות:', ordersWithTrays.length);
-    ordersWithTrays.forEach(order => {
-      const trayItems = order.items.filter(item => {
-        const pm = String(item.packMethodCode || '').trim().toLowerCase();
-        return pm.includes('חמגשית');
-      });
-      console.log(`  הזמנה ${order.orderName}: סה"כ ${order.items.length} פריטים, ${trayItems.length} חמגשיות`);
-      if (trayItems.length > 0) {
-        trayItems.forEach(item => {
-          console.log(`    - ${item.partDes} (${item.packMethodCode})`);
-        });
-      }
-    });
-  }
+  // Debug logs removed for performance
   
   return orders;
 }
@@ -1682,124 +1674,32 @@ async function fetchData() {
       statusDiv.textContent = 'לא נמצאו נתונים';
       tableContainer.innerHTML = '<p style="text-align:center;padding:50px;color:#999;">לא נמצאו הזמנות</p>';
     } else {
-      // שמירת הנתונים הגולמיים בנפרד - לא ישתנו לעולם
-      // יצירת עותק עמוק אמיתי באמצעות JSON (הדרך הבטוחה ביותר)
-      const allDataRaw = JSON.parse(JSON.stringify(allData));
+      // עיבוד מהיר - עותק אחד בלבד
+      statusDiv.innerHTML = '<div class="loader"></div><p>מעבד נתונים...</p>';
       
-      // ביצוע חישובים - מיכלים ומארזים
-      // חשוב: יצירת עותק עמוק של הנתונים לפני חישובים כדי לא לשנות את המקור
-      statusDiv.innerHTML = '<div class="loader"></div><p>מבצע חישובים...</p>';
+      // ביצוע חישובים ישירות על הנתונים
+      const allDataWithCalculations = calculateContainersAndPacks(allData);
       
-      // יצירת עותק עמוק של כל הנתונים לפני חישובים (עוד פעם, רק כדי להיות בטוחים)
-      const allDataForCalculations = JSON.parse(JSON.stringify(allData));
-      
-      // ביצוע חישובים על העותק בלבד
-      const allDataWithCalculations = calculateContainersAndPacks(allDataForCalculations);
-      
-      // המרה למבנה NoSQL - קיבוץ לפי הזמנה (על העותק עם החישובים)
+      // המרה למבנה NoSQL
       const structuredData = organizeAsNoSQL(allDataWithCalculations);
       
-      // שמירת הנתונים המקוריים (ללא חישובים) לבדיקה
-      // והנתונים עם חישובים לטבלה הכללית ולדוחות
-      // חשוב: allDataRaw הוא עותק עמוק אמיתי שלא ישתנה לעולם
-      // שמירה בסדר המקורי מהשרת - ללא שינויים
-      currentData = allDataWithCalculations; // נתונים עם חישובים לטבלה הכללית (כדי לראות CONTAINERS, PACK5, PACK7)
-      currentStructuredData = structuredData; // שמירת הנתונים המובנים
+      // שמירת הנתונים
+      currentData = allDataWithCalculations;
+      currentStructuredData = structuredData;
       
-      // שמירה גלובלית לבדיקה
-      window.allDataRaw = allDataRaw; // נתונים גולמיים לבדיקה (ללא חישובים)
-      window.allDataWithCalculations = allDataWithCalculations; // נתונים עם חישובים לבדיקה
-      window.allDataOriginal = JSON.parse(JSON.stringify(allData)); // עותק נוסף לבדיקה
-      
-      // בדיקה שהנתונים הגולמיים לא השתנו אחרי החישובים
-      if (allDataRaw.length > 0 && allData.length > 0) {
-        const firstRaw = allDataRaw[0];
-        const firstOriginal = allData[0];
-        if (firstRaw.ORDNAME !== firstOriginal.ORDNAME || 
-            firstRaw.PARTDES !== firstOriginal.PARTDES ||
-            firstRaw.PARTNAME !== firstOriginal.PARTNAME) {
-          console.error('❌ נתונים גולמיים השתנו! זה לא אמור לקרות!');
-        } else {
-          console.log('✅ בדיקה: נתונים גולמיים לא השתנו');
-        }
-        
-        // בדיקת סדר - השוואת 5 שורות ראשונות
-        let orderChanged = false;
-        for (let i = 0; i < Math.min(5, allDataRaw.length, allData.length); i++) {
-          if (allDataRaw[i].ORDNAME !== allData[i].ORDNAME || 
-              allDataRaw[i].PARTDES !== allData[i].PARTDES ||
-              allDataRaw[i].PARTNAME !== allData[i].PARTNAME) {
-            orderChanged = true;
-            console.warn(`⚠️ סדר השתנה בשורה ${i}:`, {
-              raw: {ORDNAME: allDataRaw[i].ORDNAME, PARTDES: allDataRaw[i].PARTDES},
-              original: {ORDNAME: allData[i].ORDNAME, PARTDES: allData[i].PARTDES}
-            });
-            break;
-          }
-        }
-        if (!orderChanged) {
-          console.log('✅ בדיקה: סדר הנתונים נשמר');
-        }
-      }
-      
-      console.log('✅ נתונים נמשכו:', allData.length, 'רשומות');
-      console.log('✅ נתונים מובנים:', Object.keys(structuredData).length, 'הזמנות');
-      console.log('✅ טבלה כללית תציג:', allDataWithCalculations.length, 'רשומות עם חישובים (CONTAINERS, PACK5, PACK7)');
-      console.log('✅ נתונים גולמיים נשמרו ב-allDataRaw לבדיקה:', allDataRaw.length, 'רשומות');
-      
-      // בדיקת דוגמה - הדפסת כמה שורות ראשונות כדי לוודא שהנתונים נכונים
-      if (allDataRaw.length > 0) {
-        console.log('📊 דוגמה לנתונים ראשונים מהשרת (3 שורות):');
-        allDataRaw.slice(0, 3).forEach((row, idx) => {
-          console.log(`  שורה ${idx + 1}:`, {
-            ORDNAME: row.ORDNAME,
-            PARTDES: row.PARTDES,
-            PARTNAME: row.PARTNAME,
-            EATQUANT: row.EATQUANT,
-            TQUANT: row.TQUANT
-          });
-        });
-      }
-      
-      // בדיקת שיטות אריזה בנתונים הגולמיים
-      if (allDataRaw.length > 0) {
-        const rawPackMethods = [...new Set(allDataRaw.map(r => String(r.PACKMETHODCODE || '').trim()).filter(Boolean))];
-        console.log('📊 שיטות אריזה בנתונים הגולמיים:', rawPackMethods);
-        const rawTrayCount = allDataRaw.filter(r => {
-          const pm = String(r.PACKMETHODCODE || '').trim();
-          return pm === 'חמגשית 101' || pm.includes('חמגשית 101');
-        }).length;
-        console.log('📊 מספר שורות עם חמגשית 101 בנתונים הגולמיים:', rawTrayCount);
-      }
-      
-      // בדיקת דוגמה להזמנה
-      const sampleOrder = Object.values(structuredData)[0];
-      if (sampleOrder) {
-        console.log('✅ דוגמה להזמנה:', {
-          orderName: sampleOrder.orderName,
-          itemsCount: sampleOrder.items.length,
-          sampleItems: sampleOrder.items.slice(0, 2).map(item => ({
-            partDes: item.partDes,
-            packMethodCode: item.packMethodCode,
-            pspec1: item.pspec1
-          }))
-        });
-      }
-      
-      // הצגת הטבלה הכללית עם הנתונים עם חישובים (כדי לראות CONTAINERS, PACK5, PACK7)
-      // הנתונים הגולמיים נשמרים ב-allDataRaw לבדיקה
+      // הצגת הטבלה והדוחות
       createTable(allDataWithCalculations);
-      // יצירת דוחות נוספים מהנתונים המובנים
       createSummaryReport(structuredData);
       createTraysReport(structuredData);
       createAllergensReport(structuredData);
       createLabelsReport(structuredData);
       createAllergenLabelsReport(structuredData);
+      
       // הצגת טאבים
       document.getElementById('tabsContainer').style.display = 'flex';
       statusDiv.className = 'status success';
       const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-      statusDiv.innerHTML = `✓ הצלחה! נמשכו <strong>${allData.length}</strong> רשומות (<strong>${Object.keys(structuredData).length}</strong> הזמנות) בזמן <strong>${totalTime}</strong> שניות<br><small style="color:#666;">מזהה משיכה: ${fetchId || 'לא זמין'}</small>`;
+      statusDiv.innerHTML = `✓ הצלחה! נמשכו <strong>${allData.length}</strong> רשומות (<strong>${Object.keys(structuredData).length}</strong> הזמנות) בזמן <strong>${totalTime}</strong> שניות`;
       downloadBtn.disabled = false;
     }
     
@@ -1812,51 +1712,6 @@ async function fetchData() {
   }
 }
 
-// פונקציית דיבוג ידנית להשוואת נתוני הזמנה בין Priority לבין הטבלה שלנו
-// שימוש מהקונסול: debugOrder('SO123456')
-function debugOrder(orderName) {
-  const code = String(orderName || '').trim();
-  if (!code) {
-    console.warn('debugOrder: יש להעביר מספר הזמנה תקין');
-    return;
-  }
-
-  const raw = (window.allDataRaw || []).filter(r => String(r.ORDNAME || '').trim() === code);
-  const withCalc = (window.allDataWithCalculations || []).filter(r => String(r.ORDNAME || '').trim() === code);
-
-  console.log('🔍 debugOrder - הזמנה:', code);
-  console.log('📊 נתונים גולמיים מהשרת (allDataRaw):', raw.length, 'שורות');
-  raw.forEach((row, idx) => {
-    console.log(`  RAW #${idx + 1}`, {
-      ORDNAME: row.ORDNAME,
-      PARTDES: row.PARTDES,
-      PARTNAME: row.PARTNAME,
-      PACKMETHODCODE: row.PACKMETHODCODE,
-      MEALNAME: row.MEALNAME,
-      EATQUANT: row.EATQUANT,
-      TQUANT: row.TQUANT
-    });
-  });
-
-  console.log('📊 נתונים אחרי חישובים (allDataWithCalculations):', withCalc.length, 'שורות');
-  withCalc.forEach((row, idx) => {
-    console.log(`  CALC #${idx + 1}`, {
-      ORDNAME: row.ORDNAME,
-      PARTDES: row.PARTDES,
-      PARTNAME: row.PARTNAME,
-      PACKMETHODCODE: row.PACKMETHODCODE,
-      MEALNAME: row.MEALNAME,
-      EATQUANT: row.EATQUANT,
-      TQUANT: row.TQUANT,
-      CONTAINERS: row.CONTAINERS,
-      PACK5: row.PACK5,
-      PACK7: row.PACK7
-    });
-  });
-
-  console.log('✅ סיום debugOrder להזמנה', code, '- השווה מול Priority לראות אם העיוות קיים כבר בנתונים הגולמיים או נוצר אחרי החישובים.');
-}
-
 function createTable(data) {
   const tableContainer = document.getElementById('tableContainer');
   
@@ -1866,108 +1721,34 @@ function createTable(data) {
     dataTable = null;
   }
   
-  // שימוש בשדות הנבחרים
   const headers = SELECTED_FIELDS;
   
-  // בניית הטבלה - כל שורה = פריט
-  // חשוב: הנתונים מוצגים עם חישובים (CONTAINERS, PACK5, PACK7) שנוספו על בסיס הנתונים מהשרת
-  // הנתונים הגולמיים נשמרים ב-allDataRaw לבדיקה
+  // בניית הטבלה
   let html = '<table id="mainTable" class="display nowrap" style="width:100%"><thead><tr>';
   
-  // יצירת כותרות בעברית
+  // כותרות
   headers.forEach(h => {
-    const hebrewName = FIELD_NAMES_HEBREW[h] || h;
-    html += `<th>${hebrewName}</th>`;
+    html += `<th>${FIELD_NAMES_HEBREW[h] || h}</th>`;
   });
   
   html += '</tr></thead><tbody>';
   
-  // יצירת שורות מהנתונים - מוצגים בדיוק כמו שהם, ללא שינויים
-  // חשוב: הנתונים מוצגים בסדר שבו הם הגיעו מהשרת, ללא שינויים
-  // בדיקת כפילויות לפי ORDNAME + PARTDES + PARTNAME
-  const seenRows = new Map();
-  const duplicateRows = [];
-  
-  // שמירת סדר המקורי - ללא שינויים
-  data.forEach((row, index) => {
-    const rowKey = `${row.ORDNAME || ''}|${row.PARTDES || ''}|${row.PARTNAME || ''}`;
-    
-    if (seenRows.has(rowKey)) {
-      duplicateRows.push({
-        index: index,
-        rowKey: rowKey,
-        existingIndex: seenRows.get(rowKey),
-        ordName: row.ORDNAME,
-        partDes: row.PARTDES,
-        partName: row.PARTNAME
-      });
-    } else {
-      seenRows.set(rowKey, index);
-    }
-    
-    // יצירת שורה - בדיוק כמו שהנתונים הגיעו מהשרת
+  // שורות - ישירות ללא בדיקות מיותרות
+  data.forEach(row => {
     html += '<tr>';
     headers.forEach(field => {
-      // הצגת הערך בדיוק כמו שהוא - ללא עיבוד או שינויים
-      // שימוש ישיר בערך מהנתונים הגולמיים
       let value = row[field] !== undefined && row[field] !== null ? row[field] : '';
-      
-      // עיבוד מיוחד לפרמטר 7 - הצגה עם 2 ספרות אחרי הנקודה
       if (field === 'Y_9964_5_ESH' && value !== '') {
         const numValue = parseFloat(value);
-        if (!isNaN(numValue)) {
-          value = numValue.toFixed(2);
-        }
+        if (!isNaN(numValue)) value = numValue.toFixed(2);
       }
-      
       html += `<td>${value}</td>`;
     });
     html += '</tr>';
   });
   
-  // לוג לבדיקה - הדפסת 3 שורות ראשונות כדי לוודא שהסדר נכון
-  if (data.length > 0) {
-    console.log('📊 טבלה כללית - 3 שורות ראשונות (לבדיקת סדר):');
-    data.slice(0, 3).forEach((row, idx) => {
-      console.log(`  שורה ${idx + 1}: ORDNAME=${row.ORDNAME}, PARTDES=${row.PARTDES}, PARTNAME=${row.PARTNAME}`);
-    });
-  }
-  
-  if (duplicateRows.length > 0) {
-    console.warn('⚠️ נמצאו שורות כפולות בטבלה הכללית:', duplicateRows.length);
-    duplicateRows.slice(0, 10).forEach(dup => {
-      console.warn(`  שורה ${dup.index}: ${dup.rowKey} (קיימת גם בשורה ${dup.existingIndex})`);
-    });
-  }
-  
   html += '</tbody></table>';
   tableContainer.innerHTML = html;
-  
-  console.log('📊 טבלה כללית - סה"כ שורות עם חישובים:', data.length, '(כולל CONTAINERS, PACK5, PACK7)');
-  
-  // בדיקת הזמנות עם חמגשיות בטבלה הכללית
-  const ordersWithTraysInTable = {};
-  data.forEach(row => {
-    const pm = String(row.PACKMETHODCODE || '').trim().toLowerCase();
-    if (pm.includes('חמגשית')) {
-      const orderName = String(row.ORDNAME || '').trim();
-      if (!ordersWithTraysInTable[orderName]) {
-        ordersWithTraysInTable[orderName] = [];
-      }
-      ordersWithTraysInTable[orderName].push({
-        partDes: row.PARTDES || '',
-        packMethodCode: row.PACKMETHODCODE || '',
-        eatQuant: row.EATQUANT || 0
-      });
-    }
-  });
-  
-  if (Object.keys(ordersWithTraysInTable).length > 0) {
-    console.log('📊 טבלה כללית - הזמנות עם חמגשיות:', Object.keys(ordersWithTraysInTable).length);
-    Object.entries(ordersWithTraysInTable).forEach(([orderName, items]) => {
-      console.log(`  הזמנה ${orderName}: ${items.length} פריטי חמגשית`);
-    });
-  }
   
   // יצירת טבלת DataTables עם סינונים וחיפוש
   // חשוב: order: [] מבטיח שהשורות יוצגו בסדר שבו הן הגיעו, ללא מיון
@@ -3169,13 +2950,12 @@ function applyTraysFilters() {
     html += '</tbody></table></div></div>';
   }
   
-  // טבלת מארז 5 - מכל הנתונים של קרטון חמים, לפי PACK5, כל מה שיש לו PACK5 > 0 (חוץ מחמגשית, גסטרונום וצמחוני)
-  // חריג: אם פרמטר 6 למוצר (PSPEC6) מכיל "חבד" או "חב"ד", גם חמגשית נכללת
+  // טבלת מארז 5 - מכל הנתונים של קרטון חמים, לפי PACK5, כל מה שיש לו PACK5 > 0
+  // חמגשית בד"ץ מוחרגת, חמגשית אחרת נכללת
   const pack5Data = filteredData.filter(r => {
     const pack5 = parseFloat(r.PACK5 || r.pack5 || 0) || 0;
     if (pack5 <= 0) return false;
     
-    // בדיקה שזה לא חמגשית ולא גסטרונום
     const pm = String(r.PACKMETHODCODE || r.packMethodCode || '').trim().toLowerCase();
     const packDes = String(r.PACKDES || r.packDes || '').trim().toLowerCase();
     const pspec1 = String(r.PSPEC1 || r.pspec1 || '').trim().toLowerCase();
@@ -3183,25 +2963,10 @@ function applyTraysFilters() {
     const spec2 = String(r.SPEC2 || r.spec2 || '').trim().toLowerCase();
     const pspec2 = String(r.PSPEC2 || r.pspec2 || '').trim().toLowerCase();
     
-    // בדיקה אם זה חמגשית
     const isTray = pm.includes('חמגשית') || packDes.includes('חמגשית') || pspec1.includes('חמגשית');
-    
-    // בדיקה אם פרמטר 6 למוצר (PSPEC6) מכיל "חבד" או "חב"ד" (עם או בלי גרשיים)
-    // חשוב: בודקים רק PSPEC6 (פרמטר 6 למוצר), לא SPEC2 או PSPEC2
-    const pspec6Original = String(r.PSPEC6 || r.pspec6 || '').trim();
-    const isChabadInPSPEC6 = pspec6.includes('חבד') || pspec6Original.includes('חבד') ||
-                             pspec6.includes('חב"ד') || pspec6Original.includes('חב"ד') ||
-                             pspec6.includes('חב\'ד') || pspec6Original.includes('חב\'ד');
-    
-    // לוגים לבדיקה - רק עבור חמגשית
-    if (isTray) {
-      console.log(`🔍 מארז 5 - חמגשית: פריט="${String(r.PARTDES || r.partDes || '').trim()}", PACKMETHODCODE="${pm}", PSPEC6="${pspec6Original}", isChabadInPSPEC6=${isChabadInPSPEC6}, נכלל=${isChabadInPSPEC6}`);
-    }
-    
-    // אם זה חמגשית - בדוק אם זה חריג (חבד בפרמטר 6 למוצר)
-    if (isTray && !isChabadInPSPEC6) {
-      return false; // חמגשית רגילה - לא נכלל
-    }
+    const isBadatz = spec2.includes('בדץ') || spec2.includes('בד"ץ') || spec2.includes('badatz') ||
+                     pspec2.includes('בדץ') || pspec2.includes('בד"ץ') || pspec2.includes('badatz');
+    if (isTray && isBadatz) return false; // חמגשית בד"ץ מוחרגת
     
     // אם זה גסטרונום - לא נכלל (בודק בכל השדות הרלוונטיים)
     if (pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום')) {
@@ -3213,8 +2978,7 @@ function applyTraysFilters() {
       return false;
     }
     
-    // כל השאר נכלל - כל מה שיש לו PACK5 > 0 ולא גסטרונום ולא צמחוני
-    // (חמגשית נכללת רק אם זה חבד + עיקרי)
+    // כל השאר נכלל
     return true;
   });
   if (pack5Data.length > 0) {
@@ -4013,13 +3777,9 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
     });
   };
   
-  // סינון רק לקוחות מילגם - כל מה שמתחיל ב"מילגם" (גם "מילגם צפון" וכו')
+  // הצגת כל הלקוחות (ללא סינון מילגם)
   let ordersArray = Object.values(orders);
   const totalBeforeFilter = ordersArray.length;
-  ordersArray = ordersArray.filter(order => {
-    const spec1 = String(order.spec1 || '').trim();
-    return spec1.startsWith('מילגם');
-  });
   
   // מיון לפי סדר המבוקש
   if (sortMode === 'loading') {
@@ -4122,14 +3882,12 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
     });
   }
   
-  console.log('📊 דוח מדבקות - סה"כ הזמנות לפני סינון:', totalBeforeFilter);
-  console.log('📊 דוח מדבקות - סה"כ הזמנות אחרי סינון מילגם:', ordersArray.length);
+  console.log('📊 דוח מדבקות - סה"כ הזמנות:', ordersArray.length);
   
   if (ordersArray.length === 0) {
     container.innerHTML = '<div style="text-align:center;padding:50px;color:#d32f2f;background:#ffebee;border:2px solid #d32f2f;border-radius:8px;margin:20px;">' +
-      '<h3 style="color:#d32f2f;margin-bottom:10px;">⚠️ לא נמצאו הזמנות ללקוחות מילגם</h3>' +
-      `<p>סה"כ הזמנות במערכת: ${totalBeforeFilter}</p>` +
-      '<p style="font-size:0.9em;margin-top:10px;">אנא ודא שיש הזמנות עם SPEC1 = "מילגם"</p>' +
+      '<h3 style="color:#d32f2f;margin-bottom:10px;">⚠️ לא נמצאו הזמנות</h3>' +
+      '<p style="font-size:0.9em;margin-top:10px;">אנא ודא שיש הזמנות בתאריך שנבחר</p>' +
       '</div>';
     return;
   }
@@ -4301,18 +4059,19 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           const uniquePartDes = [];
           let hasNoAllergen = false;
           let isVegetarian = false;
+          let isChabadKashrut = false; // בדיקה אם יש כשרות חב"ד
           let eatQuantSmall = 0; // כמות לחמגשית קטנה
           let eatQuantLarge = 0; // כמות לחמגשית גדולה
-          
+
           allItems.forEach((item, index) => {
             const partDes = String(item.partDes || item.PARTDES || item.partName || item.PARTNAME || '').trim();
             if (!partDes) return;
-            
+
             // הוספת הפריט לרשימה (ללא כפילויות)
             if (!uniquePartDes.includes(partDes)) {
               uniquePartDes.push(partDes);
             }
-            
+
             // בדיקת אלרגני/צמחוני
             const pspec1 = String(item.pspec1 || item.PSPEC1 || '').trim().toLowerCase();
             if (pspec1.includes('ללא אלרגני') || pspec1.includes('לא אלרגני')) {
@@ -4321,6 +4080,10 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
             const pspec6 = String(item.pspec6 || item.PSPEC6 || '').trim().toLowerCase();
             if (pspec6.includes('צמחוני')) {
               isVegetarian = true;
+            }
+            // בדיקה אם הכשרות היא חב"ד (בפרמטר 6 למוצר)
+            if (pspec6.includes('חבד') || pspec6.includes('חב"ד') || pspec6.includes('חב\'ד')) {
+              isChabadKashrut = true;
             }
             
             // זיהוי גודל חמגשית וסיכום כמות
@@ -4363,6 +4126,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               totalQuantity: eatQuantSmall,
               hasNoAllergen: hasNoAllergen,
               isVegetarian: isVegetarian,
+              pspec6: isChabadKashrut ? 'חבד' : '', // העברת כשרות חב"ד
               traySize: 'small'
             });
             summary.push({
@@ -4373,6 +4137,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               totalQuantity: eatQuantLarge,
               hasNoAllergen: hasNoAllergen,
               isVegetarian: isVegetarian,
+              pspec6: isChabadKashrut ? 'חבד' : '', // העברת כשרות חב"ד
               traySize: 'large'
             });
           } else if (eatQuantSmall > 0) {
@@ -4385,6 +4150,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               totalQuantity: eatQuantSmall,
               hasNoAllergen: hasNoAllergen,
               isVegetarian: isVegetarian,
+              pspec6: isChabadKashrut ? 'חבד' : '', // העברת כשרות חב"ד
               traySize: 'small'
             });
           } else if (eatQuantLarge > 0) {
@@ -4397,6 +4163,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               totalQuantity: eatQuantLarge,
               hasNoAllergen: hasNoAllergen,
               isVegetarian: isVegetarian,
+              pspec6: isChabadKashrut ? 'חבד' : '', // העברת כשרות חב"ד
               traySize: 'large'
             });
           }
@@ -4468,12 +4235,53 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
         totalOrder = itemsArray.reduce((sum, item) => sum + (item.sumQuant || 0), 0);
       }
 
-      // חישוב גובה שורה דינמי: (500px - 120px כותרת - 50px הערות - 40px פוטר) / מספר פריטים
+      // חישוב גובה שורה דינמי: (500px - 100px כותרת - 20px הערות - 25px פוטר - שורות מארז) / מספר פריטים
       const labelHeight = 500;
-      const headerHeight = 120; // הקטנתי מ-140 ל-120
-      const notesHeight = 50;
-      const footerHeight = 40;
-      const availableHeight = labelHeight - headerHeight - notesHeight - footerHeight;
+      const headerHeight = 100; // הקטנתי מ-120 ל-100 - יותר מקום לטבלה!
+      const notesHeight = 20; // הקטנתי מ-25 ל-20
+      const footerHeight = 25; // הקטנתי מ-30 ל-25
+
+      // בדיקה מוקדמת אם תהיה שורת מארזים - לחישוב גובה דינמי
+      const checkHasTrayOnly = itemsArray.every(item => item.isTray === true);
+      const checkSpec2 = String(order.spec2 || '').trim().toLowerCase();
+      const willHavePacksRow = checkHasTrayOnly && itemsArray.length > 0 &&
+                               (checkSpec2.includes('חבד') || checkSpec2.includes('חב"ד') || checkSpec2.includes('חב\'ד') ||
+                                checkSpec2.includes('נחלת') || checkSpec2.includes('ירוסלבסקי') || checkSpec2.includes('ביסטריצקי'));
+
+      // חישוב כמה שורות מארז יהיו (כל מוצר עם PACK5/PACK7 = שורה)
+      let packsRowsCount = 0;
+      if (willHavePacksRow) {
+        // ספירה מהירה של כמה פריטים יש עם PACK5 או PACK7
+        const uniqueProducts = new Set();
+        trayItemsRaw.forEach(item => {
+          const pack5 = parseFloat(item.pack5 || item.PACK5 || 0) || 0;
+          const pack7 = parseFloat(item.pack7 || item.PACK7 || 0) || 0;
+          if (pack5 > 0 || pack7 > 0) {
+            const productName = String(item.partDes || item.PARTDES || '').trim();
+            if (productName) uniqueProducts.add(productName);
+          }
+        });
+        packsRowsCount = uniqueProducts.size;
+      }
+
+      // גובה שורת מארז - 50px לכל שורת מוצר + 10px למרווחים
+      const packsRowHeight = packsRowsCount > 0 ? (packsRowsCount * 50 + 10) : 0;
+
+      const availableHeight = labelHeight - headerHeight - notesHeight - footerHeight - packsRowHeight;
+
+      // לוג לבדיקה
+      if (packsRowsCount > 0) {
+        console.log('🔍 חישוב גובה:', {
+          labelHeight,
+          headerHeight,
+          notesHeight,
+          footerHeight,
+          packsRowsCount,
+          packsRowHeight,
+          availableHeight,
+          numberOfItems: itemsArray.length
+        });
+      }
       const maxRowHeight = 40; // מקסימום 40px לשורה
       const minRowHeight = 8; // מינימום 8px לשורה (הורדתי עוד יותר כדי שיכנסו יותר פריטים)
       const allergenRowMinHeight = 20; // גובה מינימלי לשורות אלרגניות (הורדתי מ-22 ל-20)
@@ -4543,7 +4351,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       html += `<td rowspan="3" style="width:100px !important;text-align:center !important;padding:4px !important;border:1px solid #000 !important;background:#fff !important;vertical-align:middle !important;">`;
       html += `<div style="display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;">`;
       html += `<img src="${kashrutLogoPath}" alt="${safeAlt}" style="max-width:100% !important;max-height:65px !important;width:auto !important;height:auto !important;object-fit:contain !important;display:block !important;" onerror="${imgOnError}" />`;
-      html += `<div style="font-size:0.9em !important;font-weight:bold !important;color:#000 !important;margin-top:3px !important;">בשרי</div>`;
+      html += `<div style="font-size:1.1em !important;font-weight:bold !important;color:#000 !important;margin-top:3px !important;">בשרי</div>`;
       html += `</div>`;
       html += '</td>';
       
@@ -4582,22 +4390,26 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       const addressText = order.address || order.state || '';
       console.log('📍 כתובת להזמנה', order.orderName, ':', order.address, '| state:', order.state, '| תוצאה:', addressText);
       
-      // פרטי לקוח ולוגיסטיקה - הקטנתי את הטקסט והריווח
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>שם מוסד:</strong> ' + (order.custDes || '') + '</td>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
+      // פרטי לקוח ולוגיסטיקה - מוקטן כדי לפנות מקום
+      html += '<td style="text-align:right !important;padding:4px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.2 !important;"><strong>שם מוסד:</strong> ' + (order.custDes || '') + '</td>';
+      html += '<td style="text-align:right !important;padding:4px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.2 !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
       html += '</tr>';
-      
+
       html += '<tr>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>כתובת:</strong> ' + addressText + '</td>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>מס תחנה:</strong> ' + (order.pritDistrOrder || 0) + '</td>';
+      html += '<td style="text-align:right !important;padding:4px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.2 !important;"><strong>כתובת:</strong> ' + addressText + '</td>';
+      html += '<td style="text-align:right !important;padding:4px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.2 !important;"><strong>מס תחנה:</strong> ' + (order.pritDistrOrder || 0) + '</td>';
       html += '</tr>';
-      
+
       html += '<tr>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>מס לקוח:</strong> ' + (order.custName || '') + (classText ? ' | <strong>כיתה:</strong> ' + classText : '') + '</td>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.4 !important;"><strong>תאריך:</strong> ' + formattedDate + '</td>';
+      html += '<td style="text-align:right !important;padding:4px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.2 !important;"><strong>מס לקוח:</strong> ' + (order.custName || '') + (classText ? ' | <strong>כיתה:</strong> ' + classText : '') + '</td>';
+      html += '<td style="text-align:right !important;padding:4px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.2 !important;"><strong>תאריך:</strong> ' + formattedDate + '</td>';
       html += '</tr>';
       
       html += '</tbody></table>';
+
+      // שורת מספר מנות - בין הכותרת לטבלת הפריטים
+      const eatQuantValue = order.eatQuant || 0;
+      html += `<div style="text-align:center !important;padding:6px 10px !important;margin-bottom:8px !important;background:#f5f5f5 !important;border:1px solid #000 !important;border-radius:4px !important;font-size:1.5em !important;font-weight:bold !important;">מספר מנות: ${eatQuantValue > 0 ? eatQuantValue : '-'}</div>`;
 
       // אזור שני - טבלה עם פרטי אריזה - גובה דינמי, מוגבל לגובה הזמין
       // rowHeight כבר חושב נכון בהתאם למספר הפריטים, אז נשתמש בו ישירות
@@ -4722,37 +4534,38 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
         const effectiveRowHeight = isAllergenRow ? Math.max(finalRowHeight, allergenRowMinHeight) : finalRowHeight;
         
         let cellPadding, cellFontSize, cellLineHeight;
+        // פונטים מוגדלים באופן יחסי
         if (effectiveRowHeight < 10) {
           cellPadding = '1px';
-          cellFontSize = '0.7em';
+          cellFontSize = '0.9em';
           cellLineHeight = '1.0';
         } else if (effectiveRowHeight < 12) {
           cellPadding = '1px';
-          cellFontSize = '0.75em';
+          cellFontSize = '0.95em';
           cellLineHeight = '1.0';
         } else if (effectiveRowHeight < 15) {
           cellPadding = '2px';
-          cellFontSize = '0.85em';
+          cellFontSize = '1.05em';
           cellLineHeight = '1.1';
         } else if (effectiveRowHeight < 18) {
           cellPadding = '3px';
-          cellFontSize = '0.9em';
+          cellFontSize = '1.1em';
           cellLineHeight = '1.15';
         } else if (effectiveRowHeight < 22) {
           cellPadding = '3px';
-          cellFontSize = '0.95em';
+          cellFontSize = '1.15em';
           cellLineHeight = '1.2';
         } else if (effectiveRowHeight < 25) {
           cellPadding = '4px';
-          cellFontSize = '1.0em';
+          cellFontSize = '1.2em';
           cellLineHeight = '1.25';
         } else if (effectiveRowHeight < 30) {
           cellPadding = '5px';
-          cellFontSize = '1.1em';
+          cellFontSize = '1.3em';
           cellLineHeight = '1.3';
         } else {
           cellPadding = '6px';
-          cellFontSize = '1.2em';
+          cellFontSize = '1.4em';
           cellLineHeight = '1.3';
         }
         
@@ -4784,14 +4597,20 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           // עבור חמגשית במצב מעורב - 5 עמודות: מוצר, מיכלים (ריק), מארז קטן/גדול, כמות (ריק בצד שמאל)
           const traySize = item.traySize || 'small';
           const eatQuant = item.eatQuant || item.totalQuantity || 0;
-          const pack5 = traySize === 'small' ? eatQuant : 0;
-          const pack7 = traySize === 'large' ? eatQuant : 0;
-          
+
+          // בדיקה אם הכשרות היא חב"ד (בפרמטר 6 למוצר - PSPEC6)
+          const pspec6 = String(item.pspec6 || item.PSPEC6 || '').trim().toLowerCase();
+          const isChabadInPSPEC6 = pspec6.includes('חבד') || pspec6.includes('חב"ד') || pspec6.includes('חב\'ד');
+
+          // רק אם הכשרות היא חב"ד - להציג מארז 5 ומארז 7
+          const pack5 = (isChabadInPSPEC6 && traySize === 'small') ? eatQuant : 0;
+          const pack7 = (isChabadInPSPEC6 && traySize === 'large') ? eatQuant : 0;
+
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:right !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${partDesText}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;"></td>`; // מיכלים ריק
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;"></td>`; // מיכלים ריק
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack5 > 0 ? pack5.toFixed(0) : ''}</td>`;
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack7 > 0 ? pack7.toFixed(0) : ''}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;"></td>`; // כמות ריק לחמגשית
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;"></td>`; // כמות ריק לחמגשית
         } else {
           // עבור תפזורת - 5 עמודות: מוצר מימין, מיכלים, מארז קטן, מארז גדול, כמות (בצד שמאל)
           // כמות - TQUANT מהשרת, עם עשרוניות אם יש
@@ -4802,10 +4621,10 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           const pack7 = item.sumPack7 ? item.sumPack7.toFixed(0) : '';
           
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:right !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${partDesText}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${containers}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack5}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack7}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${quantity}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${containers}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack5}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack7}</td>`;
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${quantity}</td>`;
         }
         
         rowHtml += '</tr>';
@@ -4819,17 +4638,73 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       
       html += '</tbody></table>';
       html += '</div>'; // סוגר את ה-div שמגביל את הגובה
-      
-      // אזור שלישי - מקום להערות - הגדלת טקסט משמעותית יותר (גובה קבוע)
-      html += `<div style="height:${notesHeight}px !important;min-height:${notesHeight}px !important;margin-bottom:10px !important;padding:8px !important;border:1px solid #ccc !important;font-size:1.3em !important;flex-shrink:0 !important;box-sizing:border-box !important;">`;
+
+      // אם זה חמגשית בלבד (tray only) וכשרות חבד - הוספת שורת מארז 5/7
+      const hasTrayItemsOnly = itemsArray.every(item => item.isTray === true);
+      if (hasTrayItemsOnly && itemsArray.length > 0) {
+        // בדיקה אם כשרות הלקוח (SPEC2 של ההזמנה) היא חבד - לא בדץ
+        const spec2 = String(order.spec2 || '').trim().toLowerCase();
+        const hasChabadKashrut = spec2.includes('חבד') || spec2.includes('חב"ד') || spec2.includes('חב\'ד') ||
+                                  spec2.includes('נחלת') || spec2.includes('ירוסלבסקי') || spec2.includes('ביסטריצקי');
+
+        if (hasChabadKashrut) {
+          // קיבוץ לפי שם מוצר מקורי - רק פריטים שיש להם PACK5 או PACK7
+          // נחזור לפריטים המקוריים מ-trayItemsRaw
+          const packsByProduct = {};
+
+          // עוברים על הפריטים המקוריים של החמגשיות (לא המקובצים)
+          trayItemsRaw.forEach(item => {
+            // שליפת PACK5 ו-PACK7 מהפריט המקורי
+            const pack5 = parseFloat(item.pack5 || item.PACK5 || 0) || 0;
+            const pack7 = parseFloat(item.pack7 || item.PACK7 || 0) || 0;
+
+            // רק אם יש מארז 5 או מארז 7
+            if (pack5 > 0 || pack7 > 0) {
+              const productName = String(item.partDes || item.PARTDES || '').trim();
+
+              if (productName) {
+                if (!packsByProduct[productName]) {
+                  packsByProduct[productName] = { pack5: 0, pack7: 0 };
+                }
+
+                packsByProduct[productName].pack5 += pack5;
+                packsByProduct[productName].pack7 += pack7;
+              }
+            }
+          });
+
+          // לוג לבדיקה
+          console.log('🔍 מארזים - הזמנה:', order.orderName, 'SPEC2:', order.spec2);
+          console.log('🔍 מארזים - packsByProduct:', packsByProduct);
+
+          // הוספת שורת מארז לכל מוצר - ללא רווחים
+          html += '<div style="margin-top:2px !important;margin-bottom:0 !important;">';
+          html += '<table style="width:100% !important;border-collapse:collapse !important;border:1px solid #000 !important;margin:0 !important;">';
+          html += '<tbody>';
+
+          Object.entries(packsByProduct).forEach(([productName, packs]) => {
+            html += '<tr>';
+            html += `<td style="border:1px solid #000 !important;padding:8px !important;text-align:right !important;background:#e0e0e0 !important;font-size:1.2em !important;font-weight:bold !important;min-height:40px !important;vertical-align:middle !important;line-height:1.3 !important;">${productName}</td>`;
+            html += `<td style="border:1px solid #000 !important;padding:8px !important;text-align:center !important;background:#c8e6c9 !important;font-size:1.2em !important;font-weight:bold !important;width:25% !important;min-height:40px !important;vertical-align:middle !important;line-height:1.3 !important;">${packs.pack5 > 0 ? packs.pack5.toFixed(0) : ''}</td>`;
+            html += `<td style="border:1px solid #000 !important;padding:8px !important;text-align:center !important;background:#d3d3d3 !important;font-size:1.2em !important;font-weight:bold !important;width:25% !important;min-height:40px !important;vertical-align:middle !important;line-height:1.3 !important;">${packs.pack7 > 0 ? packs.pack7.toFixed(0) : ''}</td>`;
+            html += '</tr>';
+          });
+
+          html += '</tbody></table>';
+          html += '</div>';
+        }
+      }
+
+      // אזור שלישי - מקום להערות - מוקטן מאוד
+      html += `<div style="height:${notesHeight}px !important;min-height:${notesHeight}px !important;margin-bottom:0 !important;padding:2px !important;border:1px solid #ccc !important;font-size:1.0em !important;flex-shrink:0 !important;box-sizing:border-box !important;">`;
       // אם יש אלרגנים - להוסיף "ללא שומשום"
       if (hasNoAllergen) {
-        html += '<div style="color:#d32f2f !important;font-weight:bold !important;font-size:1.3em !important;">ללא שומשום</div>';
+        html += '<div style="color:#d32f2f !important;font-weight:bold !important;font-size:1.0em !important;">ללא שומשום</div>';
       }
       html += '</div>';
-      
-      // אזור רביעי - קונטקט טקסט בתחתית (position absolute - תמיד בתחתית)
-      html += `<div class="label-footer" style="position:absolute !important;bottom:0 !important;left:0 !important;right:0 !important;width:100% !important;text-align:center !important;font-size:0.85em !important;font-weight:normal !important;padding:6px !important;border-top:1px solid #ccc !important;background:#fff !important;box-sizing:border-box !important;height:${footerHeight}px !important;display:flex !important;flex-direction:column !important;justify-content:center !important;align-items:center !important;">${contactText}</div>`;
+
+      // אזור רביעי - קונטקט טקסט בתחתית (position absolute) - מוקטן
+      html += `<div class="label-footer" style="position:absolute !important;bottom:0 !important;left:0 !important;right:0 !important;width:100% !important;text-align:center !important;font-size:0.8em !important;font-weight:normal !important;padding:2px !important;border-top:1px solid #ccc !important;background:#fff !important;box-sizing:border-box !important;height:${footerHeight}px !important;display:flex !important;flex-direction:column !important;justify-content:center !important;align-items:center !important;">${contactText}</div>`;
       
       html += '</div>';
     };
@@ -6157,8 +6032,8 @@ function createAllergenLabelsReport(data) {
       }
     });
     
-    // חלוקה לדפים - 32 מדבקות בכל דף, דף נפרד לכל קו חלוקה
-    const LABELS_PER_PAGE = 32;
+    // חלוקה לדפים - 6 מדבקות בכל דף (2 עמודות × 3 שורות), דף נפרד לכל קו חלוקה
+    const LABELS_PER_PAGE = 6;
     const allPages = []; // מערך של {distrLine, distrLineDes, labels}
     let totalLabels = 0;
     
@@ -6310,20 +6185,20 @@ function printAllergenLabels() {
   printWindow.document.write('body { font-family: Arial, sans-serif; direction: rtl; margin: 0 !important; padding: 0 !important; background: white; width: 210mm; height: 297mm; }');
   printWindow.document.write('.allergen-labels-container { margin: 0; padding: 0; }');
   printWindow.document.write('.allergen-page-header { display: none !important; }');
-  // דף מדבקות: 210mm רוחב, גובה 297mm, שוליים 5mm למעלה ו-9mm למטה = 283mm לתוכן
-  printWindow.document.write('.allergen-labels-page { width: 210mm; height: 297mm; margin: 0; padding: 5mm 0 9mm 0; box-sizing: border-box; display: grid; grid-template-columns: repeat(4, 52.5mm); grid-template-rows: repeat(8, 35.375mm); justify-content: start; align-content: start; background: white; page-break-after: always; page-break-inside: avoid; }');
-  printWindow.document.write('.allergen-label { width: 52.5mm; height: 35.375mm; border: 1px solid #000; box-sizing: border-box; padding: 1.5mm; display: flex; flex-direction: column; justify-content: space-between; font-family: Arial, sans-serif; font-size: 7pt; direction: rtl; background: white; overflow: hidden; }');
-  printWindow.document.write('.allergen-label-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #000; padding-bottom: 0.5mm; margin-bottom: 0.5mm; }');
+  // דף מדבקות: 210mm × 297mm, 2 עמודות × 3 שורות, כל מדבקה 105mm × 99mm, ללא שוליים מהצדדים
+  printWindow.document.write('.allergen-labels-page { width: 210mm; height: 297mm; margin: 0; padding: 0; box-sizing: border-box; display: grid; grid-template-columns: repeat(2, 105mm); grid-template-rows: repeat(3, 99mm); justify-content: start; align-content: start; background: white; page-break-after: always; page-break-inside: avoid; }');
+  printWindow.document.write('.allergen-label { width: 105mm; height: 99mm; border: 1px solid #000; box-sizing: border-box; padding: 4mm; display: flex; flex-direction: column; justify-content: space-between; font-family: Arial, sans-serif; font-size: 10pt; direction: rtl; background: white; overflow: hidden; }');
+  printWindow.document.write('.allergen-label-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #000; padding-bottom: 2mm; margin-bottom: 2mm; }');
   printWindow.document.write('.allergen-label-top-info { text-align: right; }');
-  printWindow.document.write('.allergen-label-route-station { font-size: 10pt; font-weight: bold; line-height: 1.2; }');
-  printWindow.document.write('.allergen-label-date-info { text-align: left; font-size: 7pt; line-height: 1.2; }');
-  printWindow.document.write('.allergen-label-body { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1mm; }');
-  printWindow.document.write('.allergen-label-customer { font-size: 14pt; font-weight: bold; text-align: center; line-height: 1.1; }');
-  printWindow.document.write('.allergen-label-address { font-size: 11pt; font-weight: bold; text-align: center; line-height: 1.1; }');
-  printWindow.document.write('.allergen-label-class { font-size: 12pt; font-weight: bold; text-align: center; }');
-  printWindow.document.write('.allergen-label-footer { border-top: 1px solid #000; padding-top: 0.5mm; text-align: center; display: flex; justify-content: space-between; align-items: center; }');
-  printWindow.document.write('.allergen-label-dish { font-size: 8pt; line-height: 1.1; flex: 1; text-align: center; }');
-  printWindow.document.write('.allergen-label-quantity { font-size: 8pt; font-weight: bold; }');
+  printWindow.document.write('.allergen-label-route-station { font-size: 18pt; font-weight: bold; line-height: 1.3; }');
+  printWindow.document.write('.allergen-label-date-info { text-align: left; font-size: 14pt; line-height: 1.3; }');
+  printWindow.document.write('.allergen-label-body { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 3mm; }');
+  printWindow.document.write('.allergen-label-customer { font-size: 22pt; font-weight: bold; text-align: center; line-height: 1.2; }');
+  printWindow.document.write('.allergen-label-address { font-size: 16pt; font-weight: bold; text-align: center; line-height: 1.2; }');
+  printWindow.document.write('.allergen-label-class { font-size: 18pt; font-weight: bold; text-align: center; }');
+  printWindow.document.write('.allergen-label-footer { border-top: 1px solid #000; padding-top: 2mm; text-align: center; display: flex; justify-content: space-between; align-items: center; }');
+  printWindow.document.write('.allergen-label-dish { font-size: 16pt; font-weight: bold; line-height: 1.2; flex: 1; text-align: center; }');
+  printWindow.document.write('.allergen-label-quantity { font-size: 16pt; font-weight: bold; }');
   printWindow.document.write('@media print { @page { margin: 0 !important; } html, body { margin: 0 !important; padding: 0 !important; width: 210mm !important; height: 297mm !important; } .allergen-labels-page { page-break-after: always; } .allergen-labels-page:last-child { page-break-after: auto; } }');
   printWindow.document.write('</style>');
   printWindow.document.write('</head>');
