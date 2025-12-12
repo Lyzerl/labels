@@ -4078,7 +4078,9 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           let isVegetarian = false;
           let eatQuantSmall = 0; // כמות לחמגשית קטנה
           let eatQuantLarge = 0; // כמות לחמגשית גדולה
-          
+          let sumPack5 = 0; // סכום מארז 5 לחב"ד
+          let sumPack7 = 0; // סכום מארז 7 לחב"ד
+
           allItems.forEach((item, index) => {
             const partDes = String(item.partDes || item.PARTDES || item.partName || item.PARTNAME || '').trim();
             if (!partDes) return;
@@ -4115,6 +4117,12 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
                 eatQuantSmall = eatQuant; // רק אם עדיין לא נקבעה כמות
               }
             }
+
+            // סיכום מארז 5 ומארז 7 (לחב"ד)
+            const pack5Value = parseFloat(item.pack5 || item.PACK5 || 0) || 0;
+            const pack7Value = parseFloat(item.pack7 || item.PACK7 || 0) || 0;
+            sumPack5 += pack5Value;
+            sumPack7 += pack7Value;
           });
           
           // יצירת מפתח ייחודי לכל הפריטים יחד (מחוברים ב-"+")
@@ -4138,7 +4146,9 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               totalQuantity: eatQuantSmall,
               hasNoAllergen: hasNoAllergen,
               isVegetarian: isVegetarian,
-              traySize: 'small'
+              traySize: 'small',
+              sumPack5: sumPack5,
+              sumPack7: sumPack7
             });
             summary.push({
               itemsKey: finalItemsKey,
@@ -4148,7 +4158,9 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               totalQuantity: eatQuantLarge,
               hasNoAllergen: hasNoAllergen,
               isVegetarian: isVegetarian,
-              traySize: 'large'
+              traySize: 'large',
+              sumPack5: sumPack5,
+              sumPack7: sumPack7
             });
           } else if (eatQuantSmall > 0) {
             // רק קטנה
@@ -4160,7 +4172,9 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               totalQuantity: eatQuantSmall,
               hasNoAllergen: hasNoAllergen,
               isVegetarian: isVegetarian,
-              traySize: 'small'
+              traySize: 'small',
+              sumPack5: sumPack5,
+              sumPack7: sumPack7
             });
           } else if (eatQuantLarge > 0) {
             // רק גדולה
@@ -4172,7 +4186,9 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               totalQuantity: eatQuantLarge,
               hasNoAllergen: hasNoAllergen,
               isVegetarian: isVegetarian,
-              traySize: 'large'
+              traySize: 'large',
+              sumPack5: sumPack5,
+              sumPack7: sumPack7
             });
           }
         }
@@ -4416,14 +4432,17 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       const totalItems = itemsArray.length;
       const itemsPerRow = totalItems > 3 ? Math.ceil(totalItems / 2) : totalItems;
       
-      // כותרת טבלה - אם יש רק חמגשית (ללא תפזורת), נציג 2 עמודות בלבד
+      // בדיקה אם זה לקוח חב"ד
+      const isChabadOrder = isChabad(order);
+
+      // כותרת טבלה - אם יש רק חמגשית (ללא תפזורת), נציג 2 עמודות בלבד (או 4 עמודות לחב"ד)
       if (hasTrayItems && !hasNonTrayItems && !isMixedMode) {
-        // רק חמגשית - נציג 2 עמודות: כמות ותיאור מוצר
+        // רק חמגשית - נציג 2 עמודות: כמות ותיאור מוצר (או 4 עמודות לחב"ד עם מארז 5/7)
         // בדיקה אם יש גם קטנות וגם גדולות
         const trayItems = itemsArray.filter(item => item.isTray === true);
         const hasSmall = trayItems.some(item => item.traySize === 'small' || (item.eatQuantSmall > 0 && item.eatQuantLarge === 0));
         const hasLarge = trayItems.some(item => item.traySize === 'large' || (item.eatQuantLarge > 0 && item.eatQuantSmall === 0));
-        
+
         // אם יש רק קטנות - ירוק, אם יש רק גדולות - אפור, אם יש גם וגם - נציג כל קבוצה בנפרד
         let headerBgColor = '#c8e6c9'; // ירוק - ברירת מחדל
         let headerText = 'חמגשית קטנה';
@@ -4437,9 +4456,17 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           // יש גם וגם - נציג "כמות" (כי כל קבוצה תוצג בנפרד)
           headerText = 'כמות';
         }
-        
-        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#e0e0e0 !important;text-align:right !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">תיאור מוצר</th>`;
-        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:${headerBgColor} !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">${headerText}</th>`;
+
+        // לקוחות חב"ד - להציג גם מארז 5 ומארז 7
+        if (isChabadOrder) {
+          html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#e0e0e0 !important;text-align:right !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">תיאור מוצר</th>`;
+          html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">מארז 5</th>`;
+          html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">מארז 7</th>`;
+          html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:${headerBgColor} !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">${headerText}</th>`;
+        } else {
+          html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#e0e0e0 !important;text-align:right !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">תיאור מוצר</th>`;
+          html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:${headerBgColor} !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">${headerText}</th>`;
+        }
       } else if (isMixedMode || (hasTrayItems && !hasNonTrayItems)) {
         // מצב מעורב או רק חמגשית - נציג טבלה עם כל העמודות, כמות בצד שמאל
         html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#d3d3d3 !important;text-align:right !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;min-height:${finalRowHeight}px !important;max-height:${maxRowHeight}px !important;vertical-align:middle !important;">תיאור מוצר</th>`;
@@ -4543,23 +4570,33 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
         const isTrayOnly = hasTrayItems && !hasNonTrayItems && !isMixedMode;
         
         if (itemIsTray && isTrayOnly) {
-          // עבור חמגשית בלבד - 2 עמודות: כמות ותיאור מוצר
+          // עבור חמגשית בלבד - 2 עמודות: כמות ותיאור מוצר (או 4 עמודות לחב"ד עם מארז 5/7)
           const traySize = item.traySize || (item.eatQuantSmall > 0 && item.eatQuantLarge === 0 ? 'small' : 'large');
           const eatQuant = item.eatQuant || item.totalQuantity || 0;
-          
+
           // זיהוי גודל חמגשית - קטנה=ירוק, גדולה=אפור
           // אבל אם זה אלרגני או צמחוני, נשתמש ב-rowBgColor
           let quantityBgColor = traySize === 'large' ? '#d3d3d3' : '#c8e6c9'; // גדולה=אפור, קטנה=ירוק
           let productBgColor = '#e0e0e0'; // רקע רגיל לתיאור מוצר
-          
+
           // אם זה אלרגני או צמחוני, נשתמש ב-rowBgColor לכל התאים
           if (isNoAllergenRow || isVegetarianRow) {
             quantityBgColor = rowBgColor;
             productBgColor = rowBgColor;
           }
-          
-          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:right !important;background:${productBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${partDesText}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${quantityBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${eatQuant > 0 ? eatQuant.toFixed(0) : ''}</td>`;
+
+          // לקוחות חב"ד - להציג גם מארז 5 ומארז 7
+          if (isChabadOrder) {
+            const pack5Value = item.sumPack5 ? item.sumPack5.toFixed(0) : '';
+            const pack7Value = item.sumPack7 ? item.sumPack7.toFixed(0) : '';
+            rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:right !important;background:${productBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${partDesText}</td>`;
+            rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${isNoAllergenRow || isVegetarianRow ? rowBgColor : '#d3d3d3'} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack5Value}</td>`;
+            rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${isNoAllergenRow || isVegetarianRow ? rowBgColor : '#d3d3d3'} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack7Value}</td>`;
+            rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${quantityBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${eatQuant > 0 ? eatQuant.toFixed(0) : ''}</td>`;
+          } else {
+            rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:right !important;background:${productBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${partDesText}</td>`;
+            rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${quantityBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${eatQuant > 0 ? eatQuant.toFixed(0) : ''}</td>`;
+          }
         } else if (itemIsTray) {
           // עבור חמגשית במצב מעורב - 5 עמודות: מוצר, מיכלים (ריק), מארז קטן/גדול, כמות (ריק בצד שמאל)
           const traySize = item.traySize || 'small';
