@@ -3093,52 +3093,35 @@ function applyTraysFilters() {
     html += '</tbody></table></div></div>';
   }
   
-  // טבלת מארז 7 - מכל הנתונים של קרטון חמים, לפי PACK7, כל מה שיש לו PACK7 > 0 (חוץ מחמגשית, גסטרונום וצמחוני)
-  // חריג: אם הכשרות היא "חבד" ופרמטר 1 מכיל "עיקרי", גם חמגשית נכללת
+  // טבלת מארז 7 - מכל הנתונים של קרטון חמים, לפי PACK7, כל מה שיש לו PACK7 > 0
+  // חמגשית בד"ץ מוחרגת, חמגשית אחרת נכללת
   const pack7Data = filteredData.filter(r => {
     const pack7 = parseFloat(r.PACK7 || r.pack7 || 0) || 0;
     if (pack7 <= 0) return false;
-    
-    // בדיקה שזה לא חמגשית ולא גסטרונום
+
     const pm = String(r.PACKMETHODCODE || r.packMethodCode || '').trim().toLowerCase();
     const packDes = String(r.PACKDES || r.packDes || '').trim().toLowerCase();
     const pspec1 = String(r.PSPEC1 || r.pspec1 || '').trim().toLowerCase();
     const pspec6 = String(r.PSPEC6 || r.pspec6 || '').trim().toLowerCase();
     const spec2 = String(r.SPEC2 || r.spec2 || '').trim().toLowerCase();
     const pspec2 = String(r.PSPEC2 || r.pspec2 || '').trim().toLowerCase();
-    
-    // בדיקה אם זה חמגשית
+
     const isTray = pm.includes('חמגשית') || packDes.includes('חמגשית') || pspec1.includes('חמגשית');
-    
-    // בדיקה אם פרמטר 6 למוצר (PSPEC6) מכיל "חבד" או "חב"ד" (עם או בלי גרשיים)
-    // חשוב: בודקים רק PSPEC6 (פרמטר 6 למוצר), לא SPEC2 או PSPEC2
-    const pspec6Original = String(r.PSPEC6 || r.pspec6 || '').trim();
-    const isChabadInPSPEC6 = pspec6.includes('חבד') || pspec6Original.includes('חבד') ||
-                             pspec6.includes('חב"ד') || pspec6Original.includes('חב"ד') ||
-                             pspec6.includes('חב\'ד') || pspec6Original.includes('חב\'ד');
-    
-    // לוגים לבדיקה - רק עבור חמגשית
-    if (isTray) {
-      console.log(`🔍 מארז 5 - חמגשית: פריט="${String(r.PARTDES || r.partDes || '').trim()}", PACKMETHODCODE="${pm}", PSPEC6="${pspec6Original}", isChabadInPSPEC6=${isChabadInPSPEC6}, נכלל=${isChabadInPSPEC6}`);
-    }
-    
-    // אם זה חמגשית - בדוק אם זה חריג (חבד בפרמטר 6 למוצר)
-    if (isTray && !isChabadInPSPEC6) {
-      return false; // חמגשית רגילה - לא נכלל
-    }
-    
+    const isBadatz = spec2.includes('בדץ') || spec2.includes('בד"ץ') || spec2.includes('badatz') ||
+                     pspec2.includes('בדץ') || pspec2.includes('בד"ץ') || pspec2.includes('badatz');
+    if (isTray && isBadatz) return false; // חמגשית בד"ץ מוחרגת
+
     // אם זה גסטרונום - לא נכלל (בודק בכל השדות הרלוונטיים)
     if (pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום')) {
       return false;
     }
-    
+
     // אם זה צמחוני בפרמטר 6 - לא נכלל
     if (pspec6.includes('צמחוני')) {
       return false;
     }
-    
-    // כל השאר נכלל - כל מה שיש לו PACK7 > 0 ולא גסטרונום ולא צמחוני
-    // (חמגשית נכללת רק אם זה חבד + עיקרי)
+
+    // כל השאר נכלל
     return true;
   });
   if (pack7Data.length > 0) {
