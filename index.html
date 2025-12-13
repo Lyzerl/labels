@@ -1220,6 +1220,8 @@ tr:nth-child(even) {
         <option value="distribution">קו חלוקה + סדר הפצה</option>
         <option value="loading">לפי סדר העמסה</option>
       </select>
+      <label>חיפוש:</label>
+      <input type="text" id="labelsSearchInput" placeholder="חפש לפי שם מוסד או מס׳ לקוח..." style="padding:5px;font-size:14px;width:250px;border:1px solid #ccc;border-radius:4px;">
     </div>
     <div class="labels-actions">
       <button class="btn download" onclick="downloadLabelsCSV()" id="downloadLabelsBtn">📥 הורד CSV</button>
@@ -3638,24 +3640,27 @@ function createLabelsReport(data) {
   
   // בורר סדר מיון
   const sortModeSelect = document.getElementById('labelsSortModeFilter');
-  
+  // שדה חיפוש
+  const searchInput = document.getElementById('labelsSearchInput');
+
   // פונקציה לסינון
   const applyFilters = () => {
     const selectedLine = distrLineSelect.value;
     const selectedPackingMethod = packingMethodSelect.value;
     const labelsMode = labelsTempSelect.value || 'all';
     const sortMode = sortModeSelect ? sortModeSelect.value : 'distribution';
-    
+    const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
     if (orders) {
       // עבודה עם מבנה NoSQL
       let filteredOrders = orders;
-      
+
       if (selectedLine) {
-        filteredOrders = Object.fromEntries(Object.entries(filteredOrders).filter(([key, order]) => 
+        filteredOrders = Object.fromEntries(Object.entries(filteredOrders).filter(([key, order]) =>
           order.distrLineCode === selectedLine
         ));
       }
-      
+
       if (selectedPackingMethod) {
         filteredOrders = Object.fromEntries(Object.entries(filteredOrders).filter(([key, order]) => {
           // מציאת שיטת אריזה ראשית לפי PSPEC1
@@ -3672,7 +3677,17 @@ function createLabelsReport(data) {
           return mainPackingMethod === selectedPackingMethod;
         }));
       }
-      
+
+      // סינון לפי חיפוש - שם מוסד או מספר לקוח
+      if (searchTerm) {
+        filteredOrders = Object.fromEntries(Object.entries(filteredOrders).filter(([key, order]) => {
+          const custDes = String(order.custDes || '').toLowerCase();
+          const custName = String(order.custName || '').toLowerCase();
+          const codeDes = String(order.codeDes || '').toLowerCase();
+          return custDes.includes(searchTerm) || custName.includes(searchTerm) || codeDes.includes(searchTerm);
+        }));
+      }
+
       renderLabelsTableNoSQL(filteredOrders, container, labelsMode, sortMode);
     } else {
       let filtered = flatData;
@@ -3689,7 +3704,7 @@ function createLabelsReport(data) {
           }
           ordersByPackingMethod[orderKey].push(r);
         });
-        
+
         const filteredOrders = {};
         Object.keys(ordersByPackingMethod).forEach(orderKey => {
           const orderItems = ordersByPackingMethod[orderKey];
@@ -3709,15 +3724,31 @@ function createLabelsReport(data) {
         });
         filtered = Object.values(filteredOrders).flat();
       }
+
+      // סינון לפי חיפוש - שם מוסד או מספר לקוח
+      if (searchTerm) {
+        filtered = filtered.filter(r => {
+          const custDes = String(r.CUSTDES || '').toLowerCase();
+          const custName = String(r.CUSTNAME || '').toLowerCase();
+          const codeDes = String(r.CODEDES || '').toLowerCase();
+          return custDes.includes(searchTerm) || custName.includes(searchTerm) || codeDes.includes(searchTerm);
+        });
+      }
+
       renderLabelsTable(filtered, container);
     }
   };
-  
+
   // הוספת event listeners לסינון
   distrLineSelect.onchange = applyFilters;
   packingMethodSelect.onchange = applyFilters;
   labelsTempSelect.onchange = applyFilters;
   if (sortModeSelect) sortModeSelect.onchange = applyFilters;
+
+  // הוספת event listener לשדה החיפוש
+  if (searchInput) {
+    searchInput.oninput = applyFilters;
+  }
   
   // הצגה ראשונית
   if (orders) {
