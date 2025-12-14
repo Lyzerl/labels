@@ -274,8 +274,8 @@ h1 {
 
 .label-box-row {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 10px;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
     margin-bottom: 10px;
 }
 
@@ -288,6 +288,16 @@ h1 {
     border-radius: 6px;
     padding: 12px;
     background: #fafafa;
+}
+
+.label-box-hot {
+    border-color: #ff6b6b;
+    background: #fff5f5;
+}
+
+.label-box-cold {
+    border-color: #4dabf7;
+    background: #f0f7ff;
 }
 
 .label-box-name {
@@ -332,34 +342,6 @@ h1 {
     color: #333;
 }
 
-.print-btn {
-    position: fixed;
-    bottom: 30px;
-    left: 30px;
-    padding: 15px 25px;
-    background: #34a853;
-    color: white;
-    border: none;
-    border-radius: 50px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(52, 168, 83, 0.4);
-    transition: all 0.3s;
-    display: none;
-    z-index: 1000;
-}
-
-.print-btn.show {
-    display: block;
-}
-
-.print-btn:hover {
-    background: #2d8e47;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(52, 168, 83, 0.5);
-}
-
 @media print {
     body {
         background: white;
@@ -374,8 +356,7 @@ h1 {
     .search-section,
     .back-btn,
     .status,
-    .results-info,
-    .print-btn {
+    .results-info {
         display: none !important;
     }
 
@@ -409,7 +390,8 @@ h1 {
     }
 
     .label-box-row {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
     }
 
     .label-customer-name {
@@ -434,14 +416,6 @@ h1 {
 
     .label-box-items {
         font-size: 12px;
-    }
-
-    .print-btn {
-        bottom: 15px;
-        left: 15px;
-        right: 15px;
-        width: calc(100% - 30px);
-        padding: 12px 20px;
     }
 }
 </style>
@@ -491,10 +465,6 @@ h1 {
 
     <div id="labelsContainer" class="labels-container"></div>
 </div>
-
-<button class="print-btn" id="printBtn" onclick="window.print()">
-    🖨️ הדפס מדבקות
-</button>
 
 <script>
 const PROXY_URL = 'https://priority-proxy.lyzer-64d.workers.dev';
@@ -566,7 +536,6 @@ async function searchLabels() {
             showStatus('לא נמצאו תוצאות לחיפוש זה', 'error');
             document.getElementById('labelsContainer').innerHTML = '';
             hideResultsInfo();
-            hidePrintBtn();
             return;
         }
 
@@ -598,19 +567,21 @@ function displayLabels(orders) {
                 kashrutType: order.SPEC2 || '',
                 distrLine: order.DISTRLINEDES || '',
                 distrOrder: order.PRIT_DISTRORDER || '',
-                boxes: {}
+                hotItems: [],  // פריטים חמים
+                coldItems: []  // פריטים קרים
             };
         }
 
-        const boxName = order.PRIT_CLASSNAME || 'אחר';
-
-        if (!groupedByCustomer[key].boxes[boxName]) {
-            groupedByCustomer[key].boxes[boxName] = [];
-        }
-
         const itemText = `${order.TQUANT || ''} ${order.PARTDES || ''}`.trim();
+        const temperature = order.PSPEC6 || '';
+
         if (itemText) {
-            groupedByCustomer[key].boxes[boxName].push(itemText);
+            // הוספה לרשימה המתאימה לפי טמפרטורה
+            if (temperature.includes('חם')) {
+                groupedByCustomer[key].hotItems.push(itemText);
+            } else {
+                groupedByCustomer[key].coldItems.push(itemText);
+            }
         }
     });
 
@@ -625,7 +596,6 @@ function displayLabels(orders) {
 
     document.getElementById('labelsContainer').innerHTML = html;
     showResultsInfo(totalLabels);
-    showPrintBtn();
 }
 
 // יצירת HTML למדבקה בודדת
@@ -663,38 +633,45 @@ function generateLabelHTML(customer) {
             </div>
 
             <div class="label-boxes">
+                <div class="label-box-row">
+                    <!-- עמודת פריטים חמים -->
+                    <div class="label-box label-box-hot">
+                        <div class="label-box-name">🔥 פריטים חמים</div>
+                        <div class="label-box-items">
     `;
 
-    // הוספת מארזים
-    const boxNames = Object.keys(customer.boxes).sort();
-    const rows = [];
-
-    for (let i = 0; i < boxNames.length; i += 3) {
-        const rowBoxes = boxNames.slice(i, i + 3);
-        rows.push(rowBoxes);
+    // הוספת פריטים חמים
+    if (customer.hotItems.length > 0) {
+        customer.hotItems.forEach(item => {
+            html += `<div class="label-box-item">${item}</div>`;
+        });
+    } else {
+        html += `<div class="label-box-item" style="color: #999;">-</div>`;
     }
 
-    rows.forEach(rowBoxes => {
-        html += '<div class="label-box-row">';
-        rowBoxes.forEach(boxName => {
-            const items = customer.boxes[boxName];
-            html += `
-                <div class="label-box">
-                    <div class="label-box-name">${boxName}</div>
-                    <div class="label-box-items">
-            `;
-            items.forEach(item => {
-                html += `<div class="label-box-item">${item}</div>`;
-            });
-            html += `
+    html += `
+                        </div>
                     </div>
-                </div>
-            `;
+
+                    <!-- עמודת פריטים קרים -->
+                    <div class="label-box label-box-cold">
+                        <div class="label-box-name">❄️ פריטים קרים</div>
+                        <div class="label-box-items">
+    `;
+
+    // הוספת פריטים קרים
+    if (customer.coldItems.length > 0) {
+        customer.coldItems.forEach(item => {
+            html += `<div class="label-box-item">${item}</div>`;
         });
-        html += '</div>';
-    });
+    } else {
+        html += `<div class="label-box-item" style="color: #999;">-</div>`;
+    }
 
     html += `
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="label-footer">
@@ -743,20 +720,6 @@ function hideResultsInfo() {
     const infoDiv = document.getElementById('resultsInfo');
     infoDiv.className = 'results-info';
 }
-
-// הצגת כפתור הדפסה
-function showPrintBtn() {
-    document.getElementById('printBtn').className = 'print-btn show';
-}
-
-function hidePrintBtn() {
-    document.getElementById('printBtn').className = 'print-btn';
-}
-
-// פוקוס על שדה החיפוש בטעינת הדף
-window.addEventListener('load', () => {
-    document.getElementById('searchInput').focus();
-});
 </script>
 
 </body>
