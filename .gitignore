@@ -1,0 +1,7 @@
+# Worker file - deployed separately
+serv-v3.js
+
+# Backup files
+*.backup
+*.backup*
+bakup*/
