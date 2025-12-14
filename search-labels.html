@@ -454,16 +454,35 @@ h1 {
     <h1>🔍 חיפוש מהיר למדבקות</h1>
 
     <div class="search-section">
-        <div class="search-box">
-            <input type="text"
-                   id="searchInput"
-                   class="search-input"
-                   placeholder="הקלד מספר לקוח, שם לקוח או תיאור אתר..."
-                   onkeypress="if(event.key==='Enter') searchLabels()">
-            <button class="search-btn" onclick="searchLabels()" id="searchBtn">
-                🔍 חפש
-            </button>
+        <div style="margin-bottom: 15px;">
+            <label for="dateInput" style="font-weight: bold; margin-left: 10px;">תאריך:</label>
+            <input type="date" id="dateInput" style="padding: 10px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px;">
         </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+            <div>
+                <label for="customerCodeInput" style="font-weight: bold; display: block; margin-bottom: 5px;">מספר לקוח:</label>
+                <input type="text"
+                       id="customerCodeInput"
+                       class="search-input"
+                       placeholder="הקלד מספר לקוח..."
+                       onkeypress="if(event.key==='Enter') searchLabels()"
+                       style="width: 100%;">
+            </div>
+            <div>
+                <label for="customerNameInput" style="font-weight: bold; display: block; margin-bottom: 5px;">שם לקוח:</label>
+                <input type="text"
+                       id="customerNameInput"
+                       class="search-input"
+                       placeholder="הקלד שם לקוח..."
+                       onkeypress="if(event.key==='Enter') searchLabels()"
+                       style="width: 100%;">
+            </div>
+        </div>
+
+        <button class="search-btn" onclick="searchLabels()" id="searchBtn" style="width: 100%;">
+            🔍 חפש
+        </button>
     </div>
 
     <div id="status"></div>
@@ -480,27 +499,55 @@ h1 {
 <script>
 const PROXY_URL = 'https://priority-proxy.lyzer-64d.workers.dev';
 
-// פונקציית חיפוש ראשית
-async function searchLabels() {
-    const searchInput = document.getElementById('searchInput');
-    const searchValue = searchInput.value.trim();
+// הגדרת תאריך ברירת מחדל להיום
+window.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('dateInput').value = today;
+    document.getElementById('customerCodeInput').focus();
+});
 
-    if (!searchValue) {
-        showStatus('אנא הזן ערך לחיפוש', 'error');
+// פונקציית חיפוש ראשית - עם פילטר ישירות בשרת
+async function searchLabels() {
+    const dateInput = document.getElementById('dateInput');
+    const customerCodeInput = document.getElementById('customerCodeInput');
+    const customerNameInput = document.getElementById('customerNameInput');
+
+    const selectedDate = dateInput.value;
+    const customerCode = customerCodeInput.value.trim();
+    const customerName = customerNameInput.value.trim();
+
+    // בדיקה שיש לפחות ערך אחד
+    if (!customerCode && !customerName) {
+        showStatus('אנא הזן מספר לקוח או שם לקוח', 'error');
         return;
     }
 
-    showStatus('מחפש...', 'loading');
+    if (!selectedDate) {
+        showStatus('אנא בחר תאריך', 'error');
+        return;
+    }
+
     document.getElementById('searchBtn').disabled = true;
 
     try {
-        // בניית שאילתה - חיפוש בכל השדות
-        const today = new Date().toISOString().split('T')[0];
+        showStatus('מחפש בשרת...', 'loading');
 
-        // בניית URL ישירות ללא encodeURIComponent (כמו בדף הראשי)
-        const filterQuery = `$filter=DUEDATE eq datetime'${today}' and CODEDES eq '${searchValue}'&$orderby=DISTRLINECODE,PRIT_DISTRORDER&$top=500`;
+        // בניית פילטר OData מדויק
+        const dateStr = selectedDate + 'T00:00:00Z';
+        let filterParts = [`DUEDATE eq ${dateStr}`];
 
-        const url = `${PROXY_URL}?table=PRIT_ORDPACK_ONE&filter=${filterQuery}`;
+        // הוספת פילטר לפי מספר לקוח (CUSTNAME)
+        if (customerCode) {
+            filterParts.push(`CUSTNAME eq '${customerCode}'`);
+        }
+
+        // הוספת פילטר לפי שם לקוח (CUSTDES)
+        if (customerName) {
+            filterParts.push(`CUSTDES eq '${customerName}'`);
+        }
+
+        const filter = `$filter=${filterParts.join(' and ')}`;
+        const url = `${PROXY_URL}?filter=${encodeURIComponent(filter)}&fetchAll=true`;
 
         console.log('Searching with URL:', url);
 
@@ -513,7 +560,7 @@ async function searchLabels() {
         const data = await response.json();
         const results = data.value || data;
 
-        console.log('Results:', results);
+        console.log('Results from server:', results.length);
 
         if (results.length === 0) {
             showStatus('לא נמצאו תוצאות לחיפוש זה', 'error');
@@ -523,12 +570,12 @@ async function searchLabels() {
             return;
         }
 
-        showStatus(`נמצאו ${results.length} הזמנות`, 'success');
+        showStatus(`✅ נמצאו ${results.length} הזמנות`, 'success');
         displayLabels(results);
 
     } catch (error) {
         console.error('שגיאה בחיפוש:', error);
-        showStatus(`שגיאה בחיפוש: ${error.message}`, 'error');
+        showStatus(`❌ שגיאה: ${error.message}`, 'error');
     } finally {
         document.getElementById('searchBtn').disabled = false;
     }
