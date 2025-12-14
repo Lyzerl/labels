@@ -497,10 +497,10 @@ async function searchLabels() {
         // בניית שאילתה - חיפוש בכל השדות
         const today = new Date().toISOString().split('T')[0];
 
-        // חיפוש עם substringof (תחביר ישן של OData שעובד עם Priority)
-        const filter = `$filter=DUEDATE eq datetime'${today}' and (substringof('${searchValue}',CUSTNAME) or substringof('${searchValue}',CUSTDES) or substringof('${searchValue}',CODEDES))&$orderby=DISTRLINECODE,PRIT_DISTRORDER&$top=500`;
+        // בניית URL ישירות ללא encodeURIComponent (כמו בדף הראשי)
+        const filterQuery = `$filter=DUEDATE eq datetime'${today}' and CODEDES eq '${searchValue}'&$orderby=DISTRLINECODE,PRIT_DISTRORDER&$top=500`;
 
-        const url = `${PROXY_URL}?table=PRIT_ORDPACK_ONE&filter=${encodeURIComponent(filter)}`;
+        const url = `${PROXY_URL}?table=PRIT_ORDPACK_ONE&filter=${filterQuery}`;
 
         console.log('Searching with URL:', url);
 
