@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תפריטים שבועיים</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #4a90e2;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            padding: 15px;
+            background: #f8f9fa;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .week-selector {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            margin: 0 10px;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .week-section {
+            margin-bottom: 30px;
+        }
+
+        .week-title {
+            background: #90c695;
+            color: black;
+            padding: 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            border: 1px solid #333;
+        }
+
+        .week-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .week-table th,
+        .week-table td {
+            border: 1px solid #333;
+            padding: 8px;
+            text-align: center;
+            vertical-align: top;
+        }
+
+        .week-table th {
+            background: #e8e8e8;
+            font-weight: bold;
+        }
+
+        .menu-name {
+            background: #f0f0f0;
+            font-weight: bold;
+            width: 150px;
+        }
+
+        .day-cell {
+            width: 150px;
+            min-height: 80px;
+            padding: 5px;
+        }
+
+        .menu-items {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            text-align: right;
+        }
+
+        .menu-item {
+            font-size: 12px;
+            padding: 2px 0;
+            border-bottom: 1px dotted #ccc;
+        }
+
+        .menu-item:last-child {
+            border-bottom: none;
+        }
+
+        .no-items {
+            color: #999;
+            font-style: italic;
+            font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .week-table {
+                font-size: 12px;
+            }
+            
+            .day-cell {
+                width: 120px;
+                padding: 3px;
+            }
+            
+            .menu-item {
+                font-size: 10px;
+            }
+        }
+
+        .menu-filter-btn {
+            padding: 10px 20px;
+            background: #5a67d8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .menu-filter-btn:hover {
+            background: #4c51bf;
+        }
+
+        .menu-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 2px solid #5a67d8;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            min-width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 5px;
+        }
+
+        .menu-dropdown.show {
+            display: block;
+        }
+
+        .menu-dropdown-header {
+            background: #5a67d8;
+            color: white;
+            padding: 12px 15px;
+            font-weight: bold;
+            border-radius: 6px 6px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .menu-dropdown-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #e8e8e8;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .menu-dropdown-item:hover {
+            background: #f5f7fa;
+        }
+
+        .menu-dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .menu-dropdown-item input[type="checkbox"] {
+            margin-left: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .menu-dropdown-item label {
+            cursor: pointer;
+            flex: 1;
+            margin-right: 10px;
+        }
+
+        .menu-count-badge {
+            background: #e53e3e;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 12px;
+            margin-right: 8px;
+        }
+
+        .filter-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📅 תפריטים שבועיים</h1>
+            <p>תצוגת טבלאות לפי שבועות</p>
+        </div>
+        
+        <div class="controls">
+            <div style="margin-bottom: 15px;">
+                <button id="backBtn" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; margin-left: 10px;">
+                    ← חזור לדף הראשי
+                </button>
+                <button id="loadFromServer" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px;">
+                    🔄 רענן נתונים
+                </button>
+                <button id="downloadPDF" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; margin-right: 10px;">
+                    📄 הורד PDF
+                </button>
+            </div>
+            
+            <div>
+                <label for="weekSelect">בחר שבוע:</label>
+                <select id="weekSelect" class="week-selector">
+                    <option value="all">כל השבועות</option>
+                    <option value="1">שבוע 1</option>
+                    <option value="2">שבוע 2</option>
+                    <option value="3">שבוע 3</option>
+                    <option value="4">שבוع 4</option>
+                </select>
+            </div>
+
+            <div style="position: relative;">
+                <button id="menuFilterBtn" class="menu-filter-btn">
+                    📋 בחר תפריטים ▼
+                </button>
+                <div id="menuDropdown" class="menu-dropdown">
+                    <!-- יתמלא באופן דינמי -->
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div id="weeklyTables" class="loading">
+                טוען נתונים...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // כתובת השרת
+        const SERVER_URL = 'https://priority-proxy.lyzer-64d.workers.dev';
+
+        // נתוני התפריטים
+        const realMenuData = {};
+
+        // משיכת נתונים מהשרת
+        async function loadMenuDataFromServer(forceRefresh = false) {
+            try {
+                // בדיקה אם יש נתונים שמורים ב-sessionStorage (אלא אם מבקשים רענון)
+                if (!forceRefresh) {
+                    const cachedData = sessionStorage.getItem('menuData');
+                    const cacheTime = sessionStorage.getItem('menuDataTime');
+
+                    // אם יש נתונים שמורים ולא עברו יותר מ-30 דקות
+                    if (cachedData && cacheTime) {
+                        const timeDiff = Date.now() - parseInt(cacheTime);
+                        if (timeDiff < 30 * 60 * 1000) { // 30 דקות
+                            console.log('טוען נתונים מהזיכרון (cache)');
+                            return JSON.parse(cachedData);
+                        }
+                    }
+                }
+
+                document.getElementById('weeklyTables').innerHTML = '<div class="loading">טוען נתונים מהשרת...</div>';
+
+                // בניית השאילתה - ללא fetchAll, עם $top גבוה
+                const filterQuery = '$top=5000';
+                const url = `${SERVER_URL}?table=CPROFISINGLE&filter=${encodeURIComponent(filterQuery)}`;
+
+                console.log('מושך נתונים מהשרת:', url);
+
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(`שגיאת שרת: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('נתונים שהתקבלו:', data);
+
+                // המרת הנתונים לפורמט של התפריטים
+                const processedData = processServerData(data.value || data);
+
+                // שמירת הנתונים ב-sessionStorage
+                sessionStorage.setItem('menuData', JSON.stringify(processedData));
+                sessionStorage.setItem('menuDataTime', Date.now().toString());
+
+                return processedData;
+
+            } catch (error) {
+                console.error('שגיאה בטעינת נתונים מהשרת:', error);
+                document.getElementById('weeklyTables').innerHTML =
+                    '<div class="loading">שגיאה בטעינת נתונים מהשרת. נסה שוב מאוחר יותר.</div>';
+                throw error;
+            }
+        }
+
+        // עיבוד נתונים שהתקבלו מהשרת
+        function processServerData(customers) {
+            console.log('מעבד נתונים (סה"כ רשומות):', customers.length);
+            console.log('דוגמה לרשומה:', customers[0]);
+            console.log('כל השדות ברשומה:', customers[0] ? Object.keys(customers[0]) : 'אין נתונים');
+
+            // סינון - רק לקוחות תפריטי מזון
+            const filtered = customers.filter(customer =>
+                customer.CUSTDES && customer.CUSTDES === 'לקוח לתפריטי מזון'
+            );
+
+            console.log('אחרי סינון לתפריטי מזון:', filtered.length, 'לקוחות');
+            console.log('דוגמה ללקוח תפריטי מזון:', filtered[0]);
+
+            // עיבוד הנתונים - בניית מבנה התפריטים השבועיים
+            const weeklyMenus = {};
+
+            filtered.forEach(row => {
+                const menuDesc = row.Y_36311_0_ESH; // תיאור תפריט - כולל "שבוע X יום Y"
+                const productDesc = row.PDES; // תיאור מוצר
+                const customerName = row.CUSTDES; // שם לקוח
+
+                if (menuDesc && productDesc) {
+                    // חילוץ שבוע ויום מתיאור התפריט
+                    const weekMatch = menuDesc.match(/שבוע (\d+)/);
+                    const dayMatch = menuDesc.match(/יום ([א-ה])/);
+
+                    if (weekMatch && dayMatch) {
+                        // חילוץ שם התפריט (הטקסט לפני "שבוע")
+                        const baseName = menuDesc.split('שבוע')[0].trim().replace(/\/$/, '').trim();
+                        const week = weekMatch[1];
+                        const day = dayMatch[1];
+
+                        // יצירת המבנה
+                        if (!weeklyMenus[baseName]) {
+                            weeklyMenus[baseName] = {};
+                        }
+
+                        if (!weeklyMenus[baseName][week]) {
+                            weeklyMenus[baseName][week] = {};
+                        }
+
+                        if (!weeklyMenus[baseName][week][day]) {
+                            weeklyMenus[baseName][week][day] = [];
+                        }
+
+                        // הוספת המוצר (אם לא קיים)
+                        if (!weeklyMenus[baseName][week][day].includes(productDesc)) {
+                            weeklyMenus[baseName][week][day].push(productDesc);
+                        }
+                    }
+                }
+            });
+
+            console.log('תפריטים שנבנו:', weeklyMenus);
+            console.log('מספר תפריטים:', Object.keys(weeklyMenus).length);
+
+            return weeklyMenus;
+        }
+
+        // קריאת נתונים מקובץ שהועלה (שמרתי את הפונקציה הישנה)
+        async function loadMenuData(file) {
+            try {
+                const response = await readFileAsArrayBuffer(file);
+
+                // טעינת ספריית XLSX אם עדיין לא נטענה
+                if (typeof XLSX === 'undefined') {
+                    await loadXLSXLibrary();
+                }
+
+                const workbook = XLSX.read(response, {
+                    cellStyles: true,
+                    cellFormulas: true,
+                    cellDates: true,
+                    cellNF: true,
+                    sheetStubs: true
+                });
+
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                const processedData = processMenuData(jsonData);
+                return processedData;
+
+            } catch (error) {
+                console.error('שגיאה בטעינת הנתונים:', error);
+                alert('שגיאה בקריאת הקובץ. אנא בדוק שהקובץ תקין ומכיל את העמודות הנדרשות.');
+                throw error;
+            }
+        }
+
+        // פונקציה לטעינת ספריית XLSX
+        function loadXLSXLibrary() {
+            return new Promise((resolve, reject) => {
+                if (typeof XLSX !== 'undefined') {
+                    resolve();
+                    return;
+                }
+                
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+                
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error('לא הצלחתי לטעון את ספריית XLSX'));
+                
+                document.head.appendChild(script);
+            });
+        }
+
+        // פונקציה לקריאת קובץ כ-ArrayBuffer
+        function readFileAsArrayBuffer(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function processMenuData(jsonData) {
+            const weeklyMenus = {};
+            
+            jsonData.forEach(row => {
+                const menuDesc = row['תאור תפריט'];
+                const productDesc = row['תאור מוצר'];
+                
+                if (menuDesc && productDesc && typeof menuDesc === 'string') {
+                    const weekMatch = menuDesc.match(/שבוע (\d+)/);
+                    const dayMatch = menuDesc.match(/יום ([א-ה])/);
+                    
+                    if (weekMatch && dayMatch) {
+                        const baseName = menuDesc.split('שבוע')[0].trim().replace(/\/$/, '').trim();
+                        const week = weekMatch[1];
+                        const day = dayMatch[1];
+                        
+                        if (!weeklyMenus[baseName]) {
+                            weeklyMenus[baseName] = {};
+                        }
+                        
+                        if (!weeklyMenus[baseName][week]) {
+                            weeklyMenus[baseName][week] = {};
+                        }
+                        
+                        if (!weeklyMenus[baseName][week][day]) {
+                            weeklyMenus[baseName][week][day] = [];
+                        }
+                        
+                        if (!weeklyMenus[baseName][week][day].includes(productDesc)) {
+                            weeklyMenus[baseName][week][day].push(productDesc);
+                        }
+                    }
+                }
+            });
+            
+            return weeklyMenus;
+        }
+
+        function generateWeekTable(weekNumber, menuData) {
+            const days = ['א', 'ב', 'ג', 'ד', 'ה'];
+            
+            let html = `
+                <div class="week-section">
+                    <div class="week-title">שבוע ${weekNumber}</div>
+                    <table class="week-table">
+                        <thead>
+                            <tr>
+                                <th>שם תפריט</th>
+                                <th>א</th>
+                                <th>ב</th>
+                                <th>ג</th>
+                                <th>ד</th>
+                                <th>ה</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            // כל תפריט בשורה נפרדת
+            Object.keys(menuData).forEach(menuName => {
+                const menuWeekData = menuData[menuName][weekNumber];
+                
+                if (menuWeekData) {
+                    html += `<tr>`;
+                    html += `<td class="menu-name">${menuName}</td>`;
+                    
+                    days.forEach(day => {
+                        const items = menuWeekData[day] || [];
+                        
+                        html += `<td class="day-cell">`;
+                        
+                        if (items.length > 0) {
+                            html += '<ul class="menu-items">';
+                            items.forEach(item => {
+                                html += `<li class="menu-item">${item}</li>`;
+                            });
+                            html += '</ul>';
+                        } else {
+                            html += '<div class="no-items">-</div>';
+                        }
+                        
+                        html += '</td>';
+                    });
+                    
+                    html += `</tr>`;
+                }
+            });
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            return html;
+        }
+
+        function displayWeeklyTables(menuData, selectedWeek = 'all') {
+            const weeklyTables = document.getElementById('weeklyTables');
+
+            if (!menuData || Object.keys(menuData).length === 0) {
+                weeklyTables.innerHTML = '<div class="loading">לא נמצאו נתונים</div>';
+                return;
+            }
+
+            // איסוף כל השבועות הזמינים
+            const availableWeeks = new Set();
+            Object.values(menuData).forEach(menu => {
+                Object.keys(menu).forEach(week => {
+                    availableWeeks.add(week);
+                });
+            });
+
+            const sortedWeeks = Array.from(availableWeeks).sort((a, b) => parseInt(a) - parseInt(b));
+
+            let html = '';
+
+            if (selectedWeek === 'all') {
+                sortedWeeks.forEach(week => {
+                    html += generateWeekTable(week, menuData);
+                });
+            } else {
+                html += generateWeekTable(selectedWeek, menuData);
+            }
+
+            // עדכון חלק של התצוגה
+            requestAnimationFrame(() => {
+                weeklyTables.innerHTML = html;
+            });
+        }
+
+        // אירועים
+        let currentMenus = {};
+        let allMenuNames = [];
+
+        // עדכון רשימת התפריטים ב-dropdown
+        function updateMenuSelect(menuData) {
+            allMenuNames = Object.keys(menuData).sort();
+            const menuDropdown = document.getElementById('menuDropdown');
+
+            // יצירת רשימת checkboxes
+            let html = `
+                <div class="menu-dropdown-item">
+                    <input type="checkbox" id="menu-all" value="all" checked onchange="handleMenuCheckboxChange(this)">
+                    <label for="menu-all">כל התפריטים</label>
+                </div>
+            `;
+
+            allMenuNames.forEach((menuName, index) => {
+                const id = `menu-${index}`;
+                html += `
+                    <div class="menu-dropdown-item">
+                        <input type="checkbox" id="${id}" value="${menuName}" onchange="handleMenuCheckboxChange(this)">
+                        <label for="${id}">${menuName}</label>
+                    </div>
+                `;
+            });
+
+            menuDropdown.innerHTML = html;
+        }
+
+        // פונקציה לקבלת התפריטים שנבחרו
+        function getSelectedMenus() {
+            const checkboxes = document.querySelectorAll('#menuDropdown input[type="checkbox"]:checked');
+            const selectedValues = Array.from(checkboxes).map(cb => cb.value);
+
+            // אם נבחר "כל התפריטים" או לא נבחר כלום
+            if (selectedValues.includes('all') || selectedValues.length === 0) {
+                return allMenuNames;
+            }
+
+            return selectedValues;
+        }
+
+        // טיפול בשינויי checkboxes
+        function handleMenuCheckboxChange(checkbox) {
+            const allCheckbox = document.getElementById('menu-all');
+
+            if (checkbox.value === 'all') {
+                // אם "כל התפריטים" נבחר, נסמן את כולם
+                const allCheckboxes = document.querySelectorAll('#menuDropdown input[type="checkbox"]');
+                allCheckboxes.forEach(cb => {
+                    if (cb.value !== 'all') {
+                        cb.checked = false;
+                    }
+                });
+            } else {
+                // אם תפריט ספציפי נבחר, נבטל את "כל התפריטים"
+                if (allCheckbox) {
+                    allCheckbox.checked = false;
+                }
+            }
+
+            // עדכון הכפתור
+            updateMenuButtonText();
+
+            // עדכון התצוגה
+            displayFilteredTables();
+        }
+
+        // עדכון טקסט הכפתור
+        function updateMenuButtonText() {
+            const btn = document.getElementById('menuFilterBtn');
+            const selectedMenus = getSelectedMenus();
+
+            if (selectedMenus.length === allMenuNames.length) {
+                btn.textContent = '📋 בחר תפריטים ▼';
+            } else {
+                btn.textContent = `📋 ${selectedMenus.length} תפריטים נבחרו ▼`;
+            }
+        }
+
+        // פונקציה מעודכנת להצגת טבלאות עם סינון תפריטים
+        function displayFilteredTables() {
+            const selectedWeek = document.getElementById('weekSelect').value;
+            const selectedMenus = getSelectedMenus();
+
+            // סינון התפריטים (ללא משיכת נתונים מהשרת!)
+            const filteredMenus = {};
+            selectedMenus.forEach(menuName => {
+                if (currentMenus[menuName]) {
+                    filteredMenus[menuName] = currentMenus[menuName];
+                }
+            });
+
+            // עדכון מיידי של התצוגה
+            displayWeeklyTables(filteredMenus, selectedWeek);
+        }
+
+        document.getElementById('weekSelect').addEventListener('change', displayFilteredTables);
+
+        // אירוע לפתיחה/סגירה של תפריט הבחירה
+        document.getElementById('menuFilterBtn').addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = document.getElementById('menuDropdown');
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        });
+
+        // סגירת התפריט בלחיצה מחוץ לו
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('menuDropdown');
+            const button = document.getElementById('menuFilterBtn');
+            if (!dropdown.contains(e.target) && e.target !== button) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        // אירוע לכפתור חזור
+        document.getElementById('backBtn').addEventListener('click', function() {
+            window.location.href = 'index.html';
+        });
+
+        // אירוע לטעינה מהשרת (עם רענון)
+        document.getElementById('loadFromServer').addEventListener('click', async function() {
+            try {
+                const newData = await loadMenuDataFromServer(true); // force refresh
+                currentMenus = newData;
+
+                if (Object.keys(currentMenus).length > 0) {
+                    updateMenuSelect(currentMenus);
+                    displayFilteredTables();
+                    const totalMenus = Object.keys(currentMenus).length;
+                    console.log(`הנתונים נטענו בהצלחה! נמצאו ${totalMenus} תפריטים`);
+                } else {
+                    document.getElementById('weeklyTables').innerHTML = `
+                        <div class="loading">
+                            לא נמצאו תפריטים בשרת.<br>
+                            בדוק את החיבור לשרת או נסה שוב.
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('שגיאה:', error);
+            }
+        });
+
+        // טעינה אוטומטית בפתיחת הדף
+        (async function loadOnStart() {
+            try {
+                document.getElementById('weeklyTables').innerHTML = '<div class="loading">טוען נתונים מהשרת...</div>';
+
+                const newData = await loadMenuDataFromServer();
+                currentMenus = newData;
+
+                if (Object.keys(currentMenus).length > 0) {
+                    updateMenuSelect(currentMenus);
+                    displayFilteredTables();
+                    const totalMenus = Object.keys(currentMenus).length;
+                    console.log(`הנתונים נטענו בהצלחה! נמצאו ${totalMenus} תפריטים`);
+                } else {
+                    document.getElementById('weeklyTables').innerHTML = `
+                        <div class="loading">
+                            לא נמצאו תפריטים בשרת.<br>
+                            בדוק את החיבור או נסה שוב.
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('שגיאה בטעינה אוטומטית:', error);
+                document.getElementById('weeklyTables').innerHTML = `
+                    <div class="loading">
+                        שגיאה בטעינת נתונים מהשרת.<br>
+                        🔄 לחץ על "רענן נתונים" לנסות שוב
+                    </div>
+                `;
+            }
+        })();
+
+        // הורדת PDF לתפריטים שבועיים - מסודר לפי תפריטים (כל תפריט על דף אחד)
+        function downloadMenuPDF() {
+            if (!currentMenus || Object.keys(currentMenus).length === 0) {
+                alert('אין נתונים להורדה');
+                return;
+            }
+
+            // קבלת התפריטים שנבחרו
+            const selectedMenus = getSelectedMenus();
+
+            // בדיקה שיש תפריטים נבחרים
+            if (selectedMenus.length === 0) {
+                alert('אנא בחר תפריט אחד לפחות');
+                return;
+            }
+
+            // יצירת חלון חדש להדפסה
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                alert('לא ניתן לפתוח חלון חדש. אנא אפשר חלונות קופצים בדפדפן.');
+                return;
+            }
+
+            // בניית HTML לפי תפריטים - כל תפריט עם כל השבועות שלו
+            const days = ['א', 'ב', 'ג', 'ד', 'ה'];
+            let contentHTML = '';
+
+            // עבור כל תפריט שנבחר בלבד
+            selectedMenus.sort().forEach((menuName, menuIndex) => {
+                const menuWeeks = currentMenus[menuName];
+
+                // כותרת התפריט
+                contentHTML += `
+                    <div class="menu-section" style="page-break-after: always;">
+                        <h2 style="background: #4285f4; color: white; padding: 15px; margin: 0 0 20px 0; border-radius: 8px; text-align: center; font-size: 20pt;">
+                            ${menuName}
+                        </h2>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr>
+                                    <th style="background-color: #4285f4; color: white; border: 1px solid #000; padding: 10px; text-align: center; font-size: 12pt;">שבוע</th>
+                                    <th style="background-color: #4285f4; color: white; border: 1px solid #000; padding: 10px; text-align: center; font-size: 12pt;">יום א'</th>
+                                    <th style="background-color: #4285f4; color: white; border: 1px solid #000; padding: 10px; text-align: center; font-size: 12pt;">יום ב'</th>
+                                    <th style="background-color: #4285f4; color: white; border: 1px solid #000; padding: 10px; text-align: center; font-size: 12pt;">יום ג'</th>
+                                    <th style="background-color: #4285f4; color: white; border: 1px solid #000; padding: 10px; text-align: center; font-size: 12pt;">יום ד'</th>
+                                    <th style="background-color: #4285f4; color: white; border: 1px solid #000; padding: 10px; text-align: center; font-size: 12pt;">יום ה'</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                // עבור כל שבוע בתפריט
+                const weekNumbers = Object.keys(menuWeeks).sort((a, b) => parseInt(a) - parseInt(b));
+                weekNumbers.forEach((weekNum, weekIndex) => {
+                    const weekData = menuWeeks[weekNum];
+                    const rowBg = weekIndex % 2 === 0 ? '#ffffff' : '#f9f9f9';
+
+                    contentHTML += `<tr style="background-color: ${rowBg};">`;
+                    contentHTML += `<td style="border: 1px solid #000; padding: 10px; text-align: center; font-weight: bold; font-size: 11pt;">שבוע ${weekNum}</td>`;
+
+                    days.forEach(day => {
+                        const items = weekData[day] || [];
+                        contentHTML += `<td style="border: 1px solid #000; padding: 8px; text-align: right; vertical-align: top; font-size: 9pt;">`;
+
+                        if (items.length > 0) {
+                            contentHTML += '<ul style="margin: 0; padding-right: 15px; list-style-type: disc;">';
+                            items.forEach(item => {
+                                contentHTML += `<li style="margin-bottom: 3px;">${item}</li>`;
+                            });
+                            contentHTML += '</ul>';
+                        } else {
+                            contentHTML += '<div style="text-align: center; color: #999;">-</div>';
+                        }
+
+                        contentHTML += '</td>';
+                    });
+
+                    contentHTML += '</tr>';
+                });
+
+                contentHTML += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            });
+
+            // יצירת HTML להדפסה
+            printWindow.document.open('text/html', 'replace');
+            printWindow.document.write('<!DOCTYPE html>');
+            printWindow.document.write('<html lang="he" dir="rtl">');
+            printWindow.document.write('<head>');
+            printWindow.document.write('<meta charset="UTF-8">');
+            printWindow.document.write('<meta name="viewport" content="width=device-width, initial-scale=1.0">');
+            printWindow.document.write('<title>תפריטים שבועיים</title>');
+            printWindow.document.write('<style>');
+            printWindow.document.write('@page { size: A4 landscape; margin: 15mm; }');
+            printWindow.document.write('* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+            printWindow.document.write('body { font-family: Arial, "DejaVu Sans", sans-serif; direction: rtl; margin: 0; padding: 10px; font-size: 10pt; color: #000; background: white; }');
+            printWindow.document.write('.menu-section { page-break-after: always; page-break-inside: avoid; }');
+            printWindow.document.write('.menu-section:last-child { page-break-after: auto; }');
+            printWindow.document.write('table { width: 100%; border-collapse: collapse; }');
+            printWindow.document.write('th, td { border: 1px solid #000; padding: 8px; text-align: right; word-wrap: break-word; }');
+            printWindow.document.write('th { background-color: #4285f4 !important; color: white !important; font-weight: bold; text-align: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+            printWindow.document.write('tr:nth-child(even) { background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+            printWindow.document.write('@media print { body { margin: 0; padding: 5mm; } .menu-section { page-break-after: always; } .menu-section:last-child { page-break-after: auto; } }');
+            printWindow.document.write('</style>');
+            printWindow.document.write('</head>');
+            printWindow.document.write('<body>');
+            printWindow.document.write(contentHTML);
+            printWindow.document.write('<script>');
+            printWindow.document.write('window.onload = function() { setTimeout(function() { window.print(); }, 500); };');
+            printWindow.document.write('<\/script>');
+            printWindow.document.write('</body>');
+            printWindow.document.write('</html>');
+            printWindow.document.close();
+
+            // המתנה קצרה כדי שהדף יטען
+            setTimeout(function() {
+                if (printWindow.document.body && printWindow.document.body.innerHTML.trim() === '') {
+                    console.error('הדף נשאר ריק');
+                    alert('הדף נשאר ריק. נסה שוב או בדוק את הקונסול לשגיאות.');
+                }
+            }, 1000);
+        }
+
+        // אירוע להורדת PDF
+        document.getElementById('downloadPDF').addEventListener('click', downloadMenuPDF);
+    </script>
+</body>
+</html>
