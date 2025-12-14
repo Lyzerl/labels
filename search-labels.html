@@ -552,14 +552,15 @@ async function searchLabels() {
 
 // הצגת מדבקות
 function displayLabels(orders) {
-    // קיבוץ לפי לקוח
+    // קיבוץ לפי לקוח וכיתה
     const groupedByCustomer = {};
 
     orders.forEach(order => {
-        const key = `${order.CUSTNAME}_${order.CODEDES}_${order.CUSTDES}`;
+        const customerKey = `${order.CUSTNAME}_${order.CODEDES}_${order.CUSTDES}`;
+        const className = order.PRIT_CLASSNAME || 'אחר';
 
-        if (!groupedByCustomer[key]) {
-            groupedByCustomer[key] = {
+        if (!groupedByCustomer[customerKey]) {
+            groupedByCustomer[customerKey] = {
                 customerName: order.CUSTNAME,
                 customerCode: order.CODEDES,
                 siteDesc: order.CUSTDES,
@@ -567,8 +568,14 @@ function displayLabels(orders) {
                 kashrutType: order.SPEC2 || '',
                 distrLine: order.DISTRLINEDES || '',
                 distrOrder: order.PRIT_DISTRORDER || '',
-                hotItems: [],  // פריטים חמים
-                coldItems: []  // פריטים קרים
+                classes: {}  // כיתות
+            };
+        }
+
+        if (!groupedByCustomer[customerKey].classes[className]) {
+            groupedByCustomer[customerKey].classes[className] = {
+                hotItems: [],   // פריטים חמים
+                coldItems: []   // פריטים קרים
             };
         }
 
@@ -578,9 +585,9 @@ function displayLabels(orders) {
         if (itemText) {
             // הוספה לרשימה המתאימה לפי טמפרטורה
             if (temperature.includes('חם')) {
-                groupedByCustomer[key].hotItems.push(itemText);
+                groupedByCustomer[customerKey].classes[className].hotItems.push(itemText);
             } else {
-                groupedByCustomer[key].coldItems.push(itemText);
+                groupedByCustomer[customerKey].classes[className].coldItems.push(itemText);
             }
         }
     });
@@ -590,8 +597,11 @@ function displayLabels(orders) {
     let totalLabels = 0;
 
     Object.values(groupedByCustomer).forEach(customer => {
-        totalLabels++;
-        html += generateLabelHTML(customer);
+        // כל כיתה תקבל מדבקה נפרדת
+        Object.entries(customer.classes).forEach(([className, classData]) => {
+            totalLabels++;
+            html += generateLabelHTML(customer, className, classData);
+        });
     });
 
     document.getElementById('labelsContainer').innerHTML = html;
@@ -599,7 +609,7 @@ function displayLabels(orders) {
 }
 
 // יצירת HTML למדבקה בודדת
-function generateLabelHTML(customer) {
+function generateLabelHTML(customer, className, classData) {
     // קביעת לוגו לפי כשרות
     let logoPath = 'images/בדץ.png';
     let kashrutText = 'בהשגחת הבד"ץ ירושלים';
@@ -625,6 +635,7 @@ function generateLabelHTML(customer) {
                 <div class="label-customer">
                     <div class="label-customer-name">${customer.customerName || ''}</div>
                     <div class="label-customer-code">${customer.siteDesc || ''}</div>
+                    <div style="font-size: 14px; color: #666; margin-top: 5px; font-weight: bold;">📚 ${className}</div>
                 </div>
                 <div class="label-date">
                     <div class="label-date-label">תאריך אספקה:</div>
@@ -641,8 +652,8 @@ function generateLabelHTML(customer) {
     `;
 
     // הוספת פריטים חמים
-    if (customer.hotItems.length > 0) {
-        customer.hotItems.forEach(item => {
+    if (classData.hotItems.length > 0) {
+        classData.hotItems.forEach(item => {
             html += `<div class="label-box-item">${item}</div>`;
         });
     } else {
@@ -660,8 +671,8 @@ function generateLabelHTML(customer) {
     `;
 
     // הוספת פריטים קרים
-    if (customer.coldItems.length > 0) {
-        customer.coldItems.forEach(item => {
+    if (classData.coldItems.length > 0) {
+        classData.coldItems.forEach(item => {
             html += `<div class="label-box-item">${item}</div>`;
         });
     } else {
