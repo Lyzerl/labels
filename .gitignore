@@ -1,4 +1,6 @@
-# Worker file - deployed separately
+# Worker files - deployed separately to Cloudflare Workers
+serv.js
+serv-v2.js
 serv-v3.js
 
 # Backup files
