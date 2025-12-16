@@ -599,8 +599,8 @@ function displayLabels(orders) {
             };
 
             // הוספה לרשימה המתאימה לפי טמפרטורה
-            // בדיקה מדויקת יותר - אם מכיל את המילה "חם" ולא "קר"
-            const isHot = temperature.includes('חם') && !temperature.includes('קר');
+            // בדיקה מדויקת יותר - אם מכיל "חם" או "חבד" (חם בד"ץ) ולא "קר"
+            const isHot = (temperature.includes('חם') || temperature.includes('חבד')) && !temperature.includes('קר');
 
             if (isHot) {
                 // אם הפריט כבר קיים, לא נוסיף אותו שוב (איחוד כפילויות)
