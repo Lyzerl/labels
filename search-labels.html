@@ -584,8 +584,12 @@ function displayLabels(orders) {
 
         const itemName = (order.PARTDES || '').trim();
         const itemQuantity = order.TQUANT || '';
-        const temperature = order.PSPEC6 || '';
-        const isAllergenFree = (order.ALLERGENS || '').toLowerCase().includes('ללא אלרגנים');
+        const temperature = (order.PSPEC6 || '').trim();
+        const category = (order.PSPEC7 || '').trim().toLowerCase();
+
+        // בדיקה אם הפריט ללא אלרגנים - בודקים גם ב-PSPEC7 וגם ב-ALLERGENS
+        const isAllergenFree = category.includes('ללא אלרגנים') ||
+                               (order.ALLERGENS || '').toLowerCase().includes('ללא אלרגנים');
 
         if (itemName) {
             const itemData = {
@@ -595,7 +599,10 @@ function displayLabels(orders) {
             };
 
             // הוספה לרשימה המתאימה לפי טמפרטורה
-            if (temperature.includes('חם')) {
+            // בדיקה מדויקת יותר - אם מכיל את המילה "חם" ולא "קר"
+            const isHot = temperature.includes('חם') && !temperature.includes('קר');
+
+            if (isHot) {
                 // אם הפריט כבר קיים, לא נוסיף אותו שוב (איחוד כפילויות)
                 if (!groupedByCustomer[customerKey].classes[className].hotItems[itemName]) {
                     groupedByCustomer[customerKey].classes[className].hotItems[itemName] = itemData;
