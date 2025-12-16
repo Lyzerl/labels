@@ -569,6 +569,7 @@ function displayLabels(orders) {
                 address: order.ADDRESS || order.CUSTADDRESS || '',
                 distrLine: order.DISTRLINEDES || '',
                 distrOrder: order.PRIT_DISTRORDER || '',
+                packingMethod: order.PRIT_PACKINGMETHODDES || '',
                 classes: {}  // כיתות
             };
         }
@@ -653,6 +654,7 @@ function generateLabelHTML(customer, className, classData) {
                     <div class="label-customer-code">${customer.siteDesc || ''}</div>
                     ${customer.address ? `<div style="font-size: 15px; color: #555; margin-top: 3px;">📍 ${customer.address}</div>` : ''}
                     <div style="font-size: 17px; color: #666; margin-top: 5px; font-weight: bold;">📚 ${className}</div>
+                    ${customer.packingMethod ? `<div style="font-size: 17px; color: #FF9800; margin-top: 3px; font-weight: bold;">📦 ${customer.packingMethod}</div>` : ''}
                     ${classData.portionCount > 0 ? `<div style="font-size: 17px; color: #2196F3; margin-top: 3px; font-weight: bold;">🍽️ ${classData.portionCount} מנות</div>` : ''}
                 </div>
                 <div class="label-date">
