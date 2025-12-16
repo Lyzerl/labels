@@ -577,18 +577,14 @@ function displayLabels(orders) {
             groupedByCustomer[customerKey].classes[className] = {
                 hotItems: {},   // פריטים חמים - מיפוי לפי שם הפריט
                 coldItems: {},  // פריטים קרים - מיפוי לפי שם הפריט
-                portionCount: 0 // סכום מנות
+                portionCount: parseFloat(order.PRIT_GENQUANT) || 0 // מספר מנות - לוקחים פעם אחת בלבד
             };
         }
 
         const itemName = (order.PARTDES || '').trim();
         const itemQuantity = order.TQUANT || '';
         const temperature = order.PSPEC6 || '';
-        const portionCount = parseFloat(order.PRIT_GENQUANT) || 0;
         const isAllergenFree = (order.ALLERGENS || '').toLowerCase().includes('ללא אלרגנים');
-
-        // הוספת מספר המנות
-        groupedByCustomer[customerKey].classes[className].portionCount += portionCount;
 
         if (itemName) {
             const itemData = {
