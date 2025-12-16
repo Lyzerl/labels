@@ -575,20 +575,38 @@ function displayLabels(orders) {
 
         if (!groupedByCustomer[customerKey].classes[className]) {
             groupedByCustomer[customerKey].classes[className] = {
-                hotItems: [],   // פריטים חמים
-                coldItems: []   // פריטים קרים
+                hotItems: {},   // פריטים חמים - מיפוי לפי שם הפריט
+                coldItems: {},  // פריטים קרים - מיפוי לפי שם הפריט
+                portionCount: 0 // סכום מנות
             };
         }
 
-        const itemText = `${order.TQUANT || ''} ${order.PARTDES || ''}`.trim();
+        const itemName = (order.PARTDES || '').trim();
+        const itemQuantity = order.TQUANT || '';
         const temperature = order.PSPEC6 || '';
+        const portionCount = parseFloat(order.PRIT_GENQUANT) || 0;
+        const isAllergenFree = (order.ALLERGENS || '').toLowerCase().includes('ללא אלרגנים');
 
-        if (itemText) {
+        // הוספת מספר המנות
+        groupedByCustomer[customerKey].classes[className].portionCount += portionCount;
+
+        if (itemName) {
+            const itemData = {
+                name: itemName,
+                quantity: itemQuantity,
+                isAllergenFree: isAllergenFree
+            };
+
             // הוספה לרשימה המתאימה לפי טמפרטורה
             if (temperature.includes('חם')) {
-                groupedByCustomer[customerKey].classes[className].hotItems.push(itemText);
+                // אם הפריט כבר קיים, לא נוסיף אותו שוב (איחוד כפילויות)
+                if (!groupedByCustomer[customerKey].classes[className].hotItems[itemName]) {
+                    groupedByCustomer[customerKey].classes[className].hotItems[itemName] = itemData;
+                }
             } else {
-                groupedByCustomer[customerKey].classes[className].coldItems.push(itemText);
+                if (!groupedByCustomer[customerKey].classes[className].coldItems[itemName]) {
+                    groupedByCustomer[customerKey].classes[className].coldItems[itemName] = itemData;
+                }
             }
         }
     });
@@ -639,6 +657,7 @@ function generateLabelHTML(customer, className, classData) {
                     <div class="label-customer-code">${customer.siteDesc || ''}</div>
                     ${customer.address ? `<div style="font-size: 12px; color: #555; margin-top: 3px;">📍 ${customer.address}</div>` : ''}
                     <div style="font-size: 14px; color: #666; margin-top: 5px; font-weight: bold;">📚 ${className}</div>
+                    ${classData.portionCount > 0 ? `<div style="font-size: 14px; color: #2196F3; margin-top: 3px; font-weight: bold;">🍽️ ${classData.portionCount} מנות</div>` : ''}
                 </div>
                 <div class="label-date">
                     <div class="label-date-label">תאריך אספקה:</div>
@@ -655,9 +674,12 @@ function generateLabelHTML(customer, className, classData) {
     `;
 
     // הוספת פריטים חמים
-    if (classData.hotItems.length > 0) {
-        classData.hotItems.forEach(item => {
-            html += `<div class="label-box-item">${item}</div>`;
+    const hotItemsArray = Object.values(classData.hotItems);
+    if (hotItemsArray.length > 0) {
+        hotItemsArray.forEach(item => {
+            const displayText = `${item.quantity} ${item.name}`.trim();
+            const style = item.isAllergenFree ? 'font-weight: bold; color: #4CAF50; background: #E8F5E9; padding: 2px 5px; border-radius: 3px;' : '';
+            html += `<div class="label-box-item" style="${style}">${displayText}${item.isAllergenFree ? ' ✓' : ''}</div>`;
         });
     } else {
         html += `<div class="label-box-item" style="color: #999;">-</div>`;
@@ -674,9 +696,12 @@ function generateLabelHTML(customer, className, classData) {
     `;
 
     // הוספת פריטים קרים
-    if (classData.coldItems.length > 0) {
-        classData.coldItems.forEach(item => {
-            html += `<div class="label-box-item">${item}</div>`;
+    const coldItemsArray = Object.values(classData.coldItems);
+    if (coldItemsArray.length > 0) {
+        coldItemsArray.forEach(item => {
+            const displayText = `${item.quantity} ${item.name}`.trim();
+            const style = item.isAllergenFree ? 'font-weight: bold; color: #4CAF50; background: #E8F5E9; padding: 2px 5px; border-radius: 3px;' : '';
+            html += `<div class="label-box-item" style="${style}">${displayText}${item.isAllergenFree ? ' ✓' : ''}</div>`;
         });
     } else {
         html += `<div class="label-box-item" style="color: #999;">-</div>`;
