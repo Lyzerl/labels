@@ -658,6 +658,7 @@ function generateLabelHTML(customer, className, classData) {
                 </div>
                 <div class="label-customer">
                     <div class="label-customer-name">${customer.customerName || ''}</div>
+                    ${customer.customerCode ? `<div style="font-size: 15px; color: #888; margin-top: 2px;">${customer.customerCode}</div>` : ''}
                     <div class="label-customer-code">${customer.siteDesc || ''}</div>
                     ${customer.address ? `<div style="font-size: 15px; color: #555; margin-top: 3px;">📍 ${customer.address}</div>` : ''}
                     <div style="font-size: 17px; color: #666; margin-top: 5px; font-weight: bold;">📚 ${className}</div>
