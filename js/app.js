@@ -4589,6 +4589,7 @@ function createAllergenLabelsReport(data) {
       ...item,
       orderName: order.orderName,
       custDes: order.custDes || '',
+      codeDes: order.codeDes || '',
       custName: order.custName || '',
       distrLineCode: order.distrLineCode || '',
       distrLineDes: order.distrLineDes || '',
@@ -4755,7 +4756,6 @@ function createAllergenLabelsReport(data) {
               </div>
               <div class="allergen-label-date-info">
                 <div>${formatDate(label.dueDate)}</div>
-                <div>רכסים</div>
               </div>
             </div>
             <div class="allergen-label-body">
