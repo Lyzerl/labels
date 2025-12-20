@@ -3053,7 +3053,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       console.log('📍 כתובת להזמנה', order.orderName, ':', order.address, '| state:', order.state, '| תוצאה:', addressText);
       
       // פרטי לקוח ולוגיסטיקה - מוקטן כדי לפנות מקום
-      html += '<td style="text-align:right !important;padding:4px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.2 !important;"><strong>שם מוסד:</strong> ' + (order.custDes || '') + '</td>';
+      html += '<td style="text-align:right !important;padding:4px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.2 !important;"><strong>שם מוסד:</strong> ' + (order.codeDes || '') + '</td>';
       html += '<td style="text-align:right !important;padding:4px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.2 !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
       html += '</tr>';
 
