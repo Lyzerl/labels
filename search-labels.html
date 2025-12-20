@@ -29,6 +29,42 @@ body {
     box-shadow: 0 20px 60px rgba(0,0,0,0.3);
 }
 
+/* תפריט ניווט */
+.main-nav {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 12px;
+    border-radius: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.nav-link {
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 0.95em;
+    transition: all 0.3s;
+    border: 2px solid transparent;
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.nav-link.active {
+    background: white;
+    color: #667eea;
+    border-color: white;
+}
+
 @media (min-width: 768px) {
     body {
         padding: 20px;
@@ -36,6 +72,16 @@ body {
 
     .container {
         padding: 30px;
+    }
+
+    .main-nav {
+        margin-bottom: 25px;
+        padding: 15px;
+    }
+
+    .nav-link {
+        padding: 12px 24px;
+        font-size: 1.05em;
     }
 }
 
@@ -131,32 +177,6 @@ h1 {
 .search-btn:disabled {
     background: #ccc;
     cursor: not-allowed;
-}
-
-
-.back-btn {
-    width: 100%;
-    padding: 12px 20px;
-    background: #6c757d;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-    margin-bottom: 15px;
-    font-size: 16px;
-}
-
-@media (min-width: 768px) {
-    .back-btn {
-        width: auto;
-        padding: 10px 20px;
-        font-size: 14px;
-    }
-}
-
-.back-btn:hover {
-    background: #5a6268;
 }
 
 .status {
@@ -354,7 +374,6 @@ h1 {
     }
 
     .search-section,
-    .back-btn,
     .status,
     .results-info {
         display: none !important;
@@ -423,7 +442,12 @@ h1 {
 <body>
 
 <div class="container">
-    <button class="back-btn" onclick="window.location.href='index.html'">← חזור לדף הראשי</button>
+    <!-- תפריט ניווט -->
+    <nav class="main-nav">
+        <a href="index.html" class="nav-link">🏠 דף הבית</a>
+        <a href="menu.html" class="nav-link">📅 תפריטים</a>
+        <a href="search-labels.html" class="nav-link active">🔍 חיפוש מוסד</a>
+    </nav>
 
     <h1>🔍 חיפוש מהיר למדבקות</h1>
 

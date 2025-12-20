@@ -13,6 +13,42 @@ body {
   padding: 30px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.3);
 }
+
+/* תפריט ניווט */
+.main-nav {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 25px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 15px;
+  border-radius: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.nav-link {
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 1.05em;
+  transition: all 0.3s;
+  border: 2px solid transparent;
+}
+
+.nav-link:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.nav-link.active {
+  background: white;
+  color: #667eea;
+  border-color: white;
+}
 h1 { 
   color: #4285f4; 
   text-align: center;
@@ -486,14 +522,28 @@ tr:nth-child(even) {
     min-height: 100vh;
     overflow-x: hidden;
   }
-  
+
   .container {
     max-width: 100%;
     padding: 15px;
     border-radius: 10px;
     margin: 0;
   }
-  
+
+  /* תפריט ניווט במובייל */
+  .main-nav {
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .nav-link {
+    width: 100%;
+    text-align: center;
+    padding: 12px;
+    font-size: 1em;
+  }
+
   h1 {
     font-size: 1.3em;
     margin-bottom: 15px;

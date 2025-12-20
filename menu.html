@@ -27,6 +27,40 @@
             overflow: hidden;
         }
 
+        /* תפריט ניווט */
+        .main-nav {
+            display: flex;
+            gap: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .nav-link {
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.05em;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .nav-link.active {
+            background: white;
+            color: #667eea;
+            border-color: white;
+        }
+
         .header {
             background: #4a90e2;
             color: white;
@@ -236,6 +270,13 @@
 </head>
 <body>
     <div class="container">
+        <!-- תפריט ניווט -->
+        <nav class="main-nav">
+            <a href="index.html" class="nav-link">🏠 דף הבית</a>
+            <a href="menu.html" class="nav-link active">📅 תפריטים</a>
+            <a href="search-labels.html" class="nav-link">🔍 חיפוש מוסד</a>
+        </nav>
+
         <div class="header">
             <h1>📅 תפריטים שבועיים</h1>
             <p>תצוגת טבלאות לפי שבועות</p>
