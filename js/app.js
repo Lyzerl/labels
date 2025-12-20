@@ -4649,6 +4649,7 @@ function createAllergenLabelsReport(data) {
         groupedLabels[key] = {
           orderName: orderKey,
           custDes: item.custDes || item.CUSTDES || '',
+          codeDes: item.codeDes || item.CODEDES || '',
           custName: item.custName || item.CUSTNAME || '',
           distrLineCode: item.distrLineCode || item.DISTRLINECODE || '',
           distrLineDes: item.distrLineDes || item.DISTRLINEDES || '',
@@ -4758,7 +4759,7 @@ function createAllergenLabelsReport(data) {
               </div>
             </div>
             <div class="allergen-label-body">
-              <div class="allergen-label-customer">${label.custDes || ''}</div>
+              <div class="allergen-label-customer">${label.codeDes || ''}</div>
               <div class="allergen-label-address">${label.address || ''}</div>
               ${label.pritClassname ? `<div class="allergen-label-class">${formatClass(label.pritClassname)}</div>` : ''}
             </div>
