@@ -1494,15 +1494,18 @@ function applyTraysFilters() {
     if (pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום')) {
       return false;
     }
-    
-    // אם זה צמחוני בפרמטר 6 - לא נכלל
-    if (pspec6.includes('צמחוני')) {
+
+    // בדיקה אם זה סיפט
+    const isSift = pm.includes('סיפט') || packDes.includes('סיפט');
+
+    // אם זה צמחוני בפרמטר 6 - לא נכלל, אלא אם כן זה סיפט
+    if (pspec6.includes('צמחוני') && !isSift) {
       return false;
     }
-    
+
     // רק תפזורת או סיפט
-    const isBulk = pm.includes('תפזורת') || packDes.includes('תפזורת') || pm.includes('סיפט') || packDes.includes('סיפט');
-    
+    const isBulk = pm.includes('תפזורת') || packDes.includes('תפזורת') || isSift;
+
     return isBulk;
   });
   if (containersData.length > 0) {
@@ -1622,12 +1625,15 @@ function applyTraysFilters() {
     if (pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום')) {
       return false;
     }
-    
-    // אם זה צמחוני בפרמטר 6 - לא נכלל
-    if (pspec6.includes('צמחוני')) {
+
+    // בדיקה אם זה סיפט
+    const isSift = pm.includes('סיפט') || packDes.includes('סיפט');
+
+    // אם זה צמחוני בפרמטר 6 - לא נכלל, אלא אם כן זה סיפט
+    if (pspec6.includes('צמחוני') && !isSift) {
       return false;
     }
-    
+
     // כל השאר נכלל
     return true;
   });
@@ -1766,8 +1772,11 @@ function applyTraysFilters() {
       return false;
     }
 
-    // אם זה צמחוני בפרמטר 6 - לא נכלל
-    if (pspec6.includes('צמחוני')) {
+    // בדיקה אם זה סיפט
+    const isSift = pm.includes('סיפט') || packDes.includes('סיפט');
+
+    // אם זה צמחוני בפרמטר 6 - לא נכלל, אלא אם כן זה סיפט
+    if (pspec6.includes('צמחוני') && !isSift) {
       return false;
     }
 
