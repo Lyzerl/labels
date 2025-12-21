@@ -1495,8 +1495,8 @@ function applyTraysFilters() {
       return false;
     }
 
-    // בדיקה אם זה סיפט
-    const isSift = pm.includes('סיפט') || packDes.includes('סיפט');
+    // בדיקה אם זה סיפט - בודק בכל השדות הרלוונטיים
+    const isSift = pm.includes('סיפט') || packDes.includes('סיפט') || pspec1.includes('סיפט');
 
     // אם זה צמחוני בפרמטר 6 - לא נכלל, אלא אם כן זה סיפט
     if (pspec6.includes('צמחוני') && !isSift) {
@@ -1626,8 +1626,8 @@ function applyTraysFilters() {
       return false;
     }
 
-    // בדיקה אם זה סיפט
-    const isSift = pm.includes('סיפט') || packDes.includes('סיפט');
+    // בדיקה אם זה סיפט - בודק בכל השדות הרלוונטיים
+    const isSift = pm.includes('סיפט') || packDes.includes('סיפט') || pspec1.includes('סיפט');
 
     // אם זה צמחוני בפרמטר 6 - לא נכלל, אלא אם כן זה סיפט
     if (pspec6.includes('צמחוני') && !isSift) {
@@ -1772,8 +1772,8 @@ function applyTraysFilters() {
       return false;
     }
 
-    // בדיקה אם זה סיפט
-    const isSift = pm.includes('סיפט') || packDes.includes('סיפט');
+    // בדיקה אם זה סיפט - בודק בכל השדות הרלוונטיים
+    const isSift = pm.includes('סיפט') || packDes.includes('סיפט') || pspec1.includes('סיפט');
 
     // אם זה צמחוני בפרמטר 6 - לא נכלל, אלא אם כן זה סיפט
     if (pspec6.includes('צמחוני') && !isSift) {
