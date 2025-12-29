@@ -2242,6 +2242,33 @@ function createAllergensReport(data) {
   console.log('✅ דוח אלרגנים - הושלם, סה"כ קבוצות:', totalGroups, 'סה"כ קווי חלוקה:', totalLines);
 }
 
+// הדפסת דוח אלרגנים
+function printAllergensReport() {
+  const container = document.getElementById('allergensContainer');
+  if (!container) {
+    alert('אין נתונים להדפסה');
+    return;
+  }
+
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write('<html dir="rtl"><head><title>דוח אלרגנים</title>');
+  printWindow.document.write('<style>');
+  printWindow.document.write('body { font-family: Arial, sans-serif; direction: rtl; margin: 20px; }');
+  printWindow.document.write('table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }');
+  printWindow.document.write('th, td { border: 1px solid #ccc; padding: 5px; text-align: right; font-size: 11px; }');
+  printWindow.document.write('th { background: #f0f0f0; }');
+  printWindow.document.write('h3 { margin: 5px 0; font-size: 14px; }');
+  printWindow.document.write('.table-wrapper { display: inline-block; width: 48%; margin: 1%; vertical-align: top; }');
+  printWindow.document.write('@media print { @page { margin: 10mm; } }');
+  printWindow.document.write('</style></head><body>');
+  printWindow.document.write('<h2 style="text-align:center;">דוח אלרגנים</h2>');
+  printWindow.document.write(container.innerHTML);
+  printWindow.document.write('</body></html>');
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 500);
+}
+
 // הורדת רשימת מספרי הזמנות לקבוצה מסוימת
 function downloadOrderNames(groupIndex) {
   if (!window.traysData || !window.traysData[groupIndex]) {
