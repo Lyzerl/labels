@@ -70,25 +70,27 @@ function openAllergenKosherModal(kosherType) {
 
   let html = '';
   if (data && data.length > 0) {
-    // מיון לפי שם לקוח
+    // מיון לפי תיאור לקוח
     const sortedData = data.sort((a, b) => {
-      const nameA = String(a.custName || '').trim();
-      const nameB = String(b.custName || '').trim();
+      const nameA = String(a.custDes || '').trim();
+      const nameB = String(b.custDes || '').trim();
       return nameA.localeCompare(nameB);
     });
 
-    sortedData.forEach(customer => {
-      const custName = String(customer.custName || 'ללא').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-      const spec2 = String(customer.spec2 || 'ללא').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    sortedData.forEach(order => {
+      const ordName = String(order.ordName || 'ללא').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      const custDes = String(order.custDes || 'ללא').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      const spec2 = String(order.spec2 || 'ללא').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       html += '<div class="modal-item">';
-      html += `<strong>${custName}</strong>`;
+      html += `<strong>הזמנה: ${ordName}</strong>`;
+      html += `<span>לקוח: ${custDes}</span>`;
       html += `<span>כשרות: ${spec2}</span>`;
-      html += `<span>כמות: ${customer.quantity.toFixed(0)}</span>`;
+      html += `<span>כמות: ${order.quantity.toFixed(0)}</span>`;
       html += '</div>';
     });
 
     const totalQuantity = data.reduce((sum, c) => sum + c.quantity, 0);
-    html += `<div style="margin-top:15px;padding:10px;background:#e3f2fd;border-radius:5px;text-align:center;font-weight:bold;">סה"כ: ${data.length} לקוחות, ${totalQuantity.toFixed(0)} מנות</div>`;
+    html += `<div style="margin-top:15px;padding:10px;background:#e3f2fd;border-radius:5px;text-align:center;font-weight:bold;">סה"כ: ${data.length} הזמנות, ${totalQuantity.toFixed(0)} מנות</div>`;
   } else {
     html = '<p style="text-align:center;padding:20px;color:#999;">אין נתונים להצגה</p>';
   }
@@ -2042,6 +2044,8 @@ function createAllergensReport(data) {
     }
     return order.items.map(item => ({
       ...item,
+      ORDNAME: order.orderName || '',
+      CUSTDES: order.custDes || '',
       BRANCHNAME: order.branchName || '',
       PSPEC1: String(item.pspec1 || '').trim(),
       SPEC1: String(order.spec1 || '').trim(),
@@ -2131,35 +2135,66 @@ function createAllergensReport(data) {
   let totalChabad = 0;
   let totalOther = 0;
 
-  // שמירת נתוני לקוחות לכל כשרות לפופאפ
+  // שמירת נתוני לקוחות לכל כשרות לפופאפ - מקובץ לפי מספר הזמנה
   window.allergenKosherData = {
     badatz: [],
     chabad: [],
     other: []
   };
 
+  // קיבוץ לפי מספר הזמנה עם שם לקוח וכשרות
+  const ordersByKosher = {
+    badatz: {},
+    chabad: {},
+    other: {}
+  };
+
+  allergenFreeData.forEach(row => {
+    const spec2Lower = String(row.SPEC2 || '').toLowerCase();
+    const ordName = String(row.ORDNAME || '').trim();
+    const custDes = String(row.CUSTDES || '').trim();
+    const quantity = row.EATQUANT || 0;
+
+    let kosherType = 'other';
+    if (spec2Lower.includes('חבד') || spec2Lower.includes('חב"ד') || spec2Lower.includes('חב\'ד') ||
+        spec2Lower.includes('נחלת') || spec2Lower.includes('ירוסלבסקי') || spec2Lower.includes('ביסטריצקי')) {
+      kosherType = 'chabad';
+    } else if (spec2Lower.includes('בדץ') || spec2Lower.includes('בד"ץ') || spec2Lower.includes('ירושלם') ||
+               spec2Lower.includes('ירושלים') || spec2Lower.includes('badatz')) {
+      kosherType = 'badatz';
+    }
+
+    // קיבוץ לפי מספר הזמנה
+    if (!ordersByKosher[kosherType][ordName]) {
+      ordersByKosher[kosherType][ordName] = {
+        ordName: ordName,
+        custDes: custDes,
+        spec2: row.SPEC2 || '',
+        quantity: 0
+      };
+    }
+    ordersByKosher[kosherType][ordName].quantity += quantity;
+  });
+
+  // המרה למערך ושמירה
+  window.allergenKosherData.badatz = Object.values(ordersByKosher.badatz);
+  window.allergenKosherData.chabad = Object.values(ordersByKosher.chabad);
+  window.allergenKosherData.other = Object.values(ordersByKosher.other);
+
+  // חישוב סיכומים
   Object.values(groupedByCustomer).forEach(group => {
     const groupTotal = group.lines.reduce((sum, line) => sum + line.totalQuantity, 0);
     const spec2Lower = group.spec2.toLowerCase();
-
-    const customerData = {
-      custName: group.spec1,
-      spec2: group.spec2,
-      quantity: groupTotal
-    };
 
     // זיהוי כשרות לפי SPEC2 של הלקוח
     if (spec2Lower.includes('חבד') || spec2Lower.includes('חב"ד') || spec2Lower.includes('חב\'ד') ||
         spec2Lower.includes('נחלת') || spec2Lower.includes('ירוסלבסקי') || spec2Lower.includes('ביסטריצקי')) {
       totalChabad += groupTotal;
-      window.allergenKosherData.chabad.push(customerData);
     } else if (spec2Lower.includes('בדץ') || spec2Lower.includes('בד"ץ') || spec2Lower.includes('ירושלם') ||
                spec2Lower.includes('ירושלים') || spec2Lower.includes('badatz')) {
       totalBadatz += groupTotal;
-      window.allergenKosherData.badatz.push(customerData);
     } else {
       totalOther += groupTotal;
-      window.allergenKosherData.other.push(customerData);
     }
   });
 
