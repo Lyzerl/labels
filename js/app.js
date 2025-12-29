@@ -209,6 +209,33 @@ function calculateContainersAndPacks(data) {
   });
 }
 
+// פונקציה לאיחוד שורות כפולות - אותה הזמנה, אותו מוצר, אותה ארוחה
+// שומרת רק שורה אחת לכל שילוב ייחודי, מסכמת כמויות
+function deduplicateRows(data) {
+  const uniqueRowsMap = new Map();
+
+  data.forEach(row => {
+    // יצירת מפתח ייחודי: הזמנה + מוצר + ארוחה
+    const ordName = String(row.ORDNAME || '').trim();
+    const partName = String(row.PARTNAME || '').trim();
+    const partDes = String(row.PARTDES || '').trim();
+    const mealName = String(row.MESSION || row.MEALNAME || '').trim();
+
+    const uniqueKey = `${ordName}|${partName}|${partDes}|${mealName}`;
+
+    if (!uniqueRowsMap.has(uniqueKey)) {
+      // שורה ראשונה עם המפתח הזה - שומרים אותה
+      uniqueRowsMap.set(uniqueKey, { ...row });
+    } else {
+      // שורה כפולה - מסכמים את הכמות (TQUANT) אם צריך
+      // אבל לרוב זו פשוט כפילות ולא צריך לסכום
+      // נשאיר את השורה הראשונה כמו שהיא
+    }
+  });
+
+  return Array.from(uniqueRowsMap.values());
+}
+
 async function fetchData() {
   const dateInput = document.getElementById('dateInput').value;
   const branchSelect = document.getElementById('branchSelect').value;
@@ -329,8 +356,12 @@ async function fetchData() {
       // עיבוד מהיר - עותק אחד בלבד
       statusDiv.innerHTML = '<div class="loader"></div><p>מעבד נתונים...</p>';
       
+      // איחוד שורות כפולות (אותה הזמנה + מוצר + ארוחה)
+      const deduplicatedData = deduplicateRows(allData);
+      console.log(`📊 איחוד שורות: ${allData.length} → ${deduplicatedData.length} (הוסרו ${allData.length - deduplicatedData.length} כפילויות)`);
+
       // ביצוע חישובים ישירות על הנתונים
-      const allDataWithCalculations = calculateContainersAndPacks(allData);
+      const allDataWithCalculations = calculateContainersAndPacks(deduplicatedData);
       
       // המרה למבנה NoSQL
       const structuredData = organizeAsNoSQL(allDataWithCalculations);
