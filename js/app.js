@@ -4859,6 +4859,7 @@ function createAllergenLabelsReport(data) {
           pritClassname: item.pritClassname || item.PRIT_CLASSNAME || '',
           dueDate: item.dueDate || item.DUEDATE || '',
           address: item.address || item.ADDRESS || item.state || item.STATE || '',
+          spec2: item.spec2 || item.SPEC2 || '',
           partDes: partDes,
           quantity: eatQuant
         };
@@ -4953,7 +4954,7 @@ function createAllergenLabelsReport(data) {
           <div class="allergen-label">
             <div class="allergen-label-header">
               <div class="allergen-label-top-info">
-                <div class="allergen-label-route-station">${label.distrLineDes || label.distrLineCode || ''} | ${label.pritDistrOrder || ''}</div>
+                <div class="allergen-label-route-station">${label.distrLineDes || label.distrLineCode || ''} | ${label.pritDistrOrder || ''}${label.spec2 ? ` | ${label.spec2}` : ''}</div>
               </div>
               <div class="allergen-label-date-info">
                 <div>${formatDate(label.dueDate)}</div>
