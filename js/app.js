@@ -3105,9 +3105,10 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       const footerHeight = 25;
 
       // בדיקה מוקדמת אם תהיה שורת מארזים - לחישוב גובה דינמי
+      // רק במדבקות חמות (לא קרות!)
       const checkHasTrayOnly = itemsArray.every(item => item.isTray === true);
       const checkSpec2 = String(order.spec2 || '').trim().toLowerCase();
-      const willHavePacksRow = checkHasTrayOnly && itemsArray.length > 0 &&
+      const willHavePacksRow = !isColdLabel && checkHasTrayOnly && itemsArray.length > 0 &&
                                (checkSpec2.includes('חבד') || checkSpec2.includes('חב"ד') || checkSpec2.includes('חב\'ד') ||
                                 checkSpec2.includes('נחלת') || checkSpec2.includes('ירוסלבסקי') || checkSpec2.includes('ביסטריצקי'));
 
