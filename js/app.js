@@ -3253,9 +3253,23 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       const addressText = order.address || order.state || '';
       console.log('📍 כתובת להזמנה', order.orderName, ':', order.address, '| state:', order.state, '| תוצאה:', addressText);
       
-      // פרטי לקוח ולוגיסטיקה - שם מוסד רספונסיבי עם max-height וoverflow
+      // פרטי לקוח ולוגיסטיקה - שם מוסד רספונסיבי לפי אורך הטקסט
+      // חישוב גודל פונט לפי אורך שם המוסד
+      const institutionName = order.codeDes || '';
+      const nameLength = institutionName.length;
+      let institutionFontSize = '2.2em';
+      if (nameLength > 30) {
+        institutionFontSize = '1.1em';
+      } else if (nameLength > 25) {
+        institutionFontSize = '1.3em';
+      } else if (nameLength > 20) {
+        institutionFontSize = '1.5em';
+      } else if (nameLength > 15) {
+        institutionFontSize = '1.8em';
+      }
+
       // שורה ראשונה - שם מוסד וקו חלוקה - גובה קבוע
-      html += '<td style="text-align:right !important;padding:1px 3px !important;border:1px solid #000 !important;line-height:1.0 !important;max-height:35px !important;height:35px !important;overflow:hidden !important;"><span style="font-size:1.4em !important;">שם מוסד: </span><strong style="font-size:clamp(1.2em, 2vw, 2.2em) !important;display:inline-block !important;max-width:85% !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;vertical-align:middle !important;">' + (order.codeDes || '') + '</strong></td>';
+      html += '<td style="text-align:right !important;padding:1px 3px !important;border:1px solid #000 !important;line-height:1.0 !important;max-height:35px !important;height:35px !important;overflow:hidden !important;"><span style="font-size:1.2em !important;">שם מוסד: </span><strong style="font-size:' + institutionFontSize + ' !important;">' + institutionName + '</strong></td>';
       html += '<td style="text-align:right !important;padding:1px 3px !important;border:1px solid #000 !important;font-size:1.4em !important;line-height:1.0 !important;max-height:35px !important;height:35px !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
       html += '</tr>';
 
