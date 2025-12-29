@@ -3253,49 +3253,49 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       const addressText = order.address || order.state || '';
       console.log('📍 כתובת להזמנה', order.orderName, ':', order.address, '| state:', order.state, '| תוצאה:', addressText);
       
-      // פרטי לקוח ולוגיסטיקה - פונטים מוגדלים
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.4em !important;line-height:1.3 !important;"><strong>שם מוסד:</strong> ' + (order.codeDes || '') + '</td>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.4em !important;line-height:1.3 !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
+      // פרטי לקוח ולוגיסטיקה - פונטים מוגדלים משמעותית, פדינג מוקטן
+      html += '<td style="text-align:right !important;padding:2px 4px !important;border:1px solid #000 !important;font-size:2.4em !important;line-height:1.1 !important;"><strong>שם מוסד:</strong> ' + (order.codeDes || '') + '</td>';
+      html += '<td style="text-align:right !important;padding:2px 4px !important;border:1px solid #000 !important;font-size:1.8em !important;line-height:1.1 !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
       html += '</tr>';
 
       html += '<tr>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.4em !important;line-height:1.3 !important;"><strong>כתובת:</strong> ' + addressText + '</td>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.4em !important;line-height:1.3 !important;"><strong>מס תחנה:</strong> ' + (order.pritDistrOrder || 0) + '</td>';
+      html += '<td style="text-align:right !important;padding:2px 4px !important;border:1px solid #000 !important;font-size:1.8em !important;line-height:1.1 !important;"><strong>כתובת:</strong> ' + addressText + '</td>';
+      html += '<td style="text-align:right !important;padding:2px 4px !important;border:1px solid #000 !important;font-size:1.8em !important;line-height:1.1 !important;"><strong>מס תחנה:</strong> ' + (order.pritDistrOrder || 0) + '</td>';
       html += '</tr>';
 
       html += '<tr>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.4em !important;line-height:1.3 !important;"><strong>מס לקוח:</strong> ' + (order.custName || '') + (classText ? ' | <strong>כיתה:</strong> ' + classText : '') + '</td>';
-      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.4em !important;line-height:1.3 !important;"><strong>תאריך:</strong> ' + formattedDate + '</td>';
+      html += '<td style="text-align:right !important;padding:2px 4px !important;border:1px solid #000 !important;font-size:1.8em !important;line-height:1.1 !important;"><strong>מס לקוח:</strong> ' + (order.custName || '') + (classText ? ' | <strong>כיתה:</strong> ' + classText : '') + '</td>';
+      html += '<td style="text-align:right !important;padding:2px 4px !important;border:1px solid #000 !important;font-size:1.8em !important;line-height:1.1 !important;"><strong>תאריך:</strong> ' + formattedDate + '</td>';
       html += '</tr>';
       
       html += '</tbody></table>';
 
       // שורת מספר מנות - בין הכותרת לטבלת הפריטים
       const eatQuantValue = order.eatQuant || 0;
-      html += `<div style="text-align:center !important;padding:8px 10px !important;margin-bottom:8px !important;background:#f5f5f5 !important;border:1px solid #000 !important;border-radius:4px !important;font-size:1.8em !important;font-weight:bold !important;">מספר מנות: ${eatQuantValue > 0 ? eatQuantValue : '-'}</div>`;
+      html += `<div style="text-align:center !important;padding:4px 6px !important;margin-bottom:6px !important;background:#f5f5f5 !important;border:1px solid #000 !important;border-radius:4px !important;font-size:2.2em !important;font-weight:bold !important;">מספר מנות: ${eatQuantValue > 0 ? eatQuantValue : '-'}</div>`;
 
       // אזור שני - טבלה עם פרטי אריזה - גובה דינמי, מוגבל לגובה הזמין
       // rowHeight כבר חושב נכון בהתאם למספר הפריטים, אז נשתמש בו ישירות
       const finalRowHeight = rowHeight;
       
       // חישוב padding וגודל טקסט דינמי - אם יש הרבה פריטים, נקטין את ה-padding והטקסט
-      // חישוב דינמי יותר - בהתאם לגובה השורה
+      // חישוב דינמי יותר - בהתאם לגובה השורה - פונטים מוגדלים, פדינג מוקטן
       let headerPadding, headerFontSize;
       if (finalRowHeight < 15) {
-        headerPadding = '2px';
-        headerFontSize = '0.9em';
-      } else if (finalRowHeight < 20) {
-        headerPadding = '3px';
-        headerFontSize = '1.0em';
-      } else if (finalRowHeight < 25) {
-        headerPadding = '4px';
-        headerFontSize = '1.1em';
-      } else if (finalRowHeight < 30) {
-        headerPadding = '6px';
+        headerPadding = '1px';
         headerFontSize = '1.2em';
-      } else {
-        headerPadding = '8px';
+      } else if (finalRowHeight < 20) {
+        headerPadding = '1px';
         headerFontSize = '1.4em';
+      } else if (finalRowHeight < 25) {
+        headerPadding = '2px';
+        headerFontSize = '1.5em';
+      } else if (finalRowHeight < 30) {
+        headerPadding = '2px';
+        headerFontSize = '1.6em';
+      } else {
+        headerPadding = '3px';
+        headerFontSize = '1.8em';
       }
       
       // עטיפה ב-div שמגביל את הגובה כדי שהטבלה לא תעבור את הפוטר
