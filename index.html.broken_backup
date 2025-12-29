@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>נתוני Priority - לפי סניף</title>
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
+<!-- קובץ CSS מקומי -->
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  padding: 20px; 
+  direction: rtl; 
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+}
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 15px;
+  padding: 30px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+h1 { 
+  color: #4285f4; 
+  text-align: center;
+  margin-bottom: 30px;
+}
+.controls { 
+  background: #f8f9fa; 
+  padding: 20px; 
+  border-radius: 10px; 
+  margin-bottom: 20px;
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.control-group label {
+  font-weight: bold;
+  font-size: 0.9em;
+  color: #333;
+}
+input[type="date"], select {
+  padding: 10px 15px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 1em;
+}
+.btn { 
+  padding: 10px 25px; 
+  background: #4285f4; 
+  color: white; 
+  border: none; 
+  border-radius: 8px;
+  cursor: pointer; 
+  font-size: 1em;
+  font-weight: bold;
+  transition: all 0.3s;
+}
+.btn:hover:not(:disabled) { 
+  background: #3367d6;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(66, 133, 244, 0.3);
+}
+.btn:disabled { 
+  background: #ccc; 
+  cursor: not-allowed;
+  transform: none;
+}
+.btn.download { 
+  background: #34a853; 
+}
+.btn.download:hover:not(:disabled) { 
+  background: #2d8e47; 
+}
+.status { 
+  padding: 15px; 
+  margin: 15px 0; 
+  border-radius: 8px;
+  text-align: center;
+  font-weight: bold;
+}
+.status.loading { 
+  background: #fff3e0; 
+  color: #ff9800; 
+}
+.status.success { 
+  background: #e8f5e9; 
+  color: #4caf50; 
+}
+.status.error { 
+  background: #ffebee; 
+  color: #f44336; 
+}
+.stats {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  margin: 15px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+.stat-item {
+  text-align: center;
+}
+.stat-label {
+  font-size: 0.85em;
+  color: #666;
+}
+.stat-value {
+  font-size: 1.8em;
+  font-weight: bold;
+  color: #4285f4;
+}
+table { 
+  width: 100%; 
+  border-collapse: collapse; 
+  margin-top: 20px;
+  font-size: 0.9em;
+}
+th, td { 
+  border: 1px solid #ddd; 
+  padding: 12px; 
+  text-align: right; 
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+th { 
+  background: #4285f4; 
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  position: relative;
+}
+th {
+  padding: 8px !important;
+}
+th .header-text {
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: white;
+}
+th input.column-filter {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.85em;
+  box-sizing: border-box;
+  direction: rtl;
+  background: white;
+  color: #333;
+}
+th input.column-filter:focus {
+  outline: 2px solid #fff;
+  border-color: #fff;
+  box-shadow: 0 0 5px rgba(255,255,255,0.5);
+}
+tr:hover { 
+  background: #f5f5f5; 
+}
+tr:nth-child(even) {
+  background: #fafafa;
+}
+.table-container {
+  max-height: 600px;
+  overflow-y: auto;
+  overflow-x: auto;
+  margin-top: 20px;
+  width: 100%;
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+}
+#tableContainer {
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  width: 100% !important;
+}
+.table-container table {
+  width: 100% !important;
+  min-width: 100%;
+  display: table;
+  table-layout: auto;
+}
+
+.labels-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+.labels-print-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.label-card {
+  border: 2px solid #333;
+  border-radius: 12px;
+  padding: 14px;
+  background: #f9f9f9;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  page-break-inside: avoid;
+}
+
+.label-card-hot {
+  border-color: #ef6c00;
+}
+
+.label-card-cold {
+  border-color: #1976d2;
+}
+
+.label-card-no-allergen {
+  background: #ffd6d6;
+  border-color: #c62828;
+}
+
+.label-card-vegetarian {
+  background: #d6f5d6;
+  border-color: #2e7d32;
+}
+
+.label-card-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.label-card-table:first-of-type {
+  margin-top: 0;
+}
+
+.label-card-table th,
+.label-card-table td {
+  border: 1px solid #ccc;
+  padding: 6px 8px;
+  text-align: right;
+  font-size: 0.95em;
+  vertical-align: top;
+}
+
+.label-card-table thead tr {
+  background: #e3f2fd;
+}
+
+.label-card-table .label-total-cell {
+  background: #e8f5e9;
+  font-weight: bold;
+}
+
+.label-row-no-allergen {
+  background-color: #ff5252 !important;
+  color: #000 !important;
+}
+
+.label-row-vegetarian {
+  background-color: #66bb6a !important;
+  color: #000 !important;
+}
+
+/* Modal styles */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  direction: rtl;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #4285f4;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #4285f4;
+  font-size: 1.3em;
+}
+
+.modal-close {
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 15px;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: bold;
+}
+
+.modal-close:hover {
+  background: #d32f2f;
+}
+
+.modal-body {
+  margin-top: 15px;
+}
+
+.modal-item {
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #f5f5f5;
+  border-radius: 5px;
+  border-right: 3px solid #4285f4;
+}
+
+.modal-item strong {
+  color: #4285f4;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.modal-item span {
+  display: block;
+  color: #666;
+  font-size: 0.9em;
+}
+
+.clickable-item {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.clickable-item:hover {
+  background-color: #e3f2fd !important;
+}
+
+@media print {
+  body {
+    background: white;
+    margin: 0;
+    padding: 0;
+  }
+  .container {
+    box-shadow: none;
+    margin: 0;
+    max-width: 100%;
+  }
+  .controls,
+  .tabs,
+  .report-controls,
+  .labels-actions,
+  #status,
+  h1 {
+    display: none !important;
+  }
+  .labels-print-wrapper {
+    gap: 0;
+    margin: 0;
+    padding: 0;
+  }
+  .label-card {
+    height: 148.5mm;
+    min-height: 148.5mm;
+    max-height: 148.5mm;
+    margin: 0;
+    page-break-inside: avoid;
+    display: flex;
+    flex-direction: column;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .label-card,
+  .label-card-no-allergen,
+  .label-card-vegetarian,
+  .label-row-no-allergen,
+  .label-row-vegetarian {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .label-card:nth-of-type(even) {
+    page-break-after: always;
+  }
+  .label-card:nth-of-type(odd) {
+    page-break-after: auto;
+  }
+  .label-card:last-of-type {
+    page-break-after: auto;
+  }
+}
+.loader {
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #4285f4;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* עיצוב טאבים */
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+  border-bottom: 2px solid #ddd;
+  flex-wrap: wrap;
+}
+.tab-btn {
+  padding: 12px 24px;
+  background: #f0f0f0;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: bold;
+  color: #666;
+  transition: all 0.3s;
+  position: relative;
+  top: 2px;
+}
+.tab-btn:hover {
+  background: #e0e0e0;
+  color: #333;
+}
+.tab-btn.active {
+  background: white;
+  color: #4285f4;
+  border: 2px solid #ddd;
+  border-bottom: 2px solid white;
+}
+.tab-content {
+  display: none;
+  padding: 20px 0;
+}
+.tab-content.active {
+  display: block;
+}
+.report-controls {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.label-card {
+  width: 48%;
+  display: inline-block;
+  vertical-align: top;
+  box-sizing: border-box;
+  margin: 8px 1%;
+  page-break-inside: avoid;
+}
+
+/* רספונסיביות למובייל */
+@media screen and (max-width: 768px) {
+  body {
+    padding: 10px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  
+  .container {
+    max-width: 100%;
+    padding: 15px;
+    border-radius: 10px;
+    margin: 0;
+  }
+  
+  h1 {
+    font-size: 1.3em;
+    margin-bottom: 15px;
+  }
+  
+  .controls {
+    padding: 15px;
+    gap: 10px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .control-group {
+    width: 100%;
+  }
+  
+  .control-group label {
+    font-size: 0.85em;
+  }
+  
+  input[type="date"], select {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px; /* מונע זום אוטומטי ב-iOS */
+    box-sizing: border-box;
+  }
+  
+  .btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 1em;
+    margin-top: 5px;
+  }
+  
+  .stats {
+    flex-direction: column;
+    gap: 15px;
+    padding: 10px;
+  }
+  
+  .stat-value {
+    font-size: 1.5em;
+  }
+  
+  .tabs {
+    flex-direction: column;
+    gap: 5px;
+    margin: 15px 0;
+  }
+  
+  .tab-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+    top: 0;
+  }
+  
+  .report-controls {
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+  }
+  
+  .report-controls label {
+    width: 100%;
+  }
+  
+  .report-controls select {
+    width: 100%;
+  }
+  
+  .table-container {
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 10px;
+    width: 100%;
+    position: relative;
+    display: block;
+  }
+  
+  table {
+    font-size: 0.75em;
+    min-width: 100%;
+    width: 100% !important;
+    display: table;
+    table-layout: auto;
+  }
+  
+  /* שיפור גלילה בטבלאות */
+  .table-container::-webkit-scrollbar {
+    height: 8px;
+  }
+  
+  .table-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  
+  .table-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+  }
+  
+  .table-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+  
+  /* DataTables responsive */
+  .dtr-details {
+    display: block;
+    width: 100%;
+  }
+  
+  .dtr-details li {
+    border-bottom: 1px solid #ddd;
+    padding: 8px 0;
+  }
+  
+  th, td {
+    padding: 8px 5px;
+    white-space: nowrap;
+  }
+  
+  th {
+    font-size: 0.8em;
+    padding: 6px 4px !important;
+  }
+  
+  th .header-text {
+    font-size: 0.75em;
+  }
+  
+  th input.column-filter {
+    font-size: 0.7em;
+    padding: 4px;
+  }
+  
+  .label-card {
+    width: 100%;
+    margin: 10px 0;
+    display: block;
+    padding: 10px !important;
+  }
+  
+  /* רספונסיביות לטבלאות במדבקות */
+  .label-card > table:first-of-type {
+    font-size: 0.85em !important;
+  }
+  
+  .label-card > table:first-of-type th,
+  .label-card > table:first-of-type td {
+    padding: 4px !important;
+    font-size: 0.85em !important;
+  }
+  
+  .label-card-table {
+    font-size: 0.9em !important;
+  }
+  
+  .label-card-table th,
+  .label-card-table td {
+    padding: 4px !important;
+    font-size: 0.9em !important;
+  }
+  
+  .labels-print-wrapper {
+    gap: 15px !important;
+  }
+  
+  .status {
+    padding: 10px;
+    font-size: 0.9em;
+  }
+  
+  .loader {
+    width: 40px;
+    height: 40px;
+    border-width: 4px;
+  }
+  
+  /* מניעת overflow אופקי */
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  * {
+    box-sizing: border-box;
+  }
+  
+  /* שיפור התצוגה של טאבים */
+  .tab-content {
+    padding: 10px 0;
+    width: 100%;
+    overflow-x: auto;
+  }
+  
+  /* שיפור התצוגה של קונטרולים */
+  .control-group {
+    margin-bottom: 10px;
+  }
+  
+  /* שיפור התצוגה של סטטיסטיקות */
+  .stats {
+    flex-wrap: wrap;
+  }
+  
+  .stat-item {
+    flex: 1 1 45%;
+    min-width: 120px;
+  }
+  
+  /* שיפור טבלאות בדוחות */
+  #summaryContainer table {
+    font-size: 0.7em;
+    width: 100% !important;
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  #summaryContainer table thead,
+  #summaryContainer table tbody {
+    display: block;
+  }
+  
+  #summaryContainer table tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+  
+  /* דוח אריזה חמה - טבלאות אחת מתחת לשנייה */
+  #traysContainer table {
+    font-size: 0.7em;
+    width: 100% !important;
+    display: table;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* שיפור טבלאות חמגשיות - אחת מתחת לשנייה במובייל */
+  #traysContainer > div {
+    width: 100% !important;
+    display: block !important;
+    margin: 10px 0 !important;
+  }
+  
+  /* שינוי כל הטבלאות בדוח אריזה חמה להיות אחת מתחת לשנייה במובייל */
+  #traysContainer .tray-category-table,
+  #traysContainer div[style*="display:inline-block"] {
+    display: block !important;
+    width: 100% !important;
+    margin: 15px 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    clear: both !important;
+    float: none !important;
+  }
+  
+  /* וידוא שהטבלאות לא עולות אחת על השנייה */
+  #traysContainer > div > div {
+    display: block !important;
+    width: 100% !important;
+    margin: 10px 0 !important;
+  }
+  
+  /* וידוא שכל ה-divs בתוך traysContainer הם block */
+  #traysContainer div {
+    display: block !important;
+    width: 100% !important;
+    float: none !important;
+  }
+  
+  #traysContainer table {
+    min-width: 100%;
+    width: 100% !important;
+  }
+  
+  /* שיפור כותרות טבלאות */
+  #traysContainer h3 {
+    font-size: 0.9em;
+    padding: 8px;
+  }
+  
+  /* שיפור תצוגת דוח אריזה קרה */
+  #summaryContainer table {
+    font-size: 0.8em;
+    width: 100% !important;
+  }
+  
+  #summaryContainer th,
+  #summaryContainer td {
+    padding: 6px 4px;
+    font-size: 0.85em;
+  }
+  
+  /* שיפור תצוגת דוחות */
+  .report-controls {
+    width: 100%;
+  }
+  
+  .report-controls button {
+    width: 100%;
+    margin-top: 10px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  body {
+    padding: 5px;
+  }
+  
+  .container {
+    padding: 10px;
+  }
+  
+  h1 {
+    font-size: 1.1em;
+  }
+  
+  table {
+    font-size: 0.7em;
+    min-width: 100%;
+    width: 100% !important;
+  }
+  
+  th, td {
+    padding: 6px 3px;
+    font-size: 0.8em;
+    word-wrap: break-word;
+    max-width: 200px;
+  }
+  
+  .btn {
+    font-size: 0.9em;
+    padding: 10px;
+  }
+  
+  .stats {
+    padding: 8px;
+  }
+  
+  .stat-label {
+    font-size: 0.75em;
+  }
+  
+  .stat-value {
+    font-size: 1.3em;
+  }
+  
+  /* שיפורים נוספים לטבלאות במובייל קטן */
+  .tray-category-table,
+  #traysContainer div[style*="display:inline-block"] {
+    width: 100% !important;
+    display: block !important;
+    margin: 10px 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    float: none !important;
+    clear: both !important;
+  }
+  
+  #traysContainer h3 {
+    font-size: 0.85em;
+    padding: 6px;
+  }
+  
+  /* וידוא שכל הטבלאות בדוח אריזה חמה הן אחת מתחת לשנייה */
+  #traysContainer > div > div {
+    display: block !important;
+    width: 100% !important;
+    float: none !important;
+  }
+  
+  #summaryContainer table,
+  #traysContainer table {
+    font-size: 0.7em;
+  }
+  
+  #summaryContainer th,
+  #summaryContainer td,
+  #traysContainer th,
+  #traysContainer td {
+    padding: 5px 3px;
+    font-size: 0.75em;
+  }
+  
+  /* שיפור תצוגת טקסט ארוך */
+  td {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  
+  /* רספונסיביות נוספת למדבקות במובייל קטן */
+  .label-card {
+    padding: 8px !important;
+  }
+  
+  .label-card > table:first-of-type {
+    font-size: 0.75em !important;
+  }
+  
+  .label-card > table:first-of-type th,
+  .label-card > table:first-of-type td {
+    padding: 3px !important;
+    font-size: 0.75em !important;
+  }
+  
+  .label-card-table {
+    font-size: 0.8em !important;
+  }
+  
+  .label-card-table th,
+  .label-card-table td {
+    padding: 3px !important;
+    font-size: 0.8em !important;
+  }
+  
+  #labelsContainer {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* מדבקות אלרגנים - 32 בעמוד A4 (4 עמודות × 8 שורות) */
+.allergen-labels-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  direction: rtl;
+}
+
+.allergen-page-header {
+  width: 210mm;
+  padding: 3mm 0;
+  text-align: center;
+  font-weight: bold;
+  font-size: 12pt;
+  background: #f0f0f0;
+  border: 1px solid #333;
+  margin-bottom: 0;
+}
+
+.allergen-labels-page {
+  width: 210mm;
+  height: 297mm;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(2, 105mm); /* 2 עמודות */
+  grid-template-rows: repeat(3, 99mm); /* 3 שורות */
+  justify-content: start;
+  align-content: start;
+  background: white;
+  margin-bottom: 15px;
+  page-break-after: always;
+  border: 1px solid #ccc;
+}
+
+.allergen-label {
+  width: 105mm;
+  height: 99mm;
+  border: 1px solid #333;
+  box-sizing: border-box;
+  padding: 4mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-family: Arial, sans-serif;
+  font-size: 10pt;
+  direction: rtl;
+  background: white;
+  overflow: hidden;
+}
+
+.allergen-label-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid #333;
+  padding-bottom: 2mm;
+  margin-bottom: 2mm;
+}
+
+.allergen-label-top-info {
+  text-align: right;
+}
+
+.allergen-label-route-station {
+  font-size: 18pt;
+  font-weight: bold;
+  line-height: 1.3;
+}
+
+.allergen-label-date-info {
+  text-align: left;
+  font-size: 14pt;
+  line-height: 1.3;
+}
+
+.allergen-label-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 3mm;
+}
+
+.allergen-label-customer {
+  font-size: 22pt;
+  font-weight: bold;
+  text-align: center;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.allergen-label-address {
+  font-size: 16pt;
+  font-weight: bold;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.allergen-label-class {
+  font-size: 18pt;
+  font-weight: bold;
+  text-align: center;
+}
+
+.allergen-label-footer {
+  border-top: 1px solid #333;
+  padding-top: 2mm;
+  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.allergen-label-dish {
+  font-size: 16pt;
+  font-weight: bold;
+  line-height: 1.2;
+  flex: 1;
+  text-align: center;
+}
+
+.allergen-label-quantity {
+  font-size: 16pt;
+  font-weight: bold;
+}
+
+@media print {
+  .allergen-page-header {
+    display: none !important;
+  }
+  
+  .allergen-labels-page {
+    margin: 0;
+    padding: 0;
+    page-break-after: always;
+    box-shadow: none;
+    border: none;
+    height: 279mm;
+  }
+  
+  .allergen-label {
+    border: 1px solid #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  #tabAllergenLabels .report-controls,
+  #tabAllergenLabels .labels-actions {
+    display: none !important;
+  }
+}
+
+@media screen {
+  .allergen-labels-page {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>📊 נתוני Priority - לפי תאריך וסניף</h1>
+
+  <div class="controls">
+    <div class="control-group">
+      <label for="dateInput">תאריך:</label>
+      <input type="date" id="dateInput">
+    </div>
+    
+    <div class="control-group">
+      <label for="branchSelect">סניף:</label>
+      <select id="branchSelect">
+        <option value="all">הכל</option>
+        <option value="south">דרום </option>
+        <option value="north">צפון </option>
+      </select>
+    </div>
+    
+    <button class="btn" onclick="fetchData()" id="fetchBtn">🔄 משוך נתונים</button>
+    <button class="btn download" onclick="downloadCSV()" id="downloadBtn" disabled>📥 הורד CSV</button>
+  </div>
+
+  <div id="status"></div>
+
+  <div class="stats">
+    <div class="stat-item">
+      <div class="stat-label">רשומות</div>
+      <div class="stat-value" id="recordCount">0</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">דפים</div>
+      <div class="stat-value" id="pageCount">0</div>
+    </div>
+  </div>
+
+  <!-- טאבים לדוחות -->
+  <div class="tabs" id="tabsContainer" style="display: none;">
+    <button class="tab-btn active" onclick="showTab('general', this)">📋 טבלה כללית</button>
+    <button class="tab-btn" onclick="showTab('summary', this)">❄️ דוח אריזה קרה</button>
+    <button class="tab-btn" onclick="showTab('trays', this)">🔥 דוח אריזה חמה</button>
+    <button class="tab-btn" onclick="showTab('allergens', this)">🚫 דוח אלרגנים</button>
+    <button class="tab-btn" onclick="showTab('labels', this)">🏷️ דוח מדבקות</button>
+    <button class="tab-btn" onclick="showTab('allergenLabels', this)">🥜 מדבקות אלרגנים</button>
+  </div>
+
+  <!-- תוכן טאבים -->
+  <div id="tabGeneral" class="tab-content active">
+  <div class="table-container" id="tableContainer"></div>
+  </div>
+
+  <div id="tabSummary" class="tab-content">
+    <div class="report-controls">
+      <label>סניף:</label>
+      <select id="summaryBranchFilter">
+        <option value="">הכל</option>
+      </select>
+      <label>לפי קטגוריה:</label>
+      <select id="summaryPSPEC6Filter">
+        <option value="all">הכל</option>
+        <option value="notempty">רק לא ריק</option>
+      </select>
+      <button class="btn download" onclick="downloadSummaryCSV()" id="downloadSummaryBtn">📥 הורד CSV</button>
+    </div>
+    <div class="table-container" id="summaryContainer"></div>
+  </div>
+
+  <div id="tabTrays" class="tab-content">
+    <div class="report-controls">
+      <label>סניף:</label>
+      <select id="traysBranchFilter">
+        <option value="">הכל</option>
+      </select>
+      <label>קו חלוקה:</label>
+      <select id="traysDistrLineFilter">
+        <option value="">הכל</option>
+      </select>
+      <button class="btn download" onclick="downloadTraysPDF()" id="downloadTraysPDFBtn">📄 הורד PDF</button>
+    </div>
+    <div class="table-container" id="traysContainer"></div>
+  </div>
+
+  <div id="tabAllergens" class="tab-content">
+    <div class="table-container" id="allergensContainer"></div>
+  </div>
+
+  <div id="tabContainers" class="tab-content">
+    <div class="report-controls">
+      <label>סניף:</label>
+      <select id="containersBranchFilter">
+        <option value="">הכל</option>
+      </select>
+      <button class="btn" onclick="applyContainersFilters()">🔍 החל סינון</button>
+      <button class="btn download" onclick="downloadContainersCSV()" id="downloadContainersBtn">📥 הורד CSV</button>
+    </div>
+    <div class="table-container" id="containersContainer"></div>
+  </div>
+
+  <div id="tabLabels" class="tab-content">
+    <div class="report-controls">
+      <label>קו חלוקה:</label>
+      <select id="distrLineFilter">
+        <option value="">הכל</option>
+      </select>
+      <label>סוג מדבקה:</label>
+      <select id="labelsTempFilter">
+        <option value="all">הכל</option>
+        <option value="cold">קרים</option>
+        <option value="hot">חמים</option>
+      </select>
+      <label>שיטת אריזה ראשית:</label>
+      <select id="packingMethodFilter">
+        <option value="">הכל</option>
+      </select>
+      <label>סדר מיון:</label>
+      <select id="labelsSortModeFilter">
+        <option value="distribution">קו חלוקה + סדר הפצה</option>
+        <option value="loading">לפי סדר העמסה</option>
+      </select>
+      <label>חיפוש:</label>
+      <input type="text" id="labelsSearchInput" placeholder="חפש לפי שם מוסד או מס׳ לקוח..." style="padding:5px;font-size:14px;width:250px;border:1px solid #ccc;border-radius:4px;">
+    </div>
+    <div class="labels-actions">
+      <button class="btn download" onclick="downloadLabelsCSV()" id="downloadLabelsBtn">📥 הורד CSV</button>
+      <button class="btn download" onclick="downloadLabelsPDF()" id="downloadLabelsPDFBtn">📄 הורד PDF</button>
+    </div>
+    <div class="table-container" id="labelsContainer"></div>
+  </div>
+
+  <div id="tabAllergenLabels" class="tab-content">
+    <div class="report-controls">
+      <label>קו חלוקה:</label>
+      <select id="allergenLabelsDistrLineFilter">
+        <option value="">הכל</option>
+      </select>
+      <label>סדר מיון:</label>
+      <select id="allergenLabelsSortFilter">
+        <option value="distribution">קו חלוקה + סדר הפצה</option>
+        <option value="customer">לפי שם לקוח</option>
+      </select>
+    </div>
+    <div class="labels-actions">
+      <button class="btn download" onclick="printAllergenLabels()" id="printAllergenLabelsBtn">🖨️ הדפס מדבקות</button>
+      <button class="btn download" onclick="downloadAllergenLabelsPDF()" id="downloadAllergenLabelsPDFBtn">📄 הורד PDF</button>
+    </div>
+    <div class="table-container" id="allergenLabelsContainer"></div>
+  </div>
+</div>
+
+<!-- Modal for showing order details -->
+<div id="itemModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="modalTitle">פרטי הזמנות</h2>
+      <button class="modal-close" onclick="closeItemModal()">✕ סגור</button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <!-- Content will be inserted here -->
+    </div>
+  </div>
+</div>
+
+
+<!-- jQuery and DataTables - נטען קודם כי הקוד שלנו תלוי בהם -->
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<!-- קבצי JavaScript של האפליקציה -->
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>

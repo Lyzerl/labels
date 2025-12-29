@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nאופטימיזציה של מדבקות - הקטנת כותרת ופוטר להכלת יותר שורות\n\nהקטנתי את גובה הכותרת מ-120px ל-100px, גובה ההערות מ-25px ל-20px, וגובה הפוטר מ-30px ל-25px. בנוסף, הקטנתי את ריווח התאים בכותרת מ-6px ל-4px, גודל הפונט מ-1.3em ל-1.1em, וגובה השורה מ-1.4 ל-1.2.\n\nהשינויים האלה מאפשרים להכניס שורות נוספות של מארזים במדבקות ללא חסימה מהפוטר.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(git rebase:*)",
+      "Bash(git checkout:*)",
+      "Bash(git push:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nהוספת חיפוש בדוח מדבקות - לפי שם מוסד או מספר לקוח\n\nהוספתי שדה חיפוש בדוח מדבקות שמאפשר לסנן מדבקות לפי:\n- שם מוסד (CUSTDES)\n- מספר לקוח (CODEDES)\n- שם לקוח (CUSTNAME)\n\nהחיפוש עובד בזמן אמת ומתעדכן מיד בזמן הקלדה.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(echo:*)",
+      "Bash(git commit:*)",
+      "Bash(ls:*)",
+      "Bash(node -e:*)",
+      "Bash(git reset:*)"
+    ]
+  }
+}
