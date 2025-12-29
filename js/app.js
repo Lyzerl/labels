@@ -2188,31 +2188,30 @@ function createAllergensReport(data) {
 
   // פונקציה ליצירת טבלה לפי כשרות
   const createKosherTable = (title, orders, total, bgColor, borderColor) => {
-    let tableHtml = `<div style="margin-bottom:30px;">`;
-    tableHtml += `<div style="background:${bgColor};padding:15px;border:2px solid ${borderColor};border-radius:8px 8px 0 0;">`;
-    tableHtml += `<h3 style="margin:0;text-align:center;color:${borderColor};">${title}</h3>`;
-    tableHtml += `<div style="text-align:center;font-size:1.5em;font-weight:bold;margin-top:10px;">סה"כ: ${total.toFixed(0)}</div>`;
+    let tableHtml = `<div style="display:inline-block;width:48%;margin:1%;vertical-align:top;box-sizing:border-box;">`;
+    tableHtml += `<div style="background:${bgColor};padding:8px;border:1px solid ${borderColor};border-radius:5px 5px 0 0;">`;
+    tableHtml += `<h3 style="margin:0;text-align:center;color:${borderColor};font-size:1em;">${title} - סה"כ: ${total.toFixed(0)}</h3>`;
     tableHtml += `</div>`;
-    tableHtml += `<table style="width:100%;border-collapse:collapse;border:2px solid ${borderColor};border-top:none;">`;
+    tableHtml += `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;border:1px solid ${borderColor};border-top:none;font-size:0.85em;">`;
     tableHtml += `<thead><tr style="background:${bgColor};">`;
-    tableHtml += `<th style="border:1px solid ${borderColor};padding:10px;text-align:right;">קו חלוקה</th>`;
-    tableHtml += `<th style="border:1px solid ${borderColor};padding:10px;text-align:right;">תיאור קו</th>`;
-    tableHtml += `<th style="border:1px solid ${borderColor};padding:10px;text-align:right;">שם לקוח</th>`;
-    tableHtml += `<th style="border:1px solid ${borderColor};padding:10px;text-align:right;">תיאור אתר</th>`;
-    tableHtml += `<th style="border:1px solid ${borderColor};padding:10px;text-align:center;">כמות</th>`;
+    tableHtml += `<th style="border:1px solid #ccc;padding:5px;text-align:right;">קו</th>`;
+    tableHtml += `<th style="border:1px solid #ccc;padding:5px;text-align:right;">תיאור קו</th>`;
+    tableHtml += `<th style="border:1px solid #ccc;padding:5px;text-align:right;">לקוח</th>`;
+    tableHtml += `<th style="border:1px solid #ccc;padding:5px;text-align:right;">אתר</th>`;
+    tableHtml += `<th style="border:1px solid #ccc;padding:5px;text-align:center;">כמות</th>`;
     tableHtml += `</tr></thead><tbody>`;
 
     orders.forEach(order => {
       tableHtml += `<tr>`;
-      tableHtml += `<td style="border:1px solid #ccc;padding:8px;text-align:right;">${order.distrLineCode}</td>`;
-      tableHtml += `<td style="border:1px solid #ccc;padding:8px;text-align:right;">${order.distrLineDes}</td>`;
-      tableHtml += `<td style="border:1px solid #ccc;padding:8px;text-align:right;">${order.custName}</td>`;
-      tableHtml += `<td style="border:1px solid #ccc;padding:8px;text-align:right;">${order.codeDes}</td>`;
-      tableHtml += `<td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;">${order.quantity.toFixed(0)}</td>`;
+      tableHtml += `<td style="border:1px solid #ccc;padding:4px;text-align:right;">${order.distrLineCode}</td>`;
+      tableHtml += `<td style="border:1px solid #ccc;padding:4px;text-align:right;">${order.distrLineDes}</td>`;
+      tableHtml += `<td style="border:1px solid #ccc;padding:4px;text-align:right;">${order.custName}</td>`;
+      tableHtml += `<td style="border:1px solid #ccc;padding:4px;text-align:right;">${order.codeDes}</td>`;
+      tableHtml += `<td style="border:1px solid #ccc;padding:4px;text-align:center;font-weight:bold;">${order.quantity.toFixed(0)}</td>`;
       tableHtml += `</tr>`;
     });
 
-    tableHtml += `</tbody></table></div>`;
+    tableHtml += `</tbody></table></div></div>`;
     return tableHtml;
   };
 
