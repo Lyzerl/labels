@@ -2046,6 +2046,8 @@ function createAllergensReport(data) {
       ...item,
       ORDNAME: order.orderName || '',
       CUSTDES: order.custDes || '',
+      CODEDES: order.codeDes || '',
+      CUSTNAME: order.custName || '',
       BRANCHNAME: order.branchName || '',
       PSPEC1: String(item.pspec1 || '').trim(),
       SPEC1: String(order.spec1 || '').trim(),
@@ -2135,14 +2137,7 @@ function createAllergensReport(data) {
   let totalChabad = 0;
   let totalOther = 0;
 
-  // שמירת נתוני לקוחות לכל כשרות לפופאפ - מקובץ לפי מספר הזמנה
-  window.allergenKosherData = {
-    badatz: [],
-    chabad: [],
-    other: []
-  };
-
-  // קיבוץ לפי מספר הזמנה עם שם לקוח וכשרות
+  // קיבוץ לפי הזמנה (לקוח) לכל כשרות - עם קו חלוקה, תיאור קו, שם לקוח, תיאור אתר
   const ordersByKosher = {
     badatz: {},
     chabad: {},
@@ -2153,6 +2148,10 @@ function createAllergensReport(data) {
     const spec2Lower = String(row.SPEC2 || '').toLowerCase();
     const ordName = String(row.ORDNAME || '').trim();
     const custDes = String(row.CUSTDES || '').trim();
+    const codeDes = String(row.CODEDES || '').trim();
+    const custName = String(row.CUSTNAME || '').trim();
+    const distrLineCode = String(row.DISTRLINECODE || '').trim();
+    const distrLineDes = String(row.DISTRLINEDES || '').trim();
     const quantity = row.EATQUANT || 0;
 
     let kosherType = 'other';
@@ -2168,98 +2167,73 @@ function createAllergensReport(data) {
     if (!ordersByKosher[kosherType][ordName]) {
       ordersByKosher[kosherType][ordName] = {
         ordName: ordName,
-        custDes: custDes,
-        spec2: row.SPEC2 || '',
+        distrLineCode: distrLineCode,
+        distrLineDes: distrLineDes,
+        custName: custName,
+        codeDes: codeDes,
         quantity: 0
       };
     }
     ordersByKosher[kosherType][ordName].quantity += quantity;
   });
 
-  // המרה למערך ושמירה
-  window.allergenKosherData.badatz = Object.values(ordersByKosher.badatz);
-  window.allergenKosherData.chabad = Object.values(ordersByKosher.chabad);
-  window.allergenKosherData.other = Object.values(ordersByKosher.other);
+  // המרה למערכים וחישוב סיכומים
+  const badatzOrders = Object.values(ordersByKosher.badatz).sort((a, b) => a.distrLineCode.localeCompare(b.distrLineCode));
+  const chabadOrders = Object.values(ordersByKosher.chabad).sort((a, b) => a.distrLineCode.localeCompare(b.distrLineCode));
+  const otherOrders = Object.values(ordersByKosher.other).sort((a, b) => a.distrLineCode.localeCompare(b.distrLineCode));
 
-  // חישוב סיכומים
-  Object.values(groupedByCustomer).forEach(group => {
-    const groupTotal = group.lines.reduce((sum, line) => sum + line.totalQuantity, 0);
-    const spec2Lower = group.spec2.toLowerCase();
+  totalBadatz = badatzOrders.reduce((sum, o) => sum + o.quantity, 0);
+  totalChabad = chabadOrders.reduce((sum, o) => sum + o.quantity, 0);
+  totalOther = otherOrders.reduce((sum, o) => sum + o.quantity, 0);
 
-    // זיהוי כשרות לפי SPEC2 של הלקוח
-    if (spec2Lower.includes('חבד') || spec2Lower.includes('חב"ד') || spec2Lower.includes('חב\'ד') ||
-        spec2Lower.includes('נחלת') || spec2Lower.includes('ירוסלבסקי') || spec2Lower.includes('ביסטריצקי')) {
-      totalChabad += groupTotal;
-    } else if (spec2Lower.includes('בדץ') || spec2Lower.includes('בד"ץ') || spec2Lower.includes('ירושלם') ||
-               spec2Lower.includes('ירושלים') || spec2Lower.includes('badatz')) {
-      totalBadatz += groupTotal;
-    } else {
-      totalOther += groupTotal;
-    }
-  });
+  // פונקציה ליצירת טבלה לפי כשרות
+  const createKosherTable = (title, orders, total, bgColor, borderColor) => {
+    let tableHtml = `<div style="margin-bottom:30px;">`;
+    tableHtml += `<div style="background:${bgColor};padding:15px;border:2px solid ${borderColor};border-radius:8px 8px 0 0;">`;
+    tableHtml += `<h3 style="margin:0;text-align:center;color:${borderColor};">${title}</h3>`;
+    tableHtml += `<div style="text-align:center;font-size:1.5em;font-weight:bold;margin-top:10px;">סה"כ: ${total.toFixed(0)}</div>`;
+    tableHtml += `</div>`;
+    tableHtml += `<table style="width:100%;border-collapse:collapse;border:2px solid ${borderColor};border-top:none;">`;
+    tableHtml += `<thead><tr style="background:${bgColor};">`;
+    tableHtml += `<th style="border:1px solid ${borderColor};padding:10px;text-align:right;">קו חלוקה</th>`;
+    tableHtml += `<th style="border:1px solid ${borderColor};padding:10px;text-align:right;">תיאור קו</th>`;
+    tableHtml += `<th style="border:1px solid ${borderColor};padding:10px;text-align:right;">שם לקוח</th>`;
+    tableHtml += `<th style="border:1px solid ${borderColor};padding:10px;text-align:right;">תיאור אתר</th>`;
+    tableHtml += `<th style="border:1px solid ${borderColor};padding:10px;text-align:center;">כמות</th>`;
+    tableHtml += `</tr></thead><tbody>`;
 
-  // יצירת HTML עם סיכום כשרויות בראש הדוח
+    orders.forEach(order => {
+      tableHtml += `<tr>`;
+      tableHtml += `<td style="border:1px solid #ccc;padding:8px;text-align:right;">${order.distrLineCode}</td>`;
+      tableHtml += `<td style="border:1px solid #ccc;padding:8px;text-align:right;">${order.distrLineDes}</td>`;
+      tableHtml += `<td style="border:1px solid #ccc;padding:8px;text-align:right;">${order.custName}</td>`;
+      tableHtml += `<td style="border:1px solid #ccc;padding:8px;text-align:right;">${order.codeDes}</td>`;
+      tableHtml += `<td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;">${order.quantity.toFixed(0)}</td>`;
+      tableHtml += `</tr>`;
+    });
+
+    tableHtml += `</tbody></table></div>`;
+    return tableHtml;
+  };
+
+  // יצירת HTML
   let html = '<div style="width:100%;">';
 
-  // טבלת סיכום כשרויות
-  html += '<div style="margin-bottom:20px;padding:15px;background:#e3f2fd;border-radius:8px;border:2px solid #1976d2;">';
-  html += '<h3 style="margin:0 0 10px 0;text-align:center;color:#1976d2;">סיכום אלרגנים לפי כשרות</h3>';
-  html += '<p style="text-align:center;margin:0 0 10px 0;font-size:0.9em;color:#666;">לחץ על שורה לצפייה ברשימת הלקוחות</p>';
-  html += '<table style="width:100%;max-width:500px;margin:0 auto;border-collapse:collapse;">';
-  html += `<tr onclick="openAllergenKosherModal('badatz')" style="cursor:pointer;" onmouseover="this.style.background='#90caf9'" onmouseout="this.style.background=''">`;
-  html += '<td style="padding:10px;text-align:right;font-weight:bold;border:1px solid #1976d2;background:#bbdefb;">סה"כ אלרגני בד"ץ:</td>';
-  html += `<td style="padding:10px;text-align:center;font-weight:bold;font-size:1.2em;border:1px solid #1976d2;background:#fff;">${totalBadatz.toFixed(0)}</td>`;
-  html += '</tr>';
-  html += `<tr onclick="openAllergenKosherModal('chabad')" style="cursor:pointer;" onmouseover="this.style.background='#90caf9'" onmouseout="this.style.background=''">`;
-  html += '<td style="padding:10px;text-align:right;font-weight:bold;border:1px solid #1976d2;background:#bbdefb;">סה"כ אלרגני חב"ד:</td>';
-  html += `<td style="padding:10px;text-align:center;font-weight:bold;font-size:1.2em;border:1px solid #1976d2;background:#fff;">${totalChabad.toFixed(0)}</td>`;
-  html += '</tr>';
-  if (totalOther > 0) {
-    html += `<tr onclick="openAllergenKosherModal('other')" style="cursor:pointer;" onmouseover="this.style.background='#90caf9'" onmouseout="this.style.background=''">`;
-    html += '<td style="padding:10px;text-align:right;font-weight:bold;border:1px solid #1976d2;background:#bbdefb;">סה"כ אלרגני אחר:</td>';
-    html += `<td style="padding:10px;text-align:center;font-weight:bold;font-size:1.2em;border:1px solid #1976d2;background:#fff;">${totalOther.toFixed(0)}</td>`;
-    html += '</tr>';
+  // טבלת בד"ץ
+  if (badatzOrders.length > 0) {
+    html += createKosherTable('אלרגני בד"ץ', badatzOrders, totalBadatz, '#e3f2fd', '#1976d2');
   }
-  html += '<tr style="background:#1976d2;color:#fff;">';
-  html += '<td style="padding:10px;text-align:right;font-weight:bold;border:1px solid #1976d2;">סה"כ כללי:</td>';
-  html += `<td style="padding:10px;text-align:center;font-weight:bold;font-size:1.3em;border:1px solid #1976d2;">${(totalBadatz + totalChabad + totalOther).toFixed(0)}</td>`;
-  html += '</tr>';
-  html += '</table></div>';
 
-  // יצירת טבלאות נפרדות לפי לקוח + כשרות + שיטת אירוז
-  Object.values(groupedByCustomer).forEach(group => {
-    // מיון לפי קו חלוקה
-    group.lines.sort((a, b) => a.distrLineCode.localeCompare(b.distrLineCode));
-    
-    const groupTotal = group.lines.reduce((sum, line) => sum + line.totalQuantity, 0);
-    const groupTitle = `${group.spec1} - ${group.spec2} - ${group.packingMethod}`;
-    
-    html += `<div style="margin-bottom:30px;display:inline-block;width:48%;margin:1%;vertical-align:top;box-sizing:border-box;">`;
-    html += `<h3 style="background:#c8e6c9;padding:10px;margin:0;text-align:center;border:1px solid #4caf50;font-size:1em;">${groupTitle}</h3>`;
-    html += `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;border:1px solid #ccc;min-width:200px;">`;
-    html += '<thead><tr style="background:#c8e6c9;">';
-    html += '<th style="border:1px solid #ccc;padding:8px;text-align:right;font-size:0.9em;">קוד קו</th>';
-    html += '<th style="border:1px solid #ccc;padding:8px;text-align:right;font-size:0.9em;">תאור קו</th>';
-    html += '<th style="border:1px solid #ccc;padding:8px;text-align:center;font-size:0.9em;">סה"כ</th>';
-    html += '</tr></thead><tbody>';
-    
-    group.lines.forEach(line => {
-      html += '<tr>';
-      html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;font-size:0.85em;">${line.distrLineCode}</td>`;
-      html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;font-size:0.85em;">${line.distrLineDes}</td>`;
-      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;font-size:0.85em;">${line.totalQuantity.toFixed(0)}</td>`;
-      html += '</tr>';
-    });
-    
-    // שורת סיכום
-    html += '<tr style="background:#e8f5e9;font-weight:bold;">';
-    html += '<td colspan="2" style="border:1px solid #ccc;padding:8px;text-align:right;">סכום כולל</td>';
-    html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${groupTotal.toFixed(0)}</td>`;
-    html += '</tr>';
-    
-    html += '</tbody></table></div></div>';
-  });
-  
+  // טבלת חב"ד
+  if (chabadOrders.length > 0) {
+    html += createKosherTable('אלרגני חב"ד', chabadOrders, totalChabad, '#fff3e0', '#f57c00');
+  }
+
+  // טבלת אחר (אם יש)
+  if (otherOrders.length > 0) {
+    html += createKosherTable('אלרגני אחר', otherOrders, totalOther, '#f5f5f5', '#757575');
+  }
+
   html += '</div>';
   
   container.innerHTML = html;
