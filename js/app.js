@@ -2676,8 +2676,9 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
         };
       }
 
-      // יצירת מפתח ייחודי לארוחה
-      const mealKey = `${item.mealName || ''}`;
+      // יצירת מפתח ייחודי לארוחה + משקל - כדי לזהות כפילויות
+      // אם יש שני פריטים עם אותה ארוחה ואותו משקל, זו כנראה כפילות
+      const mealKey = `${item.mealName || ''}|${item.tQuant || ''}`;
 
       // סיכום הכמויות
         nonTrayItemsMap[uniqueKey].sumQuant += parseFloat(item.tQuant) || 0;
