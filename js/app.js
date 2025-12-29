@@ -194,7 +194,9 @@ function calculateContainersAndPacks(data) {
     // חישוב מארז 5 ו-7 - אם יש פרמטר 8
     if (!isNaN(param8) && param8 > 0) {
       // חלוקת המשקל בפרמטר 8 ועגול כלפי מעלה למספר שלם
-      const totalServings = Math.ceil(tQuant / param8);
+      // עיגול ל-10 ספרות אחרי הנקודה כדי למנוע בעיות floating point (למשל 14.000000000000002 -> 14)
+      const divisionResult = Math.round((tQuant / param8) * 1e10) / 1e10;
+      const totalServings = Math.ceil(divisionResult);
       const optimized = optimizeServings(totalServings);
       newRow.PACK5 = optimized.five;
       newRow.PACK7 = optimized.seven;
