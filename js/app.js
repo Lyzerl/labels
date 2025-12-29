@@ -3254,7 +3254,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       console.log('📍 כתובת להזמנה', order.orderName, ':', order.address, '| state:', order.state, '| תוצאה:', addressText);
       
       // פרטי לקוח ולוגיסטיקה - פונטים מוגדלים משמעותית, פדינג מוקטן
-      html += '<td style="text-align:right !important;padding:2px 4px !important;border:1px solid #000 !important;font-size:2.4em !important;line-height:1.1 !important;"><strong>שם מוסד:</strong> ' + (order.codeDes || '') + '</td>';
+      html += '<td style="text-align:right !important;padding:2px 4px !important;border:1px solid #000 !important;line-height:1.1 !important;"><span style="font-size:2em !important;">שם מוסד: </span><strong style="font-size:2.8em !important;">' + (order.codeDes || '') + '</strong></td>';
       html += '<td style="text-align:right !important;padding:2px 4px !important;border:1px solid #000 !important;font-size:1.8em !important;line-height:1.1 !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
       html += '</tr>';
 
