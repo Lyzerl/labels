@@ -2925,6 +2925,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           let isChabadKashrut = false; // בדיקה אם יש כשרות חב"ד
           let eatQuantSmall = 0; // כמות לחמגשית קטנה
           let eatQuantLarge = 0; // כמות לחמגשית גדולה
+          let itemCartonType = ''; // סוג קרטון (חם/קר) מהפריט הראשון
 
           allItems.forEach((item, index) => {
             const partDes = String(item.partDes || item.PARTDES || item.partName || item.PARTNAME || '').trim();
@@ -2948,7 +2949,12 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
             if (pspec6.includes('חבד') || pspec6.includes('חב"ד') || pspec6.includes('חב\'ד')) {
               isChabadKashrut = true;
             }
-            
+
+            // שמירת סוג קרטון מהפריט הראשון (לזיהוי חם/קר)
+            if (!itemCartonType && item.cartonType) {
+              itemCartonType = item.cartonType;
+            }
+
             // זיהוי גודל חמגשית וסיכום כמות
             const packDes = String(item.packDes || item.PACKDES || '').toLowerCase();
             const packMethodCode = String(item.packMethodCode || item.PACKMETHODCODE || '').toLowerCase();
@@ -2990,6 +2996,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               hasNoAllergen: hasNoAllergen,
               isVegetarian: isVegetarian,
               pspec6: isChabadKashrut ? 'חבד' : '', // העברת כשרות חב"ד
+              cartonType: itemCartonType, // סוג קרטון לזיהוי חם/קר
               traySize: 'small'
             });
             summary.push({
@@ -3001,6 +3008,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               hasNoAllergen: hasNoAllergen,
               isVegetarian: isVegetarian,
               pspec6: isChabadKashrut ? 'חבד' : '', // העברת כשרות חב"ד
+              cartonType: itemCartonType, // סוג קרטון לזיהוי חם/קר
               traySize: 'large'
             });
           } else if (eatQuantSmall > 0) {
@@ -3014,6 +3022,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               hasNoAllergen: hasNoAllergen,
               isVegetarian: isVegetarian,
               pspec6: isChabadKashrut ? 'חבד' : '', // העברת כשרות חב"ד
+              cartonType: itemCartonType, // סוג קרטון לזיהוי חם/קר
               traySize: 'small'
             });
           } else if (eatQuantLarge > 0) {
@@ -3027,6 +3036,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               hasNoAllergen: hasNoAllergen,
               isVegetarian: isVegetarian,
               pspec6: isChabadKashrut ? 'חבד' : '', // העברת כשרות חב"ד
+              cartonType: itemCartonType, // סוג קרטון לזיהוי חם/קר
               traySize: 'large'
             });
           }
@@ -3590,11 +3600,19 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
     };
 
     // פונקציה עזר לזיהוי אם פריט הוא קר או חם
+    // לוגיקה: מוצר ייחשב קר רק אם יש לו במפורש cartonType שמכיל "קר".
+    // אחרת (כולל אם אין cartonType בכלל) - ייחשב לחם.
     const isHotItem = (item) => {
       const cartonTypeStr = String(item.cartonType || '').trim().toLowerCase();
       const pspec6Str = String(item.pspec6 || item.PSPEC6 || '').trim().toLowerCase();
-      return cartonTypeStr.includes('חם') || cartonTypeStr.includes('חמים') || 
-             pspec6Str.includes('חם') || pspec6Str.includes('חמים');
+
+      // אם מוגדר במפורש כקר - זה לא חם
+      const isCold = cartonTypeStr.includes('קר') || cartonTypeStr.includes('קרים') ||
+                     pspec6Str.includes('קר') || pspec6Str.includes('קרים');
+      if (isCold) return false;
+
+      // אחרת - חם (ברירת מחדל, כולל אם אין cartonType)
+      return true;
     };
     
     // קיבוץ כל הפריטים מאותה הזמנה יחד - הפרדה רק לפי חם/קר
