@@ -1505,8 +1505,9 @@ function applyTraysFilters() {
       return false;
     }
 
-    // רק תפזורת או סיפט
-    const isBulk = pm.includes('תפזורת') || packDes.includes('תפזורת') || isSift;
+    // רק תפזורת, תפזורת101 או סיפט
+    const isBulk = pm.includes('תפזורת') || packDes.includes('תפזורת') ||
+                   pm.includes('תפזורת101') || packDes.includes('תפזורת101') || isSift;
 
     return isBulk;
   });
@@ -3283,11 +3284,11 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;"></td>`; // מיכלים ריק
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack5 > 0 ? pack5.toFixed(0) : ''}</td>`;
           rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${pack7 > 0 ? pack7.toFixed(0) : ''}</td>`;
-          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;"></td>`; // כמות ריק לחמגשית
+          rowHtml += `<td style="border:1px solid #000 !important;padding:${cellPadding} !important;text-align:center !important;font-weight:bold !important;background:${rowBgColor} !important;font-size:${cellFontSize} !important;min-height:${effectiveRowHeight}px !important;max-height:${maxRowHeight}px !important;height:${effectiveRowHeight}px !important;vertical-align:middle !important;line-height:${cellLineHeight} !important;">${eatQuant > 0 ? eatQuant.toFixed(0) : ''}</td>`; // כמות לחמגשית
         } else {
           // עבור תפזורת - 5 עמודות: מוצר מימין, מיכלים, מארז קטן, מארז גדול, כמות (בצד שמאל)
-          // כמות - TQUANT מהשרת, עם עשרוניות אם יש
-          const rawQuantity = item.sumQuant || 0;
+          // כמות - sumQuant לתפזורת רגילה, או eatQuant/totalQuantity לשורות אלרגני
+          const rawQuantity = item.sumQuant || item.eatQuant || item.totalQuantity || 0;
           const quantity = rawQuantity > 0 ? (rawQuantity % 1 === 0 ? rawQuantity.toFixed(0) : rawQuantity.toFixed(2)) : '';
           const containers = item.sumContainers ? item.sumContainers.toFixed(0) : '';
           const pack5 = item.sumPack5 ? item.sumPack5.toFixed(0) : '';
@@ -4325,8 +4326,8 @@ function calculatePackingByWeight(totalWeight, weightPerLiter, containers) {
 
 // חישוב אופטימיזציה לפי חמשבע (5 ו-7 מנות)
 function optimizeServings(totalServings) {
-  // totalServings כבר מגיע מעוגל כלפי מעלה, אבל נוודא שזה מספר שלם
-  const target = Math.ceil(totalServings);
+  // totalServings כבר מגיע מעוגל כלפי מעלה, נשתמש בו ישירות
+  const target = Math.round(totalServings);
   
   if (target <= 0) {
     return { five: 0, seven: 0, waste: 0 };
