@@ -3098,11 +3098,11 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
         totalOrder = itemsArray.reduce((sum, item) => sum + (item.sumQuant || 0), 0);
       }
 
-      // חישוב גובה שורה דינמי: (500px - 100px כותרת - 20px הערות - 25px פוטר - שורות מארז) / מספר פריטים
+      // חישוב גובה שורה דינמי: (500px - 120px כותרת - 20px הערות - 25px פוטר - שורות מארז) / מספר פריטים
       const labelHeight = 500;
-      const headerHeight = 100; // הקטנתי מ-120 ל-100 - יותר מקום לטבלה!
-      const notesHeight = 20; // הקטנתי מ-25 ל-20
-      const footerHeight = 25; // הקטנתי מ-30 ל-25
+      const headerHeight = 120; // הגדלתי ל-120 - יותר מקום לכותרת עם פונטים גדולים!
+      const notesHeight = 20;
+      const footerHeight = 25;
 
       // בדיקה מוקדמת אם תהיה שורת מארזים - לחישוב גובה דינמי
       const checkHasTrayOnly = itemsArray.every(item => item.isTray === true);
@@ -3253,26 +3253,26 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       const addressText = order.address || order.state || '';
       console.log('📍 כתובת להזמנה', order.orderName, ':', order.address, '| state:', order.state, '| תוצאה:', addressText);
       
-      // פרטי לקוח ולוגיסטיקה - מוקטן כדי לפנות מקום
-      html += '<td style="text-align:right !important;padding:4px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.2 !important;"><strong>שם מוסד:</strong> ' + (order.codeDes || '') + '</td>';
-      html += '<td style="text-align:right !important;padding:4px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.2 !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
+      // פרטי לקוח ולוגיסטיקה - פונטים מוגדלים
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.4em !important;line-height:1.3 !important;"><strong>שם מוסד:</strong> ' + (order.codeDes || '') + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.4em !important;line-height:1.3 !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
       html += '</tr>';
 
       html += '<tr>';
-      html += '<td style="text-align:right !important;padding:4px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.2 !important;"><strong>כתובת:</strong> ' + addressText + '</td>';
-      html += '<td style="text-align:right !important;padding:4px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.2 !important;"><strong>מס תחנה:</strong> ' + (order.pritDistrOrder || 0) + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.4em !important;line-height:1.3 !important;"><strong>כתובת:</strong> ' + addressText + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.4em !important;line-height:1.3 !important;"><strong>מס תחנה:</strong> ' + (order.pritDistrOrder || 0) + '</td>';
       html += '</tr>';
 
       html += '<tr>';
-      html += '<td style="text-align:right !important;padding:4px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.2 !important;"><strong>מס לקוח:</strong> ' + (order.custName || '') + (classText ? ' | <strong>כיתה:</strong> ' + classText : '') + '</td>';
-      html += '<td style="text-align:right !important;padding:4px !important;border:1px solid #000 !important;font-size:1.1em !important;line-height:1.2 !important;"><strong>תאריך:</strong> ' + formattedDate + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.4em !important;line-height:1.3 !important;"><strong>מס לקוח:</strong> ' + (order.custName || '') + (classText ? ' | <strong>כיתה:</strong> ' + classText : '') + '</td>';
+      html += '<td style="text-align:right !important;padding:6px !important;border:1px solid #000 !important;font-size:1.4em !important;line-height:1.3 !important;"><strong>תאריך:</strong> ' + formattedDate + '</td>';
       html += '</tr>';
       
       html += '</tbody></table>';
 
       // שורת מספר מנות - בין הכותרת לטבלת הפריטים
       const eatQuantValue = order.eatQuant || 0;
-      html += `<div style="text-align:center !important;padding:6px 10px !important;margin-bottom:8px !important;background:#f5f5f5 !important;border:1px solid #000 !important;border-radius:4px !important;font-size:1.5em !important;font-weight:bold !important;">מספר מנות: ${eatQuantValue > 0 ? eatQuantValue : '-'}</div>`;
+      html += `<div style="text-align:center !important;padding:8px 10px !important;margin-bottom:8px !important;background:#f5f5f5 !important;border:1px solid #000 !important;border-radius:4px !important;font-size:1.8em !important;font-weight:bold !important;">מספר מנות: ${eatQuantValue > 0 ? eatQuantValue : '-'}</div>`;
 
       // אזור שני - טבלה עם פרטי אריזה - גובה דינמי, מוגבל לגובה הזמין
       // rowHeight כבר חושב נכון בהתאם למספר הפריטים, אז נשתמש בו ישירות
