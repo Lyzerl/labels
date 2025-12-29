@@ -2076,9 +2076,54 @@ function createAllergensReport(data) {
     });
   });
   
-  // יצירת טבלאות נפרדות לפי לקוח + כשרות + שיטת אירוז
+  // חישוב סיכום לפי כשרות (בד"ץ/חב"ד)
+  let totalBadatz = 0;
+  let totalChabad = 0;
+  let totalOther = 0;
+
+  Object.values(groupedByCustomer).forEach(group => {
+    const groupTotal = group.lines.reduce((sum, line) => sum + line.totalQuantity, 0);
+    const spec2Lower = group.spec2.toLowerCase();
+
+    // זיהוי כשרות לפי SPEC2 של הלקוח
+    if (spec2Lower.includes('חבד') || spec2Lower.includes('חב"ד') || spec2Lower.includes('חב\'ד') ||
+        spec2Lower.includes('נחלת') || spec2Lower.includes('ירוסלבסקי') || spec2Lower.includes('ביסטריצקי')) {
+      totalChabad += groupTotal;
+    } else if (spec2Lower.includes('בדץ') || spec2Lower.includes('בד"ץ') || spec2Lower.includes('ירושלם') ||
+               spec2Lower.includes('ירושלים') || spec2Lower.includes('badatz')) {
+      totalBadatz += groupTotal;
+    } else {
+      totalOther += groupTotal;
+    }
+  });
+
+  // יצירת HTML עם סיכום כשרויות בראש הדוח
   let html = '<div style="width:100%;">';
-  
+
+  // טבלת סיכום כשרויות
+  html += '<div style="margin-bottom:20px;padding:15px;background:#e3f2fd;border-radius:8px;border:2px solid #1976d2;">';
+  html += '<h3 style="margin:0 0 10px 0;text-align:center;color:#1976d2;">סיכום אלרגנים לפי כשרות</h3>';
+  html += '<table style="width:100%;max-width:500px;margin:0 auto;border-collapse:collapse;">';
+  html += '<tr>';
+  html += '<td style="padding:10px;text-align:right;font-weight:bold;border:1px solid #1976d2;background:#bbdefb;">סה"כ אלרגני בד"ץ:</td>';
+  html += `<td style="padding:10px;text-align:center;font-weight:bold;font-size:1.2em;border:1px solid #1976d2;background:#fff;">${totalBadatz.toFixed(0)}</td>`;
+  html += '</tr><tr>';
+  html += '<td style="padding:10px;text-align:right;font-weight:bold;border:1px solid #1976d2;background:#bbdefb;">סה"כ אלרגני חב"ד:</td>';
+  html += `<td style="padding:10px;text-align:center;font-weight:bold;font-size:1.2em;border:1px solid #1976d2;background:#fff;">${totalChabad.toFixed(0)}</td>`;
+  html += '</tr>';
+  if (totalOther > 0) {
+    html += '<tr>';
+    html += '<td style="padding:10px;text-align:right;font-weight:bold;border:1px solid #1976d2;background:#bbdefb;">סה"כ אלרגני אחר:</td>';
+    html += `<td style="padding:10px;text-align:center;font-weight:bold;font-size:1.2em;border:1px solid #1976d2;background:#fff;">${totalOther.toFixed(0)}</td>`;
+    html += '</tr>';
+  }
+  html += '<tr style="background:#1976d2;color:#fff;">';
+  html += '<td style="padding:10px;text-align:right;font-weight:bold;border:1px solid #1976d2;">סה"כ כללי:</td>';
+  html += `<td style="padding:10px;text-align:center;font-weight:bold;font-size:1.3em;border:1px solid #1976d2;">${(totalBadatz + totalChabad + totalOther).toFixed(0)}</td>`;
+  html += '</tr>';
+  html += '</table></div>';
+
+  // יצירת טבלאות נפרדות לפי לקוח + כשרות + שיטת אירוז
   Object.values(groupedByCustomer).forEach(group => {
     // מיון לפי קו חלוקה
     group.lines.sort((a, b) => a.distrLineCode.localeCompare(b.distrLineCode));
