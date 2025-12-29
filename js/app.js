@@ -3530,8 +3530,9 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       html += '</div>'; // סוגר את ה-div שמגביל את הגובה
 
       // אם זה חמגשית בלבד (tray only) וכשרות חבד - הוספת שורת מארז 5/7
+      // רק במדבקות חמות! לא במדבקות קרות
       const hasTrayItemsOnly = itemsArray.every(item => item.isTray === true);
-      if (hasTrayItemsOnly && itemsArray.length > 0) {
+      if (!isColdLabel && hasTrayItemsOnly && itemsArray.length > 0) {
         // בדיקה אם כשרות הלקוח (SPEC2 של ההזמנה) היא חבד - לא בדץ
         const spec2 = String(order.spec2 || '').trim().toLowerCase();
         const hasChabadKashrut = spec2.includes('חבד') || spec2.includes('חב"ד') || spec2.includes('חב\'ד') ||
