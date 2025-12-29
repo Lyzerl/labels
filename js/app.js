@@ -2671,27 +2671,36 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           sumPack5: 0,
             sumPack7: 0,
             hasNoAllergen: false,
-            isVegetarian: false
+            isVegetarian: false,
+            countedMeals: new Set() // מעקב אחרי ארוחות שכבר נספרו לפריט זה
         };
       }
-      
+
+      // יצירת מפתח ייחודי לארוחה
+      const mealKey = `${item.mealName || ''}`;
+
       // סיכום הכמויות
         nonTrayItemsMap[uniqueKey].sumQuant += parseFloat(item.tQuant) || 0;
-      
+
       // סיכום מיכלים - אם יש פרמטר 7 (CONTAINERS)
       if (item.containers !== '' && item.containers !== null && item.containers !== undefined) {
           nonTrayItemsMap[uniqueKey].sumContainers += parseFloat(item.containers) || 0;
       }
-      
-      // סיכום מארז 5 - אם יש פרמטר 8 (PACK5)
-      if (item.pack5 !== '' && item.pack5 !== null && item.pack5 !== undefined) {
-          nonTrayItemsMap[uniqueKey].sumPack5 += parseFloat(item.pack5) || 0;
-      }
-      
-      // סיכום מארז 7 - אם יש פרמטר 8 (PACK7)
-      if (item.pack7 !== '' && item.pack7 !== null && item.pack7 !== undefined) {
-          nonTrayItemsMap[uniqueKey].sumPack7 += parseFloat(item.pack7) || 0;
+
+      // סיכום מארז 5 ו-7 - רק אם הארוחה הזו עוד לא נספרה לפריט זה
+      if (!nonTrayItemsMap[uniqueKey].countedMeals.has(mealKey)) {
+        nonTrayItemsMap[uniqueKey].countedMeals.add(mealKey);
+
+        // סיכום מארז 5 - אם יש פרמטר 8 (PACK5)
+        if (item.pack5 !== '' && item.pack5 !== null && item.pack5 !== undefined) {
+            nonTrayItemsMap[uniqueKey].sumPack5 += parseFloat(item.pack5) || 0;
         }
+
+        // סיכום מארז 7 - אם יש פרמטר 8 (PACK7)
+        if (item.pack7 !== '' && item.pack7 !== null && item.pack7 !== undefined) {
+            nonTrayItemsMap[uniqueKey].sumPack7 += parseFloat(item.pack7) || 0;
+        }
+      }
         
         // עדכון סטטוס אלרגני/צמחוני
         if (isNoAllergenItem) {
