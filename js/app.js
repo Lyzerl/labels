@@ -2053,8 +2053,16 @@ function createTabularView() {
     filteredData = filteredData.filter(r => String(r.DISTRLINEDES || '').trim() === distrLineFilter);
   }
 
-  // מציאת כל קווי החלוקה הייחודיים
-  const distrLines = [...new Set(filteredData.map(r => String(r.DISTRLINEDES || '').trim()))].filter(d => d).sort();
+  // מציאת כל קווי החלוקה הייחודיים - מיון לפי מספר הקו בסדר עולה
+  const distrLinesMap = {};
+  filteredData.forEach(r => {
+    const des = String(r.DISTRLINEDES || '').trim();
+    const code = String(r.DISTRLINECODE || r.distrLineCode || '').trim();
+    if (des && !distrLinesMap[des]) {
+      distrLinesMap[des] = parseInt(code) || 9999;
+    }
+  });
+  const distrLines = Object.keys(distrLinesMap).sort((a, b) => distrLinesMap[a] - distrLinesMap[b]);
 
   // הפרדה למיכלים וחמגשיות
   const containerItems = {}; // מיכלים לפי קו חלוקה
