@@ -4459,8 +4459,11 @@ function downloadLabelsPDF() {
 
 // הורדת PDF לדוח אריזה חמה
 function downloadTraysPDF() {
-  const container = document.getElementById('traysContainer');
-  
+  // בדיקה אם אנחנו בתצוגה טבלאית
+  const container = isTabularViewActive
+    ? document.getElementById('tabularViewContainer')
+    : document.getElementById('traysContainer');
+
   if (!container || !container.innerHTML || container.innerHTML.trim() === '') {
     alert('אין נתונים להורדה');
     return;
@@ -4513,7 +4516,8 @@ function downloadTraysPDF() {
   printWindow.document.write('<head>');
   printWindow.document.write('<meta charset="UTF-8">');
   printWindow.document.write('<meta name="viewport" content="width=device-width, initial-scale=1.0">');
-  printWindow.document.write('<title>דוח אריזה חמה - ' + dateValue + '</title>');
+  const reportTitle = isTabularViewActive ? 'דוח אריזה חמה - תצוגה טבלאית' : 'דוח אריזה חמה';
+  printWindow.document.write('<title>' + reportTitle + ' - ' + dateValue + '</title>');
   printWindow.document.write('<style>');
   printWindow.document.write('@page { size: A4; margin: 10mm; }');
   printWindow.document.write('* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
@@ -4533,7 +4537,7 @@ function downloadTraysPDF() {
   printWindow.document.write('</style>');
   printWindow.document.write('</head>');
   printWindow.document.write('<body>');
-  printWindow.document.write('<h1>🔥 דוח אריזה חמה</h1>');
+  printWindow.document.write('<h1>🔥 ' + reportTitle + '</h1>');
   printWindow.document.write('<h2>תאריך: ' + dateValue + ' | סניף: ' + branchName + ' | קו חלוקה: ' + distrLineName + '</h2>');
   printWindow.document.write(containerHTML);
   printWindow.document.write('<script>');
