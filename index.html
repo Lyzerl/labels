@@ -98,8 +98,10 @@
         <option value="">הכל</option>
       </select>
       <button class="btn download" onclick="downloadTraysPDF()" id="downloadTraysPDFBtn">📄 הורד PDF</button>
+      <button class="btn" onclick="toggleTabularView()" id="toggleTabularViewBtn" style="background:#4CAF50;color:white;">📊 תצוגה טבלאית</button>
     </div>
     <div class="table-container" id="traysContainer"></div>
+    <div id="tabularViewContainer" style="display:none;"></div>
   </div>
 
   <div id="tabAllergens" class="tab-content">
