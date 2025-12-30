@@ -2066,7 +2066,10 @@ function createTabularView() {
 
   // הפרדה למיכלים וחמגשיות
   const containerItems = {}; // מיכלים לפי קו חלוקה
-  const trayItems = {}; // חמגשיות לפי קו חלוקה
+  const trayItems = {}; // חמגשיות לפי קו חלוקה (מקובצות לפי שילוב פריטים)
+
+  // קיבוץ חמגשיות לפי הזמנה וארוחה (כמו בדוח הרגיל)
+  const traysByOrderMeal = {};
 
   filteredData.forEach(r => {
     const distrLine = String(r.DISTRLINEDES || '').trim() || 'ללא קו';
@@ -2076,21 +2079,48 @@ function createTabularView() {
     const partDes = String(r.PARTDES || r.partDes || '').trim();
     const containers = parseFloat(r.CONTAINERS || r.containers || 0) || 0;
     const eatQuant = parseFloat(r.EATQUANT || r.eatQuant || 0) || 0;
+    const orderName = String(r.ORDNAME || r.orderName || '').trim();
+    const mealName = String(r.MEALNAME || r.mealName || '').trim() || 'ללא_ארוחה';
 
     // בדיקה אם זה חמגשית
     const isTray = pm.includes('חמגשית') || packDes.includes('חמגשית') || pspec1.includes('חמגשית');
 
+    // זיהוי גודל חמגשית
+    const isLargeTray = packDes.includes('גד') || packDes.includes('גדול') || packDes.includes('גדולה');
+
     if (isTray) {
-      // חמגשית
-      if (!trayItems[distrLine]) trayItems[distrLine] = {};
-      if (!trayItems[distrLine][partDes]) trayItems[distrLine][partDes] = 0;
-      trayItems[distrLine][partDes] += eatQuant;
+      // חמגשית - קיבוץ לפי הזמנה, ארוחה וגודל
+      const trayKey = `${orderName}|${mealName}|${isLargeTray ? 'large' : 'small'}|${distrLine}`;
+      if (!traysByOrderMeal[trayKey]) {
+        traysByOrderMeal[trayKey] = {
+          distrLine,
+          orderName,
+          mealName,
+          isLarge: isLargeTray,
+          items: [],
+          eatQuant: eatQuant
+        };
+      }
+      traysByOrderMeal[trayKey].items.push(partDes);
     } else if (containers > 0 || pspec1.includes('תפזורת') || pspec1.includes('סיפט')) {
       // מיכל
       if (!containerItems[distrLine]) containerItems[distrLine] = {};
       if (!containerItems[distrLine][partDes]) containerItems[distrLine][partDes] = 0;
       containerItems[distrLine][partDes] += containers > 0 ? containers : eatQuant;
     }
+  });
+
+  // יצירת שילובי חמגשיות לפי קו חלוקה
+  Object.values(traysByOrderMeal).forEach(tray => {
+    const distrLine = tray.distrLine;
+    // יצירת שילוב פריטים ייחודי
+    const uniqueItems = [...new Set(tray.items)].sort().join('+');
+    const trayType = tray.isLarge ? 'חמגשית גדולה' : 'חמגשית קטנה';
+    const fullName = `${trayType} - ${uniqueItems}`;
+
+    if (!trayItems[distrLine]) trayItems[distrLine] = {};
+    if (!trayItems[distrLine][fullName]) trayItems[distrLine][fullName] = 0;
+    trayItems[distrLine][fullName] += tray.eatQuant;
   });
 
   // מציאת כל הפריטים הייחודיים
