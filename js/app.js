@@ -3296,18 +3296,18 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       console.log('📍 כתובת להזמנה', order.orderName, ':', order.address, '| state:', order.state, '| תוצאה:', addressText);
       
       // פרטי לקוח ולוגיסטיקה - שם מוסד רספונסיבי לפי אורך הטקסט
-      // חישוב גודל פונט לפי אורך שם המוסד
+      // חישוב גודל פונט לפי אורך שם המוסד - שימוש ב-pt לאמינות בהדפסה
       const institutionName = order.codeDes || '';
       const nameLength = institutionName.length;
-      let institutionFontSize = '2.2em';
+      let institutionFontSize = '22pt';
       if (nameLength > 30) {
-        institutionFontSize = '1.1em';
+        institutionFontSize = '11pt';
       } else if (nameLength > 25) {
-        institutionFontSize = '1.3em';
+        institutionFontSize = '13pt';
       } else if (nameLength > 20) {
-        institutionFontSize = '1.5em';
+        institutionFontSize = '15pt';
       } else if (nameLength > 15) {
-        institutionFontSize = '1.8em';
+        institutionFontSize = '18pt';
       }
 
       // שורה ראשונה - שם מוסד וקו חלוקה - גובה קבוע
