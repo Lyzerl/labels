@@ -4519,19 +4519,30 @@ function downloadTraysPDF() {
   const reportTitle = isTabularViewActive ? 'דוח אריזה חמה - תצוגה טבלאית' : 'דוח אריזה חמה';
   printWindow.document.write('<title>' + reportTitle + ' - ' + dateValue + '</title>');
   printWindow.document.write('<style>');
-  printWindow.document.write('@page { size: A4; margin: 10mm; }');
+  // בתצוגה טבלאית - הדפסה לרוחב (landscape)
+  if (isTabularViewActive) {
+    printWindow.document.write('@page { size: A4 landscape; margin: 10mm; }');
+  } else {
+    printWindow.document.write('@page { size: A4; margin: 10mm; }');
+  }
   printWindow.document.write('* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
   printWindow.document.write('body { font-family: Arial, "DejaVu Sans", sans-serif; direction: rtl; margin: 0; padding: 10px; font-size: 10pt; color: #000; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
   printWindow.document.write('h1 { text-align: center; margin: 0 0 15px 0; font-size: 16pt; color: #333; }');
   printWindow.document.write('h2 { text-align: center; margin: 10px 0; font-size: 12pt; color: #666; }');
-  printWindow.document.write('.tray-category-table { display: inline-block; width: 48%; margin: 1%; vertical-align: top; margin-bottom: 20px; box-sizing: border-box; page-break-inside: avoid; }');
-  printWindow.document.write('.tray-category-table h3 { background: #c8e6c9; padding: 10px; margin: 0; text-align: center; border: 1px solid #4caf50; font-size: 1em; }');
+  // בתצוגה טבלאית - טבלאות אחת מתחת לשנייה ברוחב מלא
+  if (isTabularViewActive) {
+    printWindow.document.write('.tray-category-table, div > div { display: block !important; width: 100% !important; margin: 0 0 20px 0 !important; page-break-inside: avoid; }');
+    printWindow.document.write('div[style*="display:flex"], div[style*="display: flex"] { display: block !important; flex-direction: column !important; }');
+  } else {
+    printWindow.document.write('.tray-category-table { display: inline-block; width: 48%; margin: 1%; vertical-align: top; margin-bottom: 20px; box-sizing: border-box; page-break-inside: avoid; }');
+  }
+  printWindow.document.write('.tray-category-table h3, h3 { background: #c8e6c9 !important; padding: 10px; margin: 0; text-align: center; border: 1px solid #4caf50; font-size: 1em; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
   printWindow.document.write('table { width: 100%; border-collapse: collapse; margin-bottom: 15px; page-break-inside: auto; font-size: 9pt; }');
   printWindow.document.write('tr { page-break-inside: avoid; }');
   printWindow.document.write('thead { display: table-header-group; }');
   printWindow.document.write('tfoot { display: table-footer-group; }');
   printWindow.document.write('th, td { border: 1px solid #000; padding: 6px; text-align: right; word-wrap: break-word; }');
-  printWindow.document.write('th { background-color: #c8e6c9 !important; color: #000 !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+  printWindow.document.write('th { background-color: #4FC3F7 !important; color: #000 !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
   printWindow.document.write('td { background-color: white; }');
   printWindow.document.write('@media print { body { margin: 0; padding: 5mm; } .no-print { display: none !important; } table { page-break-inside: auto; } tr { page-break-inside: avoid; } .tray-category-table { page-break-inside: avoid; } }');
   printWindow.document.write('</style>');
