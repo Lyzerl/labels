@@ -231,14 +231,26 @@ function calculateContainersAndPacks(data) {
       newRow.Y_9965_5_ESH = param8;
     }
     
-    // חישוב מיכלים - אם יש פרמטר 7: (TQUANT / Y_9964_5_ESH) / 2, עגול כלפי מעלה
+    // חישוב מיכלים - אם יש פרמטר 7: (TQUANT / Y_9964_5_ESH) / מחלק, עגול כלפי מעלה
+    // מחלק: 6.5 לגסטרונום, 2 לשאר
     // חשוב: עיגול התוצאה ל-2 ספרות אחרי הנקודה לפני Math.ceil כדי למנוע בעיות floating point
     if (!isNaN(param7) && param7 > 0) {
       const divisionResult = tQuant / param7;
-      const halfResult = divisionResult / 2;
+
+      // בדיקה אם זה גסטרונום - לפי PSPEC1, PACKMETHODCODE או PACKDES
+      const pspec1 = String(newRow.PSPEC1 || newRow.pspec1 || '').toLowerCase();
+      const packMethod = String(newRow.PACKMETHODCODE || newRow.packMethodCode || '').toLowerCase();
+      const packDes = String(newRow.PACKDES || newRow.packDes || '').toLowerCase();
+      const isGastronome = pspec1.includes('גסטרונום') || packMethod.includes('גסטרונום') || packDes.includes('גסטרונום');
+
+      // לגסטרונום: חילוק ב-6.5 ועיגול למעלה למספר שלם
+      // לשאר: חילוק ב-2
+      const divisor = isGastronome ? 6.5 : 2;
+      const finalResult = divisionResult / divisor;
+
       // עיגול ל-2 ספרות אחרי הנקודה כדי למנוע בעיות floating point (למשל 3.0000000000000005 -> 3.00)
-      const roundedHalfResult = Math.round(halfResult * 100) / 100;
-      newRow.CONTAINERS = Math.ceil(roundedHalfResult);
+      const roundedResult = Math.round(finalResult * 100) / 100;
+      newRow.CONTAINERS = Math.ceil(roundedResult);
     } else {
       newRow.CONTAINERS = '';
     }
@@ -1079,8 +1091,8 @@ function applyTraysFilters() {
     else if (pm.includes('חמגשית') && (packDes.includes('גד') || packDes.includes('גדול') || packDes.includes('גדולה'))) {
       categories.largeTray.push(r);
     }
-    // גסטרונום - לבדוק לפי PSPEC1 או PACKMETHODCODE
-    else if (pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום')) {
+    // גסטרונום - לבדוק לפי PSPEC1 או PACKMETHODCODE, רק אם יש כמות (containers > 0)
+    else if ((pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום')) && containers > 0) {
       categories.gastronome.push(r);
     }
     // מארז 7 - לבדוק לפני מיכלים
