@@ -622,9 +622,9 @@ async function searchLabels() {
             filterParts.push(`CUSTNAME eq '${customerCode}'`);
         }
 
-        // הוספת פילטר לפי שם לקוח (CUSTDES)
+        // הוספת פילטר לפי שם לקוח (CUSTDES) - חיפוש מכיל
         if (customerName) {
-            filterParts.push(`CUSTDES eq '${customerName}'`);
+            filterParts.push(`contains(CUSTDES,'${customerName}')`);
         }
 
         const filter = `$filter=${filterParts.join(' and ')}`;
