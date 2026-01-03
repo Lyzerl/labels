@@ -2456,7 +2456,7 @@ function createAllergensReport(data) {
       sectionHtml += `<thead>`;
       sectionHtml += `<tr style="background:${bgColor};">`;
       sectionHtml += `<th colspan="3" style="border:1px solid ${borderColor};padding:5px 8px;text-align:right;">`;
-      sectionHtml += `<strong style="color:${borderColor};font-size:0.9em;">${lineTitle} - ${lineGroup.distrLineCode} (סה"כ: ${lineTotal.toFixed(0)})</strong>`;
+      sectionHtml += `<strong style="color:#000;font-size:0.9em;">${lineTitle} - ${lineGroup.distrLineCode} (סה"כ: ${lineTotal.toFixed(0)})</strong>`;
       sectionHtml += `</th></tr>`;
       sectionHtml += `<tr style="background:#f9f9f9;">`;
       sectionHtml += `<th style="border:1px solid #ccc;padding:4px;text-align:center;width:45px;">כמות</th>`;
