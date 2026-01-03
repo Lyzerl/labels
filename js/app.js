@@ -2449,12 +2449,14 @@ function createAllergensReport(data) {
     // טבלאות לפי קו חלוקה
     lineGroups.forEach(lineGroup => {
       const lineTitle = lineGroup.distrLineDes || lineGroup.distrLineCode || 'ללא קו';
+      // חישוב סה"כ כמות לקו זה
+      const lineTotal = lineGroup.orders.reduce((sum, order) => sum + order.quantity, 0);
 
       sectionHtml += `<table style="border-collapse:collapse;border:1px solid ${borderColor};font-size:0.85em;margin-bottom:10px;">`;
       sectionHtml += `<thead>`;
       sectionHtml += `<tr style="background:${bgColor};">`;
       sectionHtml += `<th colspan="3" style="border:1px solid ${borderColor};padding:5px 8px;text-align:right;">`;
-      sectionHtml += `<strong style="color:${borderColor};font-size:0.9em;">${lineTitle} - ${lineGroup.distrLineCode}</strong>`;
+      sectionHtml += `<strong style="color:${borderColor};font-size:0.9em;">${lineTitle} - ${lineGroup.distrLineCode} (סה"כ: ${lineTotal.toFixed(0)})</strong>`;
       sectionHtml += `</th></tr>`;
       sectionHtml += `<tr style="background:#f9f9f9;">`;
       sectionHtml += `<th style="border:1px solid #ccc;padding:4px;text-align:center;width:45px;">כמות</th>`;
