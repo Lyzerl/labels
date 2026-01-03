@@ -4531,8 +4531,12 @@ function downloadTraysPDF() {
   printWindow.document.write('h2 { text-align: center; margin: 10px 0; font-size: 12pt; color: #666; }');
   // בתצוגה טבלאית - טבלאות אחת מתחת לשנייה ברוחב מלא
   if (isTabularViewActive) {
-    printWindow.document.write('.tray-category-table, div > div { display: block !important; width: 100% !important; margin: 0 0 20px 0 !important; page-break-inside: avoid; }');
-    printWindow.document.write('div[style*="display:flex"], div[style*="display: flex"] { display: block !important; flex-direction: column !important; }');
+    // הסרת כל הגבלות הרוחב והגלילה - הכל ברוחב מלא
+    printWindow.document.write('div { display: block !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; margin: 0 0 20px 0 !important; overflow: visible !important; flex: none !important; }');
+    printWindow.document.write('div[style*="display:flex"], div[style*="display: flex"] { display: block !important; }');
+    printWindow.document.write('div[style*="overflow"] { overflow: visible !important; }');
+    printWindow.document.write('table { width: 100% !important; table-layout: auto !important; }');
+    printWindow.document.write('th, td { padding: 4px !important; font-size: 8pt !important; white-space: nowrap !important; }');
   } else {
     printWindow.document.write('.tray-category-table { display: inline-block; width: 48%; margin: 1%; vertical-align: top; margin-bottom: 20px; box-sizing: border-box; page-break-inside: avoid; }');
   }
