@@ -613,18 +613,18 @@ async function searchLabels() {
     try {
         showStatus('מחפש בשרת...', 'loading');
 
-        // בניית פילטר OData מדויק
+        // בניית פילטר OData - חיפוש חלקי (contains)
         const dateStr = selectedDate + 'T00:00:00Z';
         let filterParts = [`DUEDATE eq ${dateStr}`];
 
-        // הוספת פילטר לפי מספר לקוח (CUSTNAME)
+        // הוספת פילטר לפי מספר לקוח (CUSTNAME) - חיפוש מכיל
         if (customerCode) {
-            filterParts.push(`CUSTNAME eq '${customerCode}'`);
+            filterParts.push(`contains(CUSTNAME,'${customerCode}')`);
         }
 
-        // הוספת פילטר לפי שם לקוח (CUSTDES)
+        // הוספת פילטר לפי שם לקוח (CUSTDES) - חיפוש מכיל
         if (customerName) {
-            filterParts.push(`CUSTDES eq '${customerName}'`);
+            filterParts.push(`contains(CUSTDES,'${customerName}')`);
         }
 
         const filter = `$filter=${filterParts.join(' and ')}`;
