@@ -15,7 +15,8 @@
       "Bash(node -e:*)",
       "Bash(git reset:*)",
       "Bash(find:*)",
-      "Bash(sort:*)"
+      "Bash(sort:*)",
+      "Bash(git revert:*)"
     ]
   }
 }

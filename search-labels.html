@@ -587,15 +587,15 @@ window.addEventListener('DOMContentLoaded', function() {
     document.getElementById('customerCodeInput').focus();
 });
 
-// פונקציית חיפוש ראשית - מביא נתונים לפי תאריך ומסנן בצד הלקוח
+// פונקציית חיפוש ראשית - עם פילטר ישירות בשרת
 async function searchLabels() {
     const dateInput = document.getElementById('dateInput');
     const customerCodeInput = document.getElementById('customerCodeInput');
     const customerNameInput = document.getElementById('customerNameInput');
 
     const selectedDate = dateInput.value;
-    const customerCode = customerCodeInput.value.trim().toLowerCase();
-    const customerName = customerNameInput.value.trim().toLowerCase();
+    const customerCode = customerCodeInput.value.trim();
+    const customerName = customerNameInput.value.trim();
 
     // בדיקה שיש לפחות ערך אחד
     if (!customerCode && !customerName) {
@@ -613,9 +613,21 @@ async function searchLabels() {
     try {
         showStatus('מחפש בשרת...', 'loading');
 
-        // בניית פילטר OData - רק לפי תאריך, סינון חלקי יתבצע בצד הלקוח
+        // בניית פילטר OData מדויק
         const dateStr = selectedDate + 'T00:00:00Z';
-        const filter = `$filter=DUEDATE eq ${dateStr}`;
+        let filterParts = [`DUEDATE eq ${dateStr}`];
+
+        // הוספת פילטר לפי מספר לקוח (CUSTNAME)
+        if (customerCode) {
+            filterParts.push(`CUSTNAME eq '${customerCode}'`);
+        }
+
+        // הוספת פילטר לפי שם לקוח (CUSTDES)
+        if (customerName) {
+            filterParts.push(`CUSTDES eq '${customerName}'`);
+        }
+
+        const filter = `$filter=${filterParts.join(' and ')}`;
         const url = `${PROXY_URL}?filter=${encodeURIComponent(filter)}&fetchAll=true`;
 
         console.log('Searching with URL:', url);
@@ -627,29 +639,9 @@ async function searchLabels() {
         }
 
         const data = await response.json();
-        let results = data.value || data;
+        const results = data.value || data;
 
         console.log('Results from server:', results.length);
-
-        // סינון בצד הלקוח - חיפוש חלקי
-        results = results.filter(order => {
-            const orderCustName = String(order.CUSTNAME || '').toLowerCase();
-            const orderCustDes = String(order.CUSTDES || '').toLowerCase();
-
-            // בדיקה אם מספר לקוח מכיל את הטקסט שהוזן
-            if (customerCode && !orderCustName.includes(customerCode)) {
-                return false;
-            }
-
-            // בדיקה אם שם לקוח מכיל את הטקסט שהוזן
-            if (customerName && !orderCustDes.includes(customerName)) {
-                return false;
-            }
-
-            return true;
-        });
-
-        console.log('Results after filtering:', results.length);
 
         if (results.length === 0) {
             showStatus('לא נמצאו תוצאות לחיפוש זה', 'error');
