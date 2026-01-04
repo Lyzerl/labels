@@ -2697,13 +2697,21 @@ function createLabelsReport(data) {
     }))
   ) : data;
   
-  // איסוף קווי חלוקה ייחודיים
-  const distrLines = [...new Set(flatData.map(r => r.DISTRLINECODE || '').filter(Boolean))].sort();
+  // איסוף קווי חלוקה ייחודיים - עם תיאור
+  const distrLinesMap = new Map();
+  flatData.forEach(r => {
+    const code = String(r.DISTRLINECODE || '').trim();
+    const des = String(r.DISTRLINEDES || '').trim();
+    if (code && !distrLinesMap.has(code)) {
+      distrLinesMap.set(code, des || code);
+    }
+  });
+  const distrLinesArray = Array.from(distrLinesMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   distrLineSelect.innerHTML = '<option value="">הכל</option>';
-  distrLines.forEach(line => {
+  distrLinesArray.forEach(([code, des]) => {
     const option = document.createElement('option');
-    option.value = line;
-    option.textContent = line;
+    option.value = code;
+    option.textContent = des;
     distrLineSelect.appendChild(option);
   });
   
