@@ -160,6 +160,7 @@ function organizeAsNoSQL(rawData) {
       tQuant: parseFloat(row.TQUANT) || 0,
       tUnitName: row.TUNITNAME || '',
       pritGenQuant: parseFloat(row.PRIT_GENQUANT) || 0,
+      pritVegQuant: parseFloat(row.PRIT_VEGQUANT) || 0, // כמות צמחונית - אם חיובי זו ארוחה צמחונית
       y9964: row.Y_9964_5_ESH || '',
       y9965: row.Y_9965_5_ESH || '',
       cartonType: row.Y_37210_5_ESH || '',
@@ -3044,10 +3045,10 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       }
     }
     
-    // זיהוי אם יש אלרגנים/צמחוני
+    // זיהוי אם יש אלרגנים
     const hasNoAllergen = (order.eatQuantNoAllergen || 0) > 0;
-    const isVegetarian = (order.spec2 && order.spec2.toString().toLowerCase().includes('צמחוני')) ||
-                        (order.spec2 && order.spec2.toString().toLowerCase().includes('צמחונות'));
+    // זיהוי צמחוני - לפי PRIT_VEGQUANT (אם יש פריט עם כמות צמחונית חיובית)
+    const isVegetarian = order.items.some(item => (parseFloat(item.pritVegQuant) || 0) > 0);
     
     // הפרדה בין פריטים לפי שיטת אריזה (חמגשית / לא חמגשית)
     const trayItemsRaw = []; // פריטים גולמיים עם חמגשית (לקבץ לפי ארוחה)
@@ -3098,10 +3099,9 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
                                   partDesStr.includes('ללא אלרג') || partDesStr.includes('לא אלרג') ||
                                   partNameStr.includes('ללא אלרג') || partNameStr.includes('לא אלרג') ||
                                   spec2Str.includes('אלרגני') || partDesStr.includes('אלרגני') || partNameStr.includes('אלרגני');
-        const isVegetarianItem = pspec6Str.includes('צמחוני') ||
-                                  spec2Str.includes('צמחונ') || spec2Str.includes('טבעונ') ||
-                                  partDesStr.includes('צמחונ') || partDesStr.includes('טבעונ') ||
-                                  partNameStr.includes('צמחונ') || partNameStr.includes('טבעונ');
+        // זיהוי צמחוני - רק לפי PRIT_VEGQUANT (אם חיובי זו ארוחה צמחונית)
+        const pritVegQuant = parseFloat(item.pritVegQuant) || 0;
+        const isVegetarianItem = pritVegQuant > 0;
         
         // יצירת מפתח ייחודי - כולל סימון אלרגני/צמחוני כדי להפריד ביניהם
         const uniqueKey = isNoAllergenItem ? `${partKey}|אלרגני` : (isVegetarianItem ? `${partKey}|צמחוני` : partKey);
@@ -3202,15 +3202,17 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               uniquePartDes.push(partDes);
             }
 
-            // בדיקת אלרגני/צמחוני
+            // בדיקת אלרגני
             const pspec1 = String(item.pspec1 || item.PSPEC1 || '').trim().toLowerCase();
             if (pspec1.includes('ללא אלרגני') || pspec1.includes('לא אלרגני')) {
               hasNoAllergen = true;
             }
-            const pspec6 = String(item.pspec6 || item.PSPEC6 || '').trim().toLowerCase();
-            if (pspec6.includes('צמחוני')) {
+            // בדיקת צמחוני - רק לפי PRIT_VEGQUANT (אם חיובי זו ארוחה צמחונית)
+            const pritVegQuant = parseFloat(item.pritVegQuant || item.PRIT_VEGQUANT || 0) || 0;
+            if (pritVegQuant > 0) {
               isVegetarian = true;
             }
+            const pspec6 = String(item.pspec6 || item.PSPEC6 || '').trim().toLowerCase();
             // בדיקה אם הכשרות היא חב"ד (בפרמטר 6 למוצר)
             if (pspec6.includes('חבד') || pspec6.includes('חב"ד') || pspec6.includes('חב\'ד')) {
               isChabadKashrut = true;
@@ -3669,7 +3671,8 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           if (!partDesText.includes('אלרגני') && !partDesText.includes('ללא אלרגנים')) {
             partDesText += ' (אלרגני)';
           }
-        } else if (item.isVegetarian || partDesText.includes('צמחוני')) {
+        } else if (item.isVegetarian) {
+          // צמחוני מזוהה רק לפי PRIT_VEGQUANT (כמות צמחונית חיובית)
           rowClasses.push('label-row-vegetarian');
         }
         
