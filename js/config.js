@@ -42,7 +42,8 @@ const SELECTED_FIELDS = [
   'PACK5',
   'PACK7',
   'PACKDES',
-  'MEALNAME'
+  'MEALNAME',
+  'Y_36827_0_ESH'
 ];
 
 // מיפוי שדות לעברית
@@ -81,7 +82,8 @@ const FIELD_NAMES_HEBREW = {
   'PACK5': 'מארז 5',
   'PACK7': 'מארז 7',
   'PACKDES': 'תיאור מיכל',
-  'MEALNAME': 'ארוחה'
+  'MEALNAME': 'ארוחה',
+  'Y_36827_0_ESH': 'צמחוני'
 };
 
 let currentData = []; // נתונים גולמיים (שורות)

@@ -255,8 +255,8 @@ tr:nth-child(even) {
 }
 
 .label-card-vegetarian {
-  background: #d6f5d6;
-  border-color: #2e7d32;
+  background: #bbdefb;
+  border-color: #1976d2;
 }
 
 .label-card-table {
@@ -293,7 +293,12 @@ tr:nth-child(even) {
 }
 
 .label-row-vegetarian {
-  background-color: #66bb6a !important;
+  background-color: #64b5f6 !important;
+  color: #000 !important;
+}
+
+.label-row-soup {
+  background-color: #fff59d !important;
   color: #000 !important;
 }
 

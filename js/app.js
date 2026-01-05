@@ -168,7 +168,8 @@ function organizeAsNoSQL(rawData) {
       pack5: row.PACK5 || '',
       pack7: row.PACK7 || '',
       packDes: row.PACKDES || '',
-      mealName: row.MEALNAME || ''
+      mealName: row.MEALNAME || '',
+      isVegetarian: row.Y_36827_0_ESH === 'Y' || row.Y_36827_0_ESH === true || row.Y_36827_0_ESH === 1 || row.Y_36827_0_ESH === '1'
     };
     
     orders[orderKey].items.push(item);
@@ -440,7 +441,8 @@ async function fetchData() {
       createSummaryReport(structuredData);
       createTraysReport(structuredData);
       createAllergensReport(structuredData);
-      createLabelsReport(structuredData);
+      createLabelsReport(structuredData, 'hot');
+      createLabelsReport(structuredData, 'cold');
       createAllergenLabelsReport(structuredData);
       
       // הצגת טאבים
@@ -2672,11 +2674,13 @@ function applyContainersFilters() {
 }
 
 // דוח מדבקות - לפי קו חלוקה וסדר הפצה
-function createLabelsReport(data) {
-  const container = document.getElementById('labelsContainer');
-  const distrLineSelect = document.getElementById('distrLineFilter');
-  const packingMethodSelect = document.getElementById('packingMethodFilter');
-  const labelsTempSelect = document.getElementById('labelsTempFilter');
+function createLabelsReport(data, labelType = 'hot') {
+  const isHot = labelType === 'hot';
+  const suffix = isHot ? 'Hot' : 'Cold';
+  const container = document.getElementById('labelsContainer' + suffix);
+  const distrLineSelect = document.getElementById('distrLineFilter' + suffix);
+  const packingMethodSelect = document.getElementById('packingMethodFilter' + suffix);
+  const labelsMode = isHot ? 'hot' : 'cold'; // קבוע לפי סוג הטאב
   
   // אם זה NoSQL, המרה לנתונים שטוחים
   const orders = Array.isArray(data) ? null : data;
@@ -2745,15 +2749,14 @@ function createLabelsReport(data) {
   });
   
   // בורר סדר מיון
-  const sortModeSelect = document.getElementById('labelsSortModeFilter');
+  const sortModeSelect = document.getElementById('labelsSortModeFilter' + suffix);
   // שדה חיפוש
-  const searchInput = document.getElementById('labelsSearchInput');
+  const searchInput = document.getElementById('labelsSearchInput' + suffix);
 
   // פונקציה לסינון
   const applyFilters = () => {
     const selectedLine = distrLineSelect.value;
     const selectedPackingMethod = packingMethodSelect.value;
-    const labelsMode = labelsTempSelect.value || 'all';
     const sortMode = sortModeSelect ? sortModeSelect.value : 'distribution';
     const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
@@ -2794,7 +2797,7 @@ function createLabelsReport(data) {
         }));
       }
 
-      renderLabelsTableNoSQL(filteredOrders, container, labelsMode, sortMode);
+      renderLabelsTableNoSQL(filteredOrders, container, labelsMode, sortMode, isHot);
     } else {
       let filtered = flatData;
       if (selectedLine) {
@@ -2848,22 +2851,30 @@ function createLabelsReport(data) {
   // הוספת event listeners לסינון
   distrLineSelect.onchange = applyFilters;
   packingMethodSelect.onchange = applyFilters;
-  labelsTempSelect.onchange = applyFilters;
   if (sortModeSelect) sortModeSelect.onchange = applyFilters;
 
   // הוספת event listener לשדה החיפוש
   if (searchInput) {
     searchInput.oninput = applyFilters;
   }
-  
+
   // הצגה ראשונית
   if (orders) {
     const initialSortMode = sortModeSelect ? sortModeSelect.value : 'distribution';
-    renderLabelsTableNoSQL(orders, container, labelsTempSelect.value || 'all', initialSortMode);
-    window.labelsData = orders;
+    renderLabelsTableNoSQL(orders, container, labelsMode, initialSortMode, isHot);
+    // שמירת הנתונים לפי סוג
+    if (isHot) {
+      window.labelsDataHot = orders;
+    } else {
+      window.labelsDataCold = orders;
+    }
   } else {
     renderLabelsTable(flatData, container);
-    window.labelsData = flatData;
+    if (isHot) {
+      window.labelsDataHot = flatData;
+    } else {
+      window.labelsDataCold = flatData;
+    }
   }
 }
 
@@ -3047,8 +3058,8 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
     
     // זיהוי אם יש אלרגנים
     const hasNoAllergen = (order.eatQuantNoAllergen || 0) > 0;
-    // זיהוי צמחוני - לפי PRIT_VEGQUANT (אם יש פריט עם כמות צמחונית חיובית)
-    const isVegetarian = order.items.some(item => (parseFloat(item.pritVegQuant) || 0) > 0);
+    // זיהוי צמחוני - לפי Y_36827_0_ESH (אם יש פריט מסומן כצמחוני)
+    const isVegetarian = order.items.some(item => item.isVegetarian === true);
     
     // הפרדה בין פריטים לפי שיטת אריזה (חמגשית / לא חמגשית)
     const trayItemsRaw = []; // פריטים גולמיים עם חמגשית (לקבץ לפי ארוחה)
@@ -3080,46 +3091,53 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           PARTDES: item.partDes || item.PARTDES || '',
           partDes: item.partDes || item.PARTDES || '',
           packMethodCode: item.packMethodCode || item.PACKMETHODCODE || '',
-          packDes: item.packDes || item.PACKDES || ''
+          packDes: item.packDes || item.PACKDES || '',
+          isVegetarian: item.isVegetarian || false
         });
       } else {
-        // עבור לא חמגשית - קיבוץ לפי partKey (partName + partDes)
-        // אבל אם יש אותו פריט עם נתונים שונים (ארוחה שונה, אלרגני/לא), נשמור אותם בנפרד
-      const partKey = `${item.partName}|${item.partDes}`;
-        
-        // זיהוי אם זה אלרגני או צמחוני
+        // עבור לא חמגשית - קיבוץ לפי partKey (partName + partDes) + ארוחה
+        const partKey = `${item.partName}|${item.partDes}`;
+        const mealName = item.mealName || '';
+
+        // זיהוי אם זה אלרגני
         const pspec1Str = String(item.pspec1 || item.PSPEC1 || '').trim().toLowerCase();
-        const pspec6Str = String(item.pspec6 || item.PSPEC6 || '').trim().toLowerCase();
         const spec2Str = String(item.pspec2 || order.spec2 || '').toLowerCase();
         const partDesStr = String(item.partDes || '').toLowerCase();
         const partNameStr = String(item.partName || '').toLowerCase();
-        
+
         const isNoAllergenItem = pspec1Str.includes('ללא אלרגני') || pspec1Str.includes('לא אלרגני') ||
                                   spec2Str.includes('ללא אלרג') || spec2Str.includes('לא אלרג') ||
                                   partDesStr.includes('ללא אלרג') || partDesStr.includes('לא אלרג') ||
                                   partNameStr.includes('ללא אלרג') || partNameStr.includes('לא אלרג') ||
                                   spec2Str.includes('אלרגני') || partDesStr.includes('אלרגני') || partNameStr.includes('אלרגני');
-        // זיהוי צמחוני - רק לפי PRIT_VEGQUANT (אם חיובי זו ארוחה צמחונית)
-        const pritVegQuant = parseFloat(item.pritVegQuant) || 0;
-        const isVegetarianItem = pritVegQuant > 0;
-        
-        // יצירת מפתח ייחודי - כולל סימון אלרגני/צמחוני כדי להפריד ביניהם
-        const uniqueKey = isNoAllergenItem ? `${partKey}|אלרגני` : (isVegetarianItem ? `${partKey}|צמחוני` : partKey);
+
+        // זיהוי צמחוני - לפי שדה Y_36827_0_ESH (בוליאני)
+        const isVegetarianItem = item.isVegetarian || false;
+
+        // יצירת מפתח ייחודי - כולל ארוחה וסימון אלרגני/צמחוני
+        // פריטים מאותה ארוחה יקובצו יחד
+        let uniqueKey = `${partKey}|${mealName}`;
+        if (isNoAllergenItem) {
+          uniqueKey += '|אלרגני';
+        } else if (isVegetarianItem) {
+          uniqueKey += '|צמחוני';
+        }
         
         if (!nonTrayItemsMap[uniqueKey]) {
           nonTrayItemsMap[uniqueKey] = {
-          partName: item.partName,
-          partDes: item.partDes,
-          cartonType: item.cartonType || '',
-          sumQuant: 0,
-          sumContainers: 0,
-          sumPack5: 0,
+            partName: item.partName,
+            partDes: item.partDes,
+            cartonType: item.cartonType || '',
+            mealName: item.mealName || '',
+            sumQuant: 0,
+            sumContainers: 0,
+            sumPack5: 0,
             sumPack7: 0,
             hasNoAllergen: false,
             isVegetarian: false,
             countedMeals: new Set() // מעקב אחרי ארוחות שכבר נספרו לפריט זה
-        };
-      }
+          };
+        }
 
       // יצירת מפתח ייחודי לארוחה + משקל - כדי לזהות כפילויות
       // אם יש שני פריטים עם אותה ארוחה ואותו משקל, זו כנראה כפילות
@@ -3177,13 +3195,12 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       
       const summary = [];
       
-      // עבור כל ארוחה בנפרד - הפרדה בין פריטים צמחוניים ורגילים
+      // עבור כל ארוחה בנפרד - בדיקה אם הארוחה צמחונית (לפי Y_36827_0_ESH)
       Object.entries(itemsByMeal).forEach(([mealName, mealItems]) => {
-        // הפרדה בין פריטים צמחוניים ורגילים
-        const vegetarianItems = mealItems.filter(item => (parseFloat(item.pritVegQuant || item.PRIT_VEGQUANT || 0) || 0) > 0);
-        const regularItems = mealItems.filter(item => (parseFloat(item.pritVegQuant || item.PRIT_VEGQUANT || 0) || 0) <= 0);
+        // ארוחה צמחונית = אם לפחות פריט אחד מסומן כצמחוני
+        const isVegetarianMeal = mealItems.some(item => item.isVegetarian === true);
 
-        // פונקציה לעיבוד קבוצת פריטים
+        // פונקציה לעיבוד כל הפריטים באותה ארוחה יחד
         const processItemGroup = (items, isVegetarianGroup) => {
           if (items.length === 0) return;
 
@@ -3309,10 +3326,8 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           }
         };
 
-        // עיבוד פריטים רגילים (לא צמחוניים)
-        processItemGroup(regularItems, false);
-        // עיבוד פריטים צמחוניים בנפרד
-        processItemGroup(vegetarianItems, true);
+        // עיבוד כל הפריטים באותה ארוחה יחד - אם הארוחה צמחונית, כולם יהיו ירוקים
+        processItemGroup(mealItems, isVegetarianMeal);
       });
       
       return summary;
@@ -3669,22 +3684,28 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           partDesText = 'פריט ללא תיאור';
         }
         
-        // זיהוי אם זה אלרגני או צמחוני
+        // זיהוי אם זה אלרגני, צמחוני או מרק
+        const isSoupRow = partDesText.toLowerCase().includes('מרק');
+
         if (item.hasNoAllergen || partDesText.includes('אלרגני') || partDesText.includes('ללא אלרגנים')) {
           rowClasses.push('label-row-no-allergen');
           if (!partDesText.includes('אלרגני') && !partDesText.includes('ללא אלרגנים')) {
             partDesText += ' (אלרגני)';
           }
         } else if (item.isVegetarian) {
-          // צמחוני מזוהה רק לפי PRIT_VEGQUANT (כמות צמחונית חיובית)
+          // צמחוני מזוהה לפי Y_36827_0_ESH (שדה בוליאני)
           rowClasses.push('label-row-vegetarian');
+        } else if (isSoupRow) {
+          // מרק - רקע צהוב
+          rowClasses.push('label-row-soup');
         }
-        
-        // קביעת רקע תא לפי סוג השורה - צבע חזק יותר לאלרגני/צמחוני
+
+        // קביעת רקע תא לפי סוג השורה - צבע חזק יותר לאלרגני/צמחוני/מרק
         const isNoAllergenRow = rowClasses.includes('label-row-no-allergen');
         const isVegetarianRow = rowClasses.includes('label-row-vegetarian');
+        const isSoupStyleRow = rowClasses.includes('label-row-soup');
         // צבעים חזקים יותר שיגברו על צבע החמגשית
-        const rowBgColor = isNoAllergenRow ? '#ff5252' : (isVegetarianRow ? '#66bb6a' : '#fff');
+        const rowBgColor = isNoAllergenRow ? '#ff5252' : (isVegetarianRow ? '#64b5f6' : (isSoupStyleRow ? '#fff59d' : '#fff'));
         
         let rowHtml = `<tr class="${rowClasses.join(' ')}">`;
         
@@ -4446,7 +4467,7 @@ function downloadLabelsPDF() {
   printWindow.document.write('.label-card-hot { border-color: #ef6c00 !important; }');
   printWindow.document.write('.label-card-cold { border-color: #1976d2 !important; }');
   printWindow.document.write('.label-card-no-allergen { background: #ffd6d6 !important; border-color: #c62828 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
-  printWindow.document.write('.label-card-vegetarian { background: #d6f5d6 !important; border-color: #2e7d32 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+  printWindow.document.write('.label-card-vegetarian { background: #bbdefb !important; border-color: #1976d2 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
   // טבלת פרטי הלקוח - שמירה על רוחב אוטומטי - גודל קבוע, לא דינמי
   printWindow.document.write('.label-card > table:first-of-type { width: 100% !important; border-collapse: collapse !important; margin-bottom: 15px !important; flex-grow: 0 !important; flex-shrink: 0 !important; }');
   printWindow.document.write('.label-card > table:first-of-type th, .label-card > table:first-of-type td { font-size: 1.3em !important; padding: 8px !important; line-height: 1.5 !important; }');
@@ -4461,7 +4482,8 @@ function downloadLabelsPDF() {
   printWindow.document.write('.label-card-table th:first-child, .label-card-table td:first-child { min-width: 50% !important; }');
   printWindow.document.write('.label-card-table th:not(:first-child), .label-card-table td:not(:first-child) { width: auto !important; min-width: 60px !important; }');
   printWindow.document.write('.label-row-no-allergen { background-color: #ff5252 !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
-  printWindow.document.write('.label-row-vegetarian { background-color: #66bb6a !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+  printWindow.document.write('.label-row-vegetarian { background-color: #64b5f6 !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
+  printWindow.document.write('.label-row-soup { background-color: #fff59d !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
   printWindow.document.write('@media print { body { margin: 0; padding: 0; } .labels-print-wrapper { padding: 0 !important; margin: 0 !important; } .no-print { display: none !important; } h1 { display: none !important; } table { page-break-inside: auto; } tr { page-break-inside: avoid; } }');
   printWindow.document.write('@media print { .label-card { height: 148.5mm !important; min-height: 148.5mm !important; max-height: 148.5mm !important; display: flex !important; flex-direction: column !important; position: relative !important; overflow: hidden !important; } .label-card:nth-of-type(even) { page-break-after: always; } .label-card:nth-of-type(odd) { page-break-after: auto; } .label-card:last-of-type { page-break-after: auto; } }');
   // שמירה על פרופורציות טבלאות בהדפסה - לא למתוח יותר מדי - שימוש ב-auto layout
@@ -5092,23 +5114,24 @@ function downloadPackingCSV() {
 // מדבקות אלרגנים - 32 בעמוד A4
 // ========================================
 
-// דוח מדבקות אלרגנים
+// דוח מדבקות אלרגנים / צמחוני / מרק
 function createAllergenLabelsReport(data) {
   const container = document.getElementById('allergenLabelsContainer');
   const distrLineSelect = document.getElementById('allergenLabelsDistrLineFilter');
   const sortSelect = document.getElementById('allergenLabelsSortFilter');
-  
+  const typeSelect = document.getElementById('allergenLabelsTypeFilter');
+
   if (!container) {
     console.error('❌ אלמנט לא נמצא למדבקות אלרגנים');
     return;
   }
-  
+
   if (!data || (Array.isArray(data) && data.length === 0) || (!Array.isArray(data) && Object.keys(data).length === 0)) {
     console.warn('⚠️ אין נתונים למדבקות אלרגנים');
     container.innerHTML = '<p style="text-align:center;padding:50px;color:#999;">אין נתונים להצגה</p>';
     return;
   }
-  
+
   // המרה לנתונים שטוחים
   let flatData = Array.isArray(data) ? data : Object.values(data).flatMap(order => {
     if (!order || !order.items || !Array.isArray(order.items)) {
@@ -5129,12 +5152,42 @@ function createAllergenLabelsReport(data) {
       spec2: order.spec2 || ''
     }));
   });
-  
-  // סינון רק פריטים ללא אלרגנים (אלרגני סיני מוקפץ וכו')
-  const allergenFreeData = flatData.filter(r => {
-    const pspec1 = String(r.pspec1 || r.PSPEC1 || '').trim().toLowerCase();
-    return pspec1.includes('ללא אלרגני') || pspec1.includes('לא אלרגני') || pspec1.includes('אלרגני');
-  });
+
+  // פונקציה לסינון לפי סוג
+  const filterByType = (type) => {
+    if (type === 'allergen') {
+      // אלרגני - לפי PSPEC1
+      return flatData.filter(r => {
+        const pspec1 = String(r.pspec1 || r.PSPEC1 || '').trim().toLowerCase();
+        return pspec1.includes('ללא אלרגני') || pspec1.includes('לא אלרגני') || pspec1.includes('אלרגני');
+      });
+    } else if (type === 'vegetarian') {
+      // צמחוני - לפי Y_36827_0_ESH (שדה בוליאני)
+      return flatData.filter(r => r.isVegetarian === true);
+    } else if (type === 'soup') {
+      // מרק - לפי שם הפריט + רק פריטים חמים
+      const soupItems = flatData.filter(r => {
+        const partDes = String(r.partDes || r.PARTDES || '').toLowerCase();
+        const cartonType = String(r.cartonType || r.Y_37210_5_ESH || '').trim().toLowerCase();
+        const isSoup = partDes.includes('מרק');
+
+        // אם אין סוג קרטון, מניחים שזה חם (ברירת מחדל)
+        // אם יש סוג קרטון, בודקים שזה לא קר
+        const isHot = cartonType === '' || cartonType.includes('חם') || !cartonType.includes('קר');
+
+        if (isSoup) {
+          console.log('🍲 מרק נמצא:', partDes, '| סוג קרטון:', cartonType, '| חם:', isHot);
+        }
+        return isSoup && isHot;
+      });
+      console.log('🍲 מרק - נמצאו:', soupItems.length, 'פריטים');
+      return soupItems;
+    }
+    return [];
+  };
+
+  // סינון ראשוני לפי סוג ברירת מחדל (אלרגני)
+  let allergenFreeData = filterByType(typeSelect ? typeSelect.value : 'allergen');
   
   console.log('📊 מדבקות אלרגנים - סה"כ נתונים:', flatData.length, 'פריטים ללא אלרגנים:', allergenFreeData.length);
   
@@ -5152,15 +5205,36 @@ function createAllergenLabelsReport(data) {
   const renderAllergenLabels = () => {
     const selectedLine = distrLineSelect.value;
     const sortMode = sortSelect.value;
-    
-    let filteredData = allergenFreeData;
-    
-    if (selectedLine) {
+    const selectedType = typeSelect ? typeSelect.value : 'allergen';
+
+    // סינון מחדש לפי סוג
+    let typeFilteredData = filterByType(selectedType);
+
+    // עדכון קווי חלוקה לפי הסוג הנבחר
+    const newDistrLines = [...new Set(typeFilteredData.map(r => r.distrLineCode || r.DISTRLINECODE || '').filter(Boolean))].sort();
+    distrLineSelect.innerHTML = '<option value="">הכל</option>';
+    newDistrLines.forEach(line => {
+      const option = document.createElement('option');
+      option.value = line;
+      option.textContent = line;
+      distrLineSelect.appendChild(option);
+    });
+
+    let filteredData = typeFilteredData;
+
+    if (selectedLine && newDistrLines.includes(selectedLine)) {
       filteredData = filteredData.filter(r => (r.distrLineCode || r.DISTRLINECODE) === selectedLine);
     }
-    
+
+    // הודעה מתאימה לפי סוג
+    const typeMessages = {
+      'allergen': 'לא נמצאו פריטים אלרגניים',
+      'vegetarian': 'לא נמצאו פריטים צמחוניים',
+      'soup': 'לא נמצאו פריטי מרק'
+    };
+
     if (filteredData.length === 0) {
-      container.innerHTML = '<p style="text-align:center;padding:50px;color:#999;">לא נמצאו פריטים ללא אלרגנים</p>';
+      container.innerHTML = `<p style="text-align:center;padding:50px;color:#999;">${typeMessages[selectedType] || 'לא נמצאו פריטים'}</p>`;
       return;
     }
     
@@ -5276,10 +5350,23 @@ function createAllergenLabelsReport(data) {
       </div>`;
       
       html += '<div class="allergen-labels-page">';
-      
+
+      // קביעת צבע רקע וטקסט לפי סוג
+      const labelStyles = {
+        'allergen': { bgColor: '#ff5252', textColor: '#fff', defaultDish: 'אלרגני' },
+        'vegetarian': { bgColor: '#64b5f6', textColor: '#000', defaultDish: 'צמחוני' },
+        'soup': { bgColor: '#fff59d', textColor: '#000', defaultDish: 'מרק' }
+      };
+      const style = labelStyles[selectedType] || labelStyles['allergen'];
+
       pageData.labels.forEach(label => {
+        // עבור מרק - להציג את שם הפריט, עבור אחרים - להציג את הסוג
+        const dishText = selectedType === 'soup' ? (label.partDes || 'מרק') :
+                         selectedType === 'vegetarian' ? (label.partDes || 'צמחוני') :
+                         'אלרגני סיני מוקפץ';
+
         html += `
-          <div class="allergen-label">
+          <div class="allergen-label" style="border-color: ${style.bgColor};">
             <div class="allergen-label-header">
               <div class="allergen-label-top-info">
                 <div class="allergen-label-route-station">${label.distrLineDes || label.distrLineCode || ''} | ${label.pritDistrOrder || ''}${label.spec2 ? ` | ${label.spec2}` : ''}</div>
@@ -5293,8 +5380,8 @@ function createAllergenLabelsReport(data) {
               <div class="allergen-label-address">${label.address || ''}</div>
               ${label.pritClassname ? `<div class="allergen-label-class">${formatClass(label.pritClassname)}</div>` : ''}
             </div>
-            <div class="allergen-label-footer">
-              <div class="allergen-label-dish">אלרגני סיני מוקפץ</div>
+            <div class="allergen-label-footer" style="background: ${style.bgColor}; color: ${style.textColor};">
+              <div class="allergen-label-dish">${dishText}</div>
               <div class="allergen-label-quantity">${label.labelNumber}</div>
             </div>
           </div>
@@ -5319,7 +5406,10 @@ function createAllergenLabelsReport(data) {
   // הוספת event listeners
   distrLineSelect.onchange = renderAllergenLabels;
   sortSelect.onchange = renderAllergenLabels;
-  
+  if (typeSelect) {
+    typeSelect.onchange = renderAllergenLabels;
+  }
+
   // רינדור ראשוני
   renderAllergenLabels();
 }

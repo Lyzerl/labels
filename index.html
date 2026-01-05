@@ -62,7 +62,8 @@
     <button class="tab-btn" onclick="showTab('summary', this)">❄️ דוח אריזה קרה</button>
     <button class="tab-btn" onclick="showTab('trays', this)">🔥 דוח אריזה חמה</button>
     <button class="tab-btn" onclick="showTab('allergens', this)">🚫 דוח אלרגנים</button>
-    <button class="tab-btn" onclick="showTab('labels', this)">🏷️ דוח מדבקות</button>
+    <button class="tab-btn" onclick="showTab('labelsHot', this)">🏷️🔥 מדבקות חמים</button>
+    <button class="tab-btn" onclick="showTab('labelsCold', this)">🏷️❄️ מדבקות קרים</button>
     <button class="tab-btn" onclick="showTab('allergenLabels', this)">🥜 מדבקות אלרגנים</button>
   </div>
 
@@ -123,39 +124,63 @@
     <div class="table-container" id="containersContainer"></div>
   </div>
 
-  <div id="tabLabels" class="tab-content">
+  <div id="tabLabelsHot" class="tab-content">
     <div class="report-controls">
       <label>קו חלוקה:</label>
-      <select id="distrLineFilter">
+      <select id="distrLineFilterHot">
         <option value="">הכל</option>
       </select>
-      <label>סוג מדבקה:</label>
-      <select id="labelsTempFilter">
-        <option value="all">הכל</option>
-        <option value="cold">קרים</option>
-        <option value="hot">חמים</option>
-      </select>
       <label>שיטת אריזה ראשית:</label>
-      <select id="packingMethodFilter">
+      <select id="packingMethodFilterHot">
         <option value="">הכל</option>
       </select>
       <label>סדר מיון:</label>
-      <select id="labelsSortModeFilter">
+      <select id="labelsSortModeFilterHot">
         <option value="distribution">קו חלוקה + סדר הפצה</option>
         <option value="loading">לפי סדר העמסה</option>
       </select>
       <label>חיפוש:</label>
-      <input type="text" id="labelsSearchInput" placeholder="חפש לפי שם מוסד או מס׳ לקוח..." style="padding:5px;font-size:14px;width:250px;border:1px solid #ccc;border-radius:4px;">
+      <input type="text" id="labelsSearchInputHot" placeholder="חפש לפי שם מוסד או מס׳ לקוח..." style="padding:5px;font-size:14px;width:250px;border:1px solid #ccc;border-radius:4px;">
     </div>
     <div class="labels-actions">
-      <button class="btn download" onclick="downloadLabelsCSV()" id="downloadLabelsBtn">📥 הורד CSV</button>
-      <button class="btn download" onclick="downloadLabelsPDF()" id="downloadLabelsPDFBtn">📄 הורד PDF</button>
+      <button class="btn download" onclick="downloadLabelsCSV('hot')" id="downloadLabelsBtnHot">📥 הורד CSV</button>
+      <button class="btn download" onclick="downloadLabelsPDF('hot')" id="downloadLabelsPDFBtnHot">📄 הורד PDF</button>
     </div>
-    <div class="table-container" id="labelsContainer"></div>
+    <div class="table-container" id="labelsContainerHot"></div>
+  </div>
+
+  <div id="tabLabelsCold" class="tab-content">
+    <div class="report-controls">
+      <label>קו חלוקה:</label>
+      <select id="distrLineFilterCold">
+        <option value="">הכל</option>
+      </select>
+      <label>שיטת אריזה ראשית:</label>
+      <select id="packingMethodFilterCold">
+        <option value="">הכל</option>
+      </select>
+      <label>סדר מיון:</label>
+      <select id="labelsSortModeFilterCold">
+        <option value="distribution">קו חלוקה + סדר הפצה</option>
+      </select>
+      <label>חיפוש:</label>
+      <input type="text" id="labelsSearchInputCold" placeholder="חפש לפי שם מוסד או מס׳ לקוח..." style="padding:5px;font-size:14px;width:250px;border:1px solid #ccc;border-radius:4px;">
+    </div>
+    <div class="labels-actions">
+      <button class="btn download" onclick="downloadLabelsCSV('cold')" id="downloadLabelsBtnCold">📥 הורד CSV</button>
+      <button class="btn download" onclick="downloadLabelsPDF('cold')" id="downloadLabelsPDFBtnCold">📄 הורד PDF</button>
+    </div>
+    <div class="table-container" id="labelsContainerCold"></div>
   </div>
 
   <div id="tabAllergenLabels" class="tab-content">
     <div class="report-controls">
+      <label>סוג מדבקות:</label>
+      <select id="allergenLabelsTypeFilter">
+        <option value="allergen">אלרגני</option>
+        <option value="vegetarian">צמחוני</option>
+        <option value="soup">מרק</option>
+      </select>
       <label>קו חלוקה:</label>
       <select id="allergenLabelsDistrLineFilter">
         <option value="">הכל</option>
