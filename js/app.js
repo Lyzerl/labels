@@ -2879,7 +2879,7 @@ function createLabelsReport(data, labelType = 'hot') {
 }
 
 // רינדור דוח מדבקות ממבנה NoSQL (יותר נקי ויעיל)
-function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode = 'distribution') {
+function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode = 'distribution', isHot = true) {
   // פונקציה לזיהוי כשרות - האם זה חב"ד או בד"ץ
   const isChabad = (order) => {
     const spec2 = String(order.spec2 || '').trim().toLowerCase();
@@ -2895,27 +2895,55 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
     });
     return hasAnyChabadItem;
   };
-  
+
   // פונקציה לזיהוי שיטת אריזה - האם זה חמגשית או תפזורת
-  const isTrayOrder = (order) => {
-    // בדיקה אם ההזמנה מכילה פריטי חמגשית
+  // בודקים רק פריטים חמים!
+  // אם יש אפילו פריט חם אחד שהוא לא חמגשית - זה תפזורת
+  // רק אם כל הפריטים החמים הם חמגשית - זה חמגשית
+  const isTrayOnlyOrder = (order) => {
     if (!order.items) return false;
-    return order.items.some(item => {
-      const packMethodCode = String(item.packMethodCode || '').toLowerCase();
-      const packDes = String(item.packDes || '').toLowerCase();
-      const pspec1 = String(item.pspec1 || '').toLowerCase();
-      return packMethodCode.includes('חמגשית') || packDes.includes('חמגשית') || pspec1.includes('חמגשית');
+
+    let hasHotTray = false;
+    let hasHotNonTray = false;
+
+    order.items.forEach(item => {
+      // בדיקה אם זה פריט חם
+      const pspec6 = String(item.pspec6 || '').toLowerCase();
+      const pspec3 = String(item.pspec3 || '').toLowerCase();
+      const isHotItem = pspec6.includes('חם') || pspec3.includes('חם');
+
+      // רק פריטים חמים רלוונטיים למיון
+      if (isHotItem) {
+        const packMethodCode = String(item.packMethodCode || '').toLowerCase();
+        const packDes = String(item.packDes || '').toLowerCase();
+
+        if (packMethodCode.includes('חמגשית') || packDes.includes('חמגשית')) {
+          hasHotTray = true;
+        } else if (packMethodCode || packDes) {
+          // פריט חם עם שיטת אריזה שהיא לא חמגשית = תפזורת
+          hasHotNonTray = true;
+        }
+      }
     });
+
+    // אם יש אפילו פריט חם אחד שהוא לא חמגשית - זה תפזורת
+    if (hasHotNonTray) {
+      return false;
+    }
+
+    // רק אם כל הפריטים החמים הם חמגשית
+    return hasHotTray;
   };
-  
+
   // הצגת כל הלקוחות (ללא סינון מילגם)
   let ordersArray = Object.values(orders);
   const totalBeforeFilter = ordersArray.length;
-  
+
   // מיון לפי סדר המבוקש
-  if (sortMode === 'loading') {
-    // מיון לפי סדר העמסה - קיבוץ לפי כשרות ושיטת אריזה עם המשכיות
-    
+  if (sortMode === 'loading' && isHot) {
+    // מיון לפי סדר העמסה - רק למדבקות חמות
+    // הסדר הנכון: בד"ץ תפזורת → חב"ד תפזורת → חב"ד חמגשית → בד"ץ חמגשית
+
     // קיבוץ לפי קו חלוקה
     const ordersByDistrLine = {};
     ordersArray.forEach(order => {
@@ -2925,45 +2953,41 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       }
       ordersByDistrLine[lineCode].push(order);
     });
-    
+
     // מיון קווי החלוקה
     const sortedLines = Object.keys(ordersByDistrLine).sort();
-    
-    // מיון מתקדם עם המשכיות בין קווים
-    // הקטגוריות: תפזורת-בדץ (0), חמגשית-בדץ (1), חמגשית-חבד (2), תפזורת-חבד (3)
-    // הסדר הבסיסי: 0 → 1 → 2 → 3
-    // בקו הבא - ממשיכים מאותה כשרות וסוג
-    let lastKashrut = 'badatz'; // מתחילים עם בדץ
-    let lastPackType = 'tafzoret'; // מתחילים עם תפזורת
-    
+
     ordersArray = []; // נאפס ונבנה מחדש
-    
-    sortedLines.forEach((lineCode, lineIndex) => {
+
+    sortedLines.forEach((lineCode) => {
       const lineOrders = ordersByDistrLine[lineCode];
-      
-      // חלוקה ל-4 קטגוריות
+
+      // חלוקה ל-4 קטגוריות לפי הסדר המבוקש
       const categories = {
-        'tafzoret-badatz': [],
-        'tray-badatz': [],
-        'tray-chabad': [],
-        'tafzoret-chabad': []
+        'tafzoret-badatz': [],  // 1. בד"ץ תפזורת
+        'tafzoret-chabad': [],  // 2. חב"ד תפזורת
+        'tray-chabad': [],      // 3. חב"ד חמגשית
+        'tray-badatz': []       // 4. בד"ץ חמגשית
       };
-      
+
       lineOrders.forEach(order => {
         const chabad = isChabad(order);
-        const tray = isTrayOrder(order);
-        
-        if (!tray && !chabad) {
+        const trayOnly = isTrayOnlyOrder(order);
+
+        // לוג לדיבוג
+        console.log(`🔍 ${order.custDes}: כשרות=${chabad ? 'חב"ד' : 'בד"ץ'}, אריזה=${trayOnly ? 'חמגשית' : 'תפזורת'}`);
+
+        if (!trayOnly && !chabad) {
           categories['tafzoret-badatz'].push(order);
-        } else if (tray && !chabad) {
-          categories['tray-badatz'].push(order);
-        } else if (tray && chabad) {
-          categories['tray-chabad'].push(order);
-        } else {
+        } else if (!trayOnly && chabad) {
           categories['tafzoret-chabad'].push(order);
+        } else if (trayOnly && chabad) {
+          categories['tray-chabad'].push(order);
+        } else { // trayOnly && !chabad
+          categories['tray-badatz'].push(order);
         }
       });
-      
+
       // מיון בתוך כל קטגוריה לפי סדר הפצה
       Object.keys(categories).forEach(cat => {
         categories[cat].sort((a, b) => {
@@ -2971,38 +2995,14 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           return (a.orderName || '').localeCompare(b.orderName || '');
         });
       });
-      
-      // קביעת סדר הקטגוריות לפי המשכיות מהקו הקודם
-      let categoryOrder;
-      if (lastKashrut === 'badatz' && lastPackType === 'tafzoret') {
-        // סדר: תפזורת-בדץ → חמגשית-בדץ → חמגשית-חבד → תפזורת-חבד
-        categoryOrder = ['tafzoret-badatz', 'tray-badatz', 'tray-chabad', 'tafzoret-chabad'];
-      } else if (lastKashrut === 'badatz' && lastPackType === 'tray') {
-        // סדר: חמגשית-בדץ → תפזורת-בדץ → תפזורת-חבד → חמגשית-חבד
-        categoryOrder = ['tray-badatz', 'tafzoret-badatz', 'tafzoret-chabad', 'tray-chabad'];
-      } else if (lastKashrut === 'chabad' && lastPackType === 'tray') {
-        // סדר: חמגשית-חבד → תפזורת-חבד → תפזורת-בדץ → חמגשית-בדץ
-        categoryOrder = ['tray-chabad', 'tafzoret-chabad', 'tafzoret-badatz', 'tray-badatz'];
-      } else { // chabad + tafzoret
-        // סדר: תפזורת-חבד → חמגשית-חבד → חמגשית-בדץ → תפזורת-בדץ
-        categoryOrder = ['tafzoret-chabad', 'tray-chabad', 'tray-badatz', 'tafzoret-badatz'];
-      }
-      
+
+      // הסדר הקבוע: בד"ץ תפזורת → חב"ד תפזורת → חב"ד חמגשית → בד"ץ חמגשית
+      const categoryOrder = ['tafzoret-badatz', 'tafzoret-chabad', 'tray-chabad', 'tray-badatz'];
+
       // הוספה לפי הסדר שנקבע
       categoryOrder.forEach(cat => {
         ordersArray.push(...categories[cat]);
       });
-      
-      // עדכון הכשרות והסוג האחרונים לקו הבא
-      // מחפשים את הקטגוריה האחרונה שבאמת הייתה לה הזמנות
-      for (let i = categoryOrder.length - 1; i >= 0; i--) {
-        if (categories[categoryOrder[i]].length > 0) {
-          const lastCat = categoryOrder[i];
-          lastKashrut = lastCat.includes('chabad') ? 'chabad' : 'badatz';
-          lastPackType = lastCat.includes('tray') ? 'tray' : 'tafzoret';
-          break;
-        }
-      }
     });
   } else {
     // מיון רגיל - לפי קו חלוקה, סדר הפצה והזמנה
@@ -4323,18 +4323,21 @@ function downloadContainersCSV() {
 }
 
 // הורדת CSV לדוח מדבקות
-function downloadLabelsCSV() {
-  if (!window.labelsGroupedData || window.labelsGroupedData.length === 0) {
+function downloadLabelsCSV(labelType = 'hot') {
+  const dataKey = labelType === 'hot' ? 'labelsDataHot' : 'labelsDataCold';
+  const labelsData = window[dataKey] || window.labelsGroupedData;
+
+  if (!labelsData || labelsData.length === 0) {
     alert('אין נתונים להורדה');
     return;
   }
   
   let csv = '\uFEFFקו חלוקה,תיאור קו חלוקה,סדר הפצה,הזמנה,תיאור אתר,לקוח,כתובת,עיר,טלפון,מנות קר,מנות חם,סה"כ מנות,מנות קר ללא אלרגני,מנות חם ללא אלרגני,סה"כ מנות ללא אלרגני\n';
-  
+
   // בדיקה אם זה מבנה NoSQL (orderName קיים) או מבנה שטוח
-  if (window.labelsGroupedData[0] && window.labelsGroupedData[0].orderName) {
+  if (labelsData[0] && labelsData[0].orderName) {
     // מבנה NoSQL - כבר מעובד
-    window.labelsGroupedData.forEach(order => {
+    labelsData.forEach(order => {
       // הפרדה בין פריטים קר וחם
       const coldItems = [];
       const hotItems = [];
@@ -4381,7 +4384,7 @@ function downloadLabelsCSV() {
     });
   } else {
     // מבנה שטוח (legacy)
-    window.labelsGroupedData.forEach(group => {
+    labelsData.forEach(group => {
       const coldItemsArray = Object.values(group.coldItems || {});
       const hotItemsArray = Object.values(group.hotItems || {});
       const coldText = coldItemsArray.map(item => item.partDes).join('; ');
@@ -4401,27 +4404,30 @@ function downloadLabelsCSV() {
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = `labels_${document.getElementById('dateInput').value}.csv`;
+  const typeSuffix = labelType === 'hot' ? '_hot' : '_cold';
+  link.download = `labels${typeSuffix}_${document.getElementById('dateInput').value}.csv`;
   link.click();
 }
 
 // הורדת PDF לדוח מדבקות - באמצעות הדפסה
-function downloadLabelsPDF() {
-  const container = document.getElementById('labelsContainer');
-  
+function downloadLabelsPDF(labelType = 'hot') {
+  const containerId = labelType === 'hot' ? 'labelsContainerHot' : 'labelsContainerCold';
+  const container = document.getElementById(containerId);
+
   if (!container || !container.innerHTML || container.innerHTML.trim() === '') {
     alert('אין נתונים להורדה');
     return;
   }
-  
+
   // יצירת חלון חדש להדפסה
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     alert('לא ניתן לפתוח חלון חדש. אנא אפשר חלונות קופצים בדפדפן.');
     return;
   }
-  
+
   const dateValue = document.getElementById('dateInput').value || new Date().toISOString().split('T')[0];
+  const typeLabel = labelType === 'hot' ? 'חמים' : 'קרים';
   
   // יצירת עותק של התוכן עם ניקוי
   const contentClone = container.cloneNode(true);
@@ -4450,7 +4456,7 @@ function downloadLabelsPDF() {
   printWindow.document.write('<head>');
   printWindow.document.write('<meta charset="UTF-8">');
   printWindow.document.write('<meta name="viewport" content="width=device-width, initial-scale=1.0">');
-  printWindow.document.write('<title>דוח מדבקות - ' + dateValue + '</title>');
+  printWindow.document.write('<title>דוח מדבקות ' + typeLabel + ' - ' + dateValue + '</title>');
   printWindow.document.write('<style>');
   printWindow.document.write('@page { size: A4; margin: 0; }');
   printWindow.document.write('* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }');
