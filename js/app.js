@@ -3177,23 +3177,25 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       
       const summary = [];
       
-      // עבור כל ארוחה בנפרד - כל הפריטים יחד בשורה אחת עם "+" ביניהם
+      // עבור כל ארוחה בנפרד - הפרדה בין פריטים צמחוניים ורגילים
       Object.entries(itemsByMeal).forEach(([mealName, mealItems]) => {
-        // כל הפריטים יחד - ללא הפרדה לפי אלרגני
-        const allItems = mealItems;
-        
-        // עיבוד כל הפריטים יחד - שורה אחת עם "+" ביניהם
-        if (allItems.length > 0) {
+        // הפרדה בין פריטים צמחוניים ורגילים
+        const vegetarianItems = mealItems.filter(item => (parseFloat(item.pritVegQuant || item.PRIT_VEGQUANT || 0) || 0) > 0);
+        const regularItems = mealItems.filter(item => (parseFloat(item.pritVegQuant || item.PRIT_VEGQUANT || 0) || 0) <= 0);
+
+        // פונקציה לעיבוד קבוצת פריטים
+        const processItemGroup = (items, isVegetarianGroup) => {
+          if (items.length === 0) return;
+
           // איסוף כל שמות הפריטים (ללא כפילויות)
           const uniquePartDes = [];
           let hasNoAllergen = false;
-          let isVegetarian = false;
           let isChabadKashrut = false; // בדיקה אם יש כשרות חב"ד
           let eatQuantSmall = 0; // כמות לחמגשית קטנה
           let eatQuantLarge = 0; // כמות לחמגשית גדולה
           let itemCartonType = ''; // סוג קרטון (חם/קר) מהפריט הראשון
 
-          allItems.forEach((item, index) => {
+          items.forEach((item, index) => {
             const partDes = String(item.partDes || item.PARTDES || item.partName || item.PARTNAME || '').trim();
             if (!partDes) return;
 
@@ -3206,11 +3208,6 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
             const pspec1 = String(item.pspec1 || item.PSPEC1 || '').trim().toLowerCase();
             if (pspec1.includes('ללא אלרגני') || pspec1.includes('לא אלרגני')) {
               hasNoAllergen = true;
-            }
-            // בדיקת צמחוני - רק לפי PRIT_VEGQUANT (אם חיובי זו ארוחה צמחונית)
-            const pritVegQuant = parseFloat(item.pritVegQuant || item.PRIT_VEGQUANT || 0) || 0;
-            if (pritVegQuant > 0) {
-              isVegetarian = true;
             }
             const pspec6 = String(item.pspec6 || item.PSPEC6 || '').trim().toLowerCase();
             // בדיקה אם הכשרות היא חב"ד (בפרמטר 6 למוצר)
@@ -3229,7 +3226,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
             const isLarge = packDes.includes('גד') || packDes.includes('גדול') || packDes.includes('גדולה') ||
                             packMethodCode.includes('גד') || packMethodCode.includes('גדול');
             const eatQuant = parseFloat(item?.eatQuant || item?.EATQUANT || 0) || 0;
-            
+
             // נשתמש בכמות מהפריט הראשון (כי כל הפריטים באותה ארוחה צריכים להיות עם אותה כמות)
             if (isLarge) {
               if (eatQuantLarge === 0 && eatQuant > 0) {
@@ -3241,16 +3238,18 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               }
             }
           });
-          
+
+          if (uniquePartDes.length === 0) return;
+
           // יצירת מפתח ייחודי לכל הפריטים יחד (מחוברים ב-"+")
           const itemsKey = uniquePartDes.sort().join('+');
-          
+
           // אם יש אלרגני, להוסיף סימון
           let finalItemsKey = itemsKey;
-      if (hasNoAllergen) {
+          if (hasNoAllergen) {
             finalItemsKey = itemsKey + ' (ללא אלרגנים)';
           }
-          
+
           // הוספת פריט אחד עם כל הפריטים יחד
           // אם יש גם קטנה וגם גדולה, ניצור שני פריטים נפרדים
           if (eatQuantSmall > 0 && eatQuantLarge > 0) {
@@ -3262,9 +3261,9 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               eatQuantLarge: 0,
               totalQuantity: eatQuantSmall,
               hasNoAllergen: hasNoAllergen,
-              isVegetarian: isVegetarian,
-              pspec6: isChabadKashrut ? 'חבד' : '', // העברת כשרות חב"ד
-              cartonType: itemCartonType, // סוג קרטון לזיהוי חם/קר
+              isVegetarian: isVegetarianGroup,
+              pspec6: isChabadKashrut ? 'חבד' : '',
+              cartonType: itemCartonType,
               traySize: 'small'
             });
             summary.push({
@@ -3274,9 +3273,9 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               eatQuantLarge: eatQuantLarge,
               totalQuantity: eatQuantLarge,
               hasNoAllergen: hasNoAllergen,
-              isVegetarian: isVegetarian,
-              pspec6: isChabadKashrut ? 'חבד' : '', // העברת כשרות חב"ד
-              cartonType: itemCartonType, // סוג קרטון לזיהוי חם/קר
+              isVegetarian: isVegetarianGroup,
+              pspec6: isChabadKashrut ? 'חבד' : '',
+              cartonType: itemCartonType,
               traySize: 'large'
             });
           } else if (eatQuantSmall > 0) {
@@ -3288,9 +3287,9 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               eatQuantLarge: 0,
               totalQuantity: eatQuantSmall,
               hasNoAllergen: hasNoAllergen,
-              isVegetarian: isVegetarian,
-              pspec6: isChabadKashrut ? 'חבד' : '', // העברת כשרות חב"ד
-              cartonType: itemCartonType, // סוג קרטון לזיהוי חם/קר
+              isVegetarian: isVegetarianGroup,
+              pspec6: isChabadKashrut ? 'חבד' : '',
+              cartonType: itemCartonType,
               traySize: 'small'
             });
           } else if (eatQuantLarge > 0) {
@@ -3302,13 +3301,18 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               eatQuantLarge: eatQuantLarge,
               totalQuantity: eatQuantLarge,
               hasNoAllergen: hasNoAllergen,
-              isVegetarian: isVegetarian,
-              pspec6: isChabadKashrut ? 'חבד' : '', // העברת כשרות חב"ד
-              cartonType: itemCartonType, // סוג קרטון לזיהוי חם/קר
+              isVegetarian: isVegetarianGroup,
+              pspec6: isChabadKashrut ? 'חבד' : '',
+              cartonType: itemCartonType,
               traySize: 'large'
             });
           }
-        }
+        };
+
+        // עיבוד פריטים רגילים (לא צמחוניים)
+        processItemGroup(regularItems, false);
+        // עיבוד פריטים צמחוניים בנפרד
+        processItemGroup(vegetarianItems, true);
       });
       
       return summary;
