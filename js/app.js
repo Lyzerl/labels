@@ -5679,12 +5679,24 @@ function createAllergenLabelsReport(data) {
           labels: []
         };
       }
-      // יצירת מדבקות - כל מדבקה כמספר הכמות (כמות 2 = 2 מדבקות זהות)
-      for (let i = 0; i < item.quantity; i++) {
+      // יצירת מדבקות
+      // עבור מרק - מדבקה אחת לכל הזמנה עם הכמות כתובה עליה
+      // עבור אלרגני/צמחוני - מדבקה לכל מנה (כמות 2 = 2 מדבקות זהות)
+      const selectedType = typeSelect ? typeSelect.value : 'allergen';
+      if (selectedType === 'soup') {
+        // מרק - מדבקה אחת בלבד עם הכמות
         labelsByDistrLine[lineKey].labels.push({
           ...item,
-          labelNumber: item.quantity // הכמות הכוללת מוצגת בכל מדבקה
+          labelNumber: item.quantity
         });
+      } else {
+        // אלרגני/צמחוני - מדבקה לכל מנה
+        for (let i = 0; i < item.quantity; i++) {
+          labelsByDistrLine[lineKey].labels.push({
+            ...item,
+            labelNumber: item.quantity
+          });
+        }
       }
     });
     
