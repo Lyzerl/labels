@@ -2389,6 +2389,7 @@ function showProductionReport() {
     const param7 = parseFloat(r.Y_9964_5_ESH || r.y9964 || 0) || 0; // כמות ק"ג למיכל
     const param8 = parseFloat(r.Y_9965_5_ESH || r.y9965 || 0) || 0; // כמות ק"ג למנה במארז
     const eatQuant = parseFloat(r.EATQUANT || r.eatQuant || 0) || 0;
+    const tQuant = parseFloat(r.TQUANT || r.tquant || 0) || 0; // משקל (כמות)
     const orderName = String(r.ORDNAME || r.orderName || '').trim();
     const mealName = String(r.MEALNAME || r.mealName || '').trim() || 'ללא_ארוחה';
 
@@ -2397,22 +2398,11 @@ function showProductionReport() {
     const isLargeTray = packDes.includes('גד') || packDes.includes('גדול') || packDes.includes('גדולה');
 
     if (isTray) {
-      // חמגשית - קיבוץ לפי הזמנה וארוחה לחישוב שילוב פריטים
-      const trayKey = `${orderName}|${mealName}|${isLargeTray ? 'large' : 'small'}`;
-      if (!trayProduction[trayKey]) {
-        trayProduction[trayKey] = {
-          items: [],
-          isLarge: isLargeTray,
-          eatQuant: eatQuant,
-          itemsKg: {} // ק"ג לפי פריט
-        };
+      // חמגשית - סיכום משקל (TQUANT) לפי פריט
+      if (!trayProduction[partDes]) {
+        trayProduction[partDes] = { weight: 0 };
       }
-      trayProduction[trayKey].items.push(partDes);
-      // שמירת ק"ג לפי פריט (param8 * כמות מנות)
-      if (!trayProduction[trayKey].itemsKg[partDes]) {
-        trayProduction[trayKey].itemsKg[partDes] = 0;
-      }
-      trayProduction[trayKey].itemsKg[partDes] += eatQuant * param8;
+      trayProduction[partDes].weight += tQuant;
     } else {
       // מיכלים ומארזים
       const hasContainers = containers > 0 && param7 > 0;
@@ -2439,31 +2429,7 @@ function showProductionReport() {
     }
   });
 
-  // עיבוד חמגשיות - קיבוץ לפי שילוב פריטים
-  const trayByCombo = {};
-  Object.values(trayProduction).forEach(tray => {
-    const combo = [...new Set(tray.items)].sort().join('+');
-    const sizeKey = tray.isLarge ? 'large' : 'small';
-    const key = `${combo}|${sizeKey}`;
-
-    if (!trayByCombo[key]) {
-      trayByCombo[key] = {
-        combo: combo,
-        isLarge: tray.isLarge,
-        count: 0,
-        itemsKg: {}
-      };
-    }
-    trayByCombo[key].count += tray.eatQuant;
-
-    // סיכום ק"ג לפי פריט
-    Object.entries(tray.itemsKg).forEach(([item, kg]) => {
-      if (!trayByCombo[key].itemsKg[item]) {
-        trayByCombo[key].itemsKg[item] = 0;
-      }
-      trayByCombo[key].itemsKg[item] += kg;
-    });
-  });
+  // חמגשיות כבר מסוכמות לפי פריט ב-trayProduction
 
   // יצירת HTML לדוח
   let html = '<div style="padding:20px;direction:rtl;">';
@@ -2533,20 +2499,9 @@ function showProductionReport() {
     html += '</tr></tbody></table>';
   }
 
-  // טבלת חמגשיות - סיכום ק"ג לפי פריט
-  const trayItems = Object.values(trayByCombo);
+  // טבלת חמגשיות - סיכום משקל (ק"ג) לפי פריט
+  const trayItems = Object.entries(trayProduction).sort((a, b) => a[0].localeCompare(b[0]));
   if (trayItems.length > 0) {
-    // סיכום כללי של ק"ג לפי פריט מכל החמגשיות
-    const trayKgByItem = {};
-    trayItems.forEach(tray => {
-      Object.entries(tray.itemsKg).forEach(([item, kg]) => {
-        if (!trayKgByItem[item]) {
-          trayKgByItem[item] = 0;
-        }
-        trayKgByItem[item] += kg;
-      });
-    });
-
     html += '<h3 style="background:#9C27B0;padding:10px;margin:20px 0 0 0;border-radius:5px 5px 0 0;color:white;">🍱 חמגשיות - סיכום ק"ג לפי פריט</h3>';
     html += '<table style="width:100%;border-collapse:collapse;border:1px solid #ccc;margin-bottom:20px;">';
     html += '<thead><tr style="background:#f3e5f5;">';
@@ -2554,19 +2509,19 @@ function showProductionReport() {
     html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;background:#c8e6c9;font-weight:bold;">סה"כ ק"ג</th>';
     html += '</tr></thead><tbody>';
 
-    let totalTrayKg = 0;
-    Object.entries(trayKgByItem).sort((a, b) => a[0].localeCompare(b[0])).forEach(([item, kg], idx) => {
+    let totalTrayWeight = 0;
+    trayItems.forEach(([partDes, data], idx) => {
       const bgColor = idx % 2 === 0 ? '#fff' : '#f5f5f5';
       html += `<tr style="background:${bgColor};">`;
-      html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;font-weight:bold;">${item}</td>`;
-      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;background:#e8f5e9;font-weight:bold;">${kg.toFixed(2)}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;font-weight:bold;">${partDes}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;background:#e8f5e9;font-weight:bold;">${data.weight.toFixed(2)}</td>`;
       html += '</tr>';
-      totalTrayKg += kg;
+      totalTrayWeight += data.weight;
     });
 
     html += `<tr style="background:#c8e6c9;font-weight:bold;">`;
     html += `<td style="border:1px solid #ccc;padding:10px;text-align:right;">סה"כ חמגשיות</td>`;
-    html += `<td style="border:1px solid #ccc;padding:10px;text-align:center;font-size:1.1em;">${totalTrayKg.toFixed(2)} ק"ג</td>`;
+    html += `<td style="border:1px solid #ccc;padding:10px;text-align:center;font-size:1.1em;">${totalTrayWeight.toFixed(2)} ק"ג</td>`;
     html += '</tr></tbody></table>';
   }
 
