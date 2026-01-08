@@ -2557,11 +2557,17 @@ function showProductionReport() {
 
       if (hasContainers) {
         // מיכלים: כמות מיכלים × פרמטר 7
+        // זיהוי אם זה גסטרונום
+        const isGastronome = pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום');
+        // מכפיל: 6.5 לגסטרונום, 2 למיכל רגיל
+        const multiplier = isGastronome ? 6.5 : 2;
+        const kgPerContainer = param7 * multiplier;
+
         if (!containerProduction[partDes]) {
-          containerProduction[partDes] = { containers: 0, kg: 0, param7: param7 };
+          containerProduction[partDes] = { containers: 0, kg: 0, param7: param7, multiplier: multiplier, kgPerContainer: kgPerContainer, isGastronome: isGastronome };
         }
         containerProduction[partDes].containers += containers;
-        containerProduction[partDes].kg += containers * param7;
+        containerProduction[partDes].kg += containers * kgPerContainer;
       }
 
       if (hasPacks) {
@@ -2590,7 +2596,7 @@ function showProductionReport() {
     html += '<thead><tr style="background:#e3f2fd;">';
     html += '<th style="border:1px solid #ccc;padding:10px;text-align:right;">פריט</th>';
     html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">כמות מיכלים</th>';
-    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">ק"ג למיכל</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">ק"ג למיכל (חישוב)</th>';
     html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;background:#c8e6c9;font-weight:bold;">סה"כ ק"ג</th>';
     html += '</tr></thead><tbody>';
 
@@ -2600,7 +2606,9 @@ function showProductionReport() {
       html += `<tr style="background:${bgColor};">`;
       html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;font-weight:bold;">${partDes}</td>`;
       html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${data.containers.toFixed(0)}</td>`;
-      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${data.param7.toFixed(2)}</td>`;
+      // הצגת החישוב: פרמטר7 × מכפיל = ק"ג למיכל
+      const containerType = data.isGastronome ? 'גסטרו' : 'מיכל';
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${data.kgPerContainer.toFixed(2)} <span style="font-size:0.8em;color:#666;">(${data.param7}×${data.multiplier})</span></td>`;
       html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;background:#e8f5e9;font-weight:bold;">${data.kg.toFixed(2)}</td>`;
       html += '</tr>';
       totalContainersKg += data.kg;
@@ -3318,10 +3326,11 @@ function createLabelsReport(data, labelType = 'hot') {
           let hasHotGastronorm = false;
 
           order.items.forEach(item => {
-            // בדיקה אם זה פריט חם - בדיוק כמו בסדר העמסה
+            // בדיקה אם זה פריט חם - לפי CARTON_TYPE, PSPEC6 או PSPEC3
+            const cartonType = String(item.cartonType || '').toLowerCase();
             const pspec6 = String(item.pspec6 || '').toLowerCase();
             const pspec3 = String(item.pspec3 || '').toLowerCase();
-            const isHotItem = pspec6.includes('חם') || pspec3.includes('חם');
+            const isHotItem = cartonType.includes('חם') || pspec6.includes('חם') || pspec3.includes('חם');
 
             // רק פריטים חמים רלוונטיים
             if (isHotItem) {
@@ -3573,10 +3582,11 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
     let hasHotNonTray = false;
 
     order.items.forEach(item => {
-      // בדיקה אם זה פריט חם
+      // בדיקה אם זה פריט חם - לפי CARTON_TYPE, PSPEC6 או PSPEC3
+      const cartonType = String(item.cartonType || '').toLowerCase();
       const pspec6 = String(item.pspec6 || '').toLowerCase();
       const pspec3 = String(item.pspec3 || '').toLowerCase();
-      const isHotItem = pspec6.includes('חם') || pspec3.includes('חם');
+      const isHotItem = cartonType.includes('חם') || pspec6.includes('חם') || pspec3.includes('חם');
 
       // רק פריטים חמים רלוונטיים למיון
       if (isHotItem) {
@@ -3733,7 +3743,11 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
     
     order.items.forEach(item => {
       // רק פריטים שיש להם סוג קרטון
-      if (!item.cartonType) return;
+      // לוג לדיבוג - נבדוק מה הערך של cartonType
+      if (!item.cartonType) {
+        console.log(`⚠️ פריט בלי cartonType: לקוח=${order.codeDes}, פריט=${item.partDes}, CARTON_TYPE=${item.CARTON_TYPE}, cartonType=${item.cartonType}`);
+        return;
+      }
 
       // זיהוי אם זה חמגשית לפי PACKMETHODCODE, PACKDES, PSPEC1, או mainPackingMethod
       const packMethodCode = String(item.packMethodCode || '').toLowerCase();
