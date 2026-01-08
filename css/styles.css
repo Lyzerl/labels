@@ -1140,3 +1140,75 @@ tr:nth-child(even) {
   .allergen-labels-page {
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
   }
+}
+
+/* הגדרות קרטונים */
+.top-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 15px;
+}
+
+.settings-btn {
+  background: #9c27b0 !important;
+}
+
+.settings-btn:hover {
+  background: #7b1fa2 !important;
+}
+
+.settings-section {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+  border-right: 4px solid #4285f4;
+}
+
+.settings-section h3 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 1.1em;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.setting-row:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.setting-row label {
+  font-weight: 500;
+  color: #555;
+}
+
+.setting-row input[type="number"] {
+  width: 80px;
+  padding: 8px 10px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  font-size: 1em;
+  text-align: center;
+}
+
+.setting-row input[type="number"]:focus {
+  outline: none;
+  border-color: #4285f4;
+}
+
+.settings-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 2px solid #eee;
+}

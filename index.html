@@ -24,6 +24,10 @@
 
   <h1>📊 נתוני Priority - לפי תאריך וסניף</h1>
 
+  <div class="top-actions">
+    <button class="btn settings-btn" onclick="openCartonSettingsModal()">⚙️ הגדרות קרטונים</button>
+  </div>
+
   <div class="controls">
     <div class="control-group">
       <label for="dateInput">תאריך:</label>
@@ -131,8 +135,21 @@
       <select id="distrLineFilterHot">
         <option value="">הכל</option>
       </select>
-      <label>שיטת אריזה ראשית:</label>
+      <label>שיטת אריזה:</label>
       <select id="packingMethodFilterHot">
+        <option value="">הכל</option>
+        <option value="tray">חמגשיות</option>
+        <option value="gastronorm">גסטרונום בלבד</option>
+        <option value="loose">תפזורת</option>
+      </select>
+      <label>סוג לקוח:</label>
+      <select id="customerTypeFilterHot">
+        <option value="">הכל</option>
+        <option value="milgam">מילגם</option>
+        <option value="notMilgam">לא מילגם</option>
+      </select>
+      <label>כשרות:</label>
+      <select id="kashrutFilterHot">
         <option value="">הכל</option>
       </select>
       <label>סדר מיון:</label>
@@ -209,6 +226,75 @@
     </div>
     <div class="modal-body" id="modalBody">
       <!-- Content will be inserted here -->
+    </div>
+  </div>
+</div>
+
+<!-- Modal for carton settings -->
+<div id="cartonSettingsModal" class="modal-overlay" style="display:none;">
+  <div class="modal-content" style="max-width:600px;">
+    <div class="modal-header">
+      <h2>⚙️ הגדרות קרטונים</h2>
+      <button class="modal-close" onclick="closeCartonSettingsModal()">✕ סגור</button>
+    </div>
+    <div class="modal-body" style="text-align:right;">
+      <div class="settings-section">
+        <h3>🔥 חם - חמגשית</h3>
+        <div class="setting-row">
+          <label>חמגשיות גדולות לקרטון:</label>
+          <input type="number" id="settingLargeTrayPerCarton" min="1" max="100" value="28">
+        </div>
+        <div class="setting-row">
+          <label>חמגשיות קטנות לקרטון:</label>
+          <input type="number" id="settingSmallTrayPerCarton" min="1" max="100" value="32">
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>🔥 חם - תפזורת</h3>
+        <div class="setting-row">
+          <label>קיבולת קרטון (יחידות בסיס):</label>
+          <input type="number" id="settingCartonCapacity" min="1" max="50" step="0.5" value="10">
+        </div>
+        <h4 style="margin:15px 0 10px;color:#666;font-size:0.95em;">גודל יחסי לכל סוג מיכל:</h4>
+        <div class="setting-row">
+          <label>מיכל רגיל:</label>
+          <input type="number" id="settingContainerSize" min="0.1" max="10" step="0.1" value="1">
+        </div>
+        <div class="setting-row">
+          <label>גסטרונום:</label>
+          <input type="number" id="settingGastronormSize" min="0.1" max="10" step="0.1" value="4">
+        </div>
+        <div class="setting-row">
+          <label>מארז 5:</label>
+          <input type="number" id="settingPack5Size" min="0.1" max="10" step="0.1" value="0.5">
+        </div>
+        <div class="setting-row">
+          <label>מארז 7:</label>
+          <input type="number" id="settingPack7Size" min="0.1" max="10" step="0.1" value="0.7">
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>❄️ קר</h3>
+        <div class="setting-row">
+          <label>סף פריטים (מעל = הרבה פריטים):</label>
+          <input type="number" id="settingFewItemsThreshold" min="1" max="20" value="5">
+        </div>
+        <div class="setting-row">
+          <label>מנות לקרטון (מעט פריטים):</label>
+          <input type="number" id="settingPortionsFewItems" min="1" max="100" value="20">
+        </div>
+        <div class="setting-row">
+          <label>מנות לקרטון (הרבה פריטים):</label>
+          <input type="number" id="settingPortionsManyItems" min="1" max="100" value="15">
+        </div>
+      </div>
+
+      <div class="settings-actions">
+        <button class="btn" onclick="saveCartonSettings()" style="background:#4CAF50;color:white;">💾 שמור הגדרות</button>
+        <button class="btn" onclick="resetCartonSettings()" style="background:#f44336;color:white;">↩️ אפס לברירת מחדל</button>
+      </div>
     </div>
   </div>
 </div>

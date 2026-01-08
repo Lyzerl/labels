@@ -1,4 +1,151 @@
 
+// פונקציות לניהול הגדרות קרטונים
+function openCartonSettingsModal() {
+  const modal = document.getElementById('cartonSettingsModal');
+  if (!modal) return;
+
+  // טעינת הערכים הנוכחיים לשדות - חמגשית
+  document.getElementById('settingLargeTrayPerCarton').value = CARTON_CONFIG.hotTray.largeTrayPerCarton;
+  document.getElementById('settingSmallTrayPerCarton').value = CARTON_CONFIG.hotTray.smallTrayPerCarton;
+
+  // תפזורת - קיבולת וגדלים יחסיים
+  document.getElementById('settingCartonCapacity').value = CARTON_CONFIG.hotLoose.cartonCapacity;
+  document.getElementById('settingContainerSize').value = CARTON_CONFIG.hotLoose.containerSizes.container;
+  document.getElementById('settingGastronormSize').value = CARTON_CONFIG.hotLoose.containerSizes.gastronorm;
+  document.getElementById('settingPack5Size').value = CARTON_CONFIG.hotLoose.containerSizes.pack5;
+  document.getElementById('settingPack7Size').value = CARTON_CONFIG.hotLoose.containerSizes.pack7;
+
+  // קר
+  document.getElementById('settingFewItemsThreshold').value = CARTON_CONFIG.cold.fewItemsThreshold;
+  document.getElementById('settingPortionsFewItems').value = CARTON_CONFIG.cold.portionsPerCartonFewItems;
+  document.getElementById('settingPortionsManyItems').value = CARTON_CONFIG.cold.portionsPerCartonManyItems;
+
+  modal.style.display = 'flex';
+}
+
+function closeCartonSettingsModal() {
+  const modal = document.getElementById('cartonSettingsModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+function saveCartonSettings() {
+  // קריאת הערכים מהשדות
+  const settings = {
+    hotTray: {
+      largeTrayPerCarton: parseInt(document.getElementById('settingLargeTrayPerCarton').value) || 28,
+      smallTrayPerCarton: parseInt(document.getElementById('settingSmallTrayPerCarton').value) || 32
+    },
+    hotLoose: {
+      cartonCapacity: parseFloat(document.getElementById('settingCartonCapacity').value) || 10,
+      containerSizes: {
+        container: parseFloat(document.getElementById('settingContainerSize').value) || 1,
+        gastronorm: parseFloat(document.getElementById('settingGastronormSize').value) || 4,
+        pack5: parseFloat(document.getElementById('settingPack5Size').value) || 0.5,
+        pack7: parseFloat(document.getElementById('settingPack7Size').value) || 0.7
+      }
+    },
+    cold: {
+      fewItemsThreshold: parseInt(document.getElementById('settingFewItemsThreshold').value) || 5,
+      portionsPerCartonFewItems: parseInt(document.getElementById('settingPortionsFewItems').value) || 20,
+      portionsPerCartonManyItems: parseInt(document.getElementById('settingPortionsManyItems').value) || 15
+    }
+  };
+
+  // עדכון ה-config הגלובלי
+  CARTON_CONFIG.hotTray.largeTrayPerCarton = settings.hotTray.largeTrayPerCarton;
+  CARTON_CONFIG.hotTray.smallTrayPerCarton = settings.hotTray.smallTrayPerCarton;
+  CARTON_CONFIG.hotLoose.cartonCapacity = settings.hotLoose.cartonCapacity;
+  CARTON_CONFIG.hotLoose.containerSizes = settings.hotLoose.containerSizes;
+  CARTON_CONFIG.cold.fewItemsThreshold = settings.cold.fewItemsThreshold;
+  CARTON_CONFIG.cold.portionsPerCartonFewItems = settings.cold.portionsPerCartonFewItems;
+  CARTON_CONFIG.cold.portionsPerCartonManyItems = settings.cold.portionsPerCartonManyItems;
+
+  // שמירה ב-localStorage
+  localStorage.setItem('cartonConfig', JSON.stringify(settings));
+
+  alert('ההגדרות נשמרו בהצלחה!');
+  closeCartonSettingsModal();
+}
+
+function resetCartonSettings() {
+  if (!confirm('האם אתה בטוח שברצונך לאפס את ההגדרות לברירת מחדל?')) return;
+
+  // ערכי ברירת מחדל
+  const defaults = {
+    hotTray: { largeTrayPerCarton: 28, smallTrayPerCarton: 32 },
+    hotLoose: {
+      cartonCapacity: 10,
+      containerSizes: { container: 1, gastronorm: 4, pack5: 0.5, pack7: 0.7 }
+    },
+    cold: { fewItemsThreshold: 5, portionsPerCartonFewItems: 20, portionsPerCartonManyItems: 15 }
+  };
+
+  // עדכון השדות - חמגשית
+  document.getElementById('settingLargeTrayPerCarton').value = defaults.hotTray.largeTrayPerCarton;
+  document.getElementById('settingSmallTrayPerCarton').value = defaults.hotTray.smallTrayPerCarton;
+
+  // תפזורת
+  document.getElementById('settingCartonCapacity').value = defaults.hotLoose.cartonCapacity;
+  document.getElementById('settingContainerSize').value = defaults.hotLoose.containerSizes.container;
+  document.getElementById('settingGastronormSize').value = defaults.hotLoose.containerSizes.gastronorm;
+  document.getElementById('settingPack5Size').value = defaults.hotLoose.containerSizes.pack5;
+  document.getElementById('settingPack7Size').value = defaults.hotLoose.containerSizes.pack7;
+
+  // קר
+  document.getElementById('settingFewItemsThreshold').value = defaults.cold.fewItemsThreshold;
+  document.getElementById('settingPortionsFewItems').value = defaults.cold.portionsPerCartonFewItems;
+  document.getElementById('settingPortionsManyItems').value = defaults.cold.portionsPerCartonManyItems;
+
+  // עדכון ה-config
+  Object.assign(CARTON_CONFIG.hotTray, defaults.hotTray);
+  CARTON_CONFIG.hotLoose.cartonCapacity = defaults.hotLoose.cartonCapacity;
+  CARTON_CONFIG.hotLoose.containerSizes = defaults.hotLoose.containerSizes;
+  Object.assign(CARTON_CONFIG.cold, defaults.cold);
+
+  // מחיקה מ-localStorage
+  localStorage.removeItem('cartonConfig');
+
+  alert('ההגדרות אופסו לברירת מחדל!');
+}
+
+function loadCartonSettingsFromStorage() {
+  const saved = localStorage.getItem('cartonConfig');
+  if (saved) {
+    try {
+      const settings = JSON.parse(saved);
+      if (settings.hotTray) {
+        CARTON_CONFIG.hotTray.largeTrayPerCarton = settings.hotTray.largeTrayPerCarton || 28;
+        CARTON_CONFIG.hotTray.smallTrayPerCarton = settings.hotTray.smallTrayPerCarton || 32;
+      }
+      if (settings.hotLoose) {
+        CARTON_CONFIG.hotLoose.cartonCapacity = settings.hotLoose.cartonCapacity || 10;
+        if (settings.hotLoose.containerSizes) {
+          CARTON_CONFIG.hotLoose.containerSizes = {
+            container: settings.hotLoose.containerSizes.container || 1,
+            gastronorm: settings.hotLoose.containerSizes.gastronorm || 4,
+            pack5: settings.hotLoose.containerSizes.pack5 || 0.5,
+            pack7: settings.hotLoose.containerSizes.pack7 || 0.7
+          };
+        }
+      }
+      if (settings.cold) {
+        CARTON_CONFIG.cold.fewItemsThreshold = settings.cold.fewItemsThreshold || 5;
+        CARTON_CONFIG.cold.portionsPerCartonFewItems = settings.cold.portionsPerCartonFewItems || 20;
+        CARTON_CONFIG.cold.portionsPerCartonManyItems = settings.cold.portionsPerCartonManyItems || 15;
+      }
+    } catch (e) {
+      console.error('Error loading carton settings:', e);
+    }
+  }
+}
+
+// טעינת הגדרות בעת טעינת הדף
+document.addEventListener('DOMContentLoaded', function() {
+  loadCartonSettingsFromStorage();
+});
+
 // פונקציות לניהול Modal
 function openItemModal(itemName, itemKey) {
   const modal = document.getElementById('itemModal');
@@ -3102,33 +3249,36 @@ function createLabelsReport(data, labelType = 'hot') {
     distrLineSelect.appendChild(option);
   });
   
-  // איסוף שיטות אריזה ראשיות ייחודיות (לפי PSPEC1)
-  const packingMethods = new Set();
-  if (orders) {
-    Object.values(orders).forEach(order => {
-      const pspec1Groups = {};
-      order.items.forEach(item => {
-        if (item.pspec1 && item.packMethodCode) {
-          if (!pspec1Groups[item.pspec1]) {
-            pspec1Groups[item.pspec1] = item.packMethodCode;
-          }
-        }
+  // שיטת אריזה - כעת עם אופציות קבועות: חמגשיות, גסטרונום בלבד, תפזורת
+  // האופציות כבר מוגדרות ב-HTML
+
+  // איסוף כשרויות ייחודיות (רק לחמים)
+  const kashrutSelect = document.getElementById('kashrutFilter' + suffix);
+  const customerTypeSelect = document.getElementById('customerTypeFilter' + suffix);
+
+  if (isHot && kashrutSelect) {
+    const kashrutSet = new Set();
+    if (orders) {
+      Object.values(orders).forEach(order => {
+        // כשרות מגיעה מ-SPEC2 או PSPEC2
+        const kashrut = order.spec2 || '';
+        if (kashrut) kashrutSet.add(kashrut);
       });
-      const firstPSpec1 = Object.keys(pspec1Groups).sort()[0];
-      if (firstPSpec1 && pspec1Groups[firstPSpec1]) {
-        packingMethods.add(pspec1Groups[firstPSpec1]);
-      }
+    } else {
+      flatData.forEach(r => {
+        const kashrut = r.SPEC2 || '';
+        if (kashrut) kashrutSet.add(kashrut);
+      });
+    }
+
+    kashrutSelect.innerHTML = '<option value="">הכל</option>';
+    Array.from(kashrutSet).sort().forEach(kashrut => {
+      const option = document.createElement('option');
+      option.value = kashrut;
+      option.textContent = kashrut;
+      kashrutSelect.appendChild(option);
     });
   }
-  
-  const sortedPackingMethods = Array.from(packingMethods).sort();
-  packingMethodSelect.innerHTML = '<option value="">הכל</option>';
-  sortedPackingMethods.forEach(method => {
-    const option = document.createElement('option');
-    option.value = method;
-    option.textContent = method;
-    packingMethodSelect.appendChild(option);
-  });
   
   // בורר סדר מיון
   const sortModeSelect = document.getElementById('labelsSortModeFilter' + suffix);
@@ -3141,6 +3291,8 @@ function createLabelsReport(data, labelType = 'hot') {
     const selectedPackingMethod = packingMethodSelect.value;
     const sortMode = sortModeSelect ? sortModeSelect.value : 'distribution';
     const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
+    const selectedCustomerType = customerTypeSelect ? customerTypeSelect.value : '';
+    const selectedKashrut = kashrutSelect ? kashrutSelect.value : '';
 
     if (orders) {
       // עבודה עם מבנה NoSQL
@@ -3152,20 +3304,59 @@ function createLabelsReport(data, labelType = 'hot') {
         ));
       }
 
+      // סינון לפי שיטת אריזה (חמגשיות / גסטרונום בלבד / תפזורת)
       if (selectedPackingMethod) {
         filteredOrders = Object.fromEntries(Object.entries(filteredOrders).filter(([key, order]) => {
-          // מציאת שיטת אריזה ראשית לפי PSPEC1
-          const pspec1Groups = {};
-          order.items.forEach(item => {
-            if (item.pspec1 && item.packMethodCode) {
-              if (!pspec1Groups[item.pspec1]) {
-                pspec1Groups[item.pspec1] = item.packMethodCode;
-              }
-            }
+          // בדיקה אם כל הפריטים הם חמגשית
+          const allItemsTray = order.items.every(item => {
+            const packMethod = (item.packMethodCode || '').toLowerCase();
+            const packDes = (item.packDes || '').toLowerCase();
+            return packMethod.includes('חמגשית') || packDes.includes('חמגשית');
           });
-          const firstPSpec1 = Object.keys(pspec1Groups).sort()[0];
-          const mainPackingMethod = firstPSpec1 && pspec1Groups[firstPSpec1] ? pspec1Groups[firstPSpec1] : '';
-          return mainPackingMethod === selectedPackingMethod;
+
+          // בדיקה אם יש רק גסטרונום (ללא חמגשית)
+          const hasOnlyGastronorm = order.items.every(item => {
+            const packDes = (item.packDes || '').toLowerCase();
+            const packMethod = (item.packMethodCode || '').toLowerCase();
+            // גסטרונום אבל לא חמגשית
+            return (packDes.includes('גסטרונום') || packDes.includes('גסטרו')) &&
+                   !packMethod.includes('חמגשית') && !packDes.includes('חמגשית');
+          });
+
+          if (selectedPackingMethod === 'tray') {
+            // חמגשיות - כל הפריטים חמגשית
+            return allItemsTray;
+          } else if (selectedPackingMethod === 'gastronorm') {
+            // גסטרונום בלבד
+            return hasOnlyGastronorm;
+          } else if (selectedPackingMethod === 'loose') {
+            // תפזורת - לא חמגשיות (כולל גסטרונום)
+            return !allItemsTray;
+          }
+          return true;
+        }));
+      }
+
+      // סינון לפי סוג לקוח (מילגם / לא מילגם)
+      if (selectedCustomerType) {
+        filteredOrders = Object.fromEntries(Object.entries(filteredOrders).filter(([key, order]) => {
+          const custDes = (order.custDes || '').toLowerCase();
+          const spec1 = (order.spec1 || '').toLowerCase();
+          const isMilgam = custDes.includes('מילגם') || spec1.includes('מילגם');
+
+          if (selectedCustomerType === 'milgam') {
+            return isMilgam;
+          } else if (selectedCustomerType === 'notMilgam') {
+            return !isMilgam;
+          }
+          return true;
+        }));
+      }
+
+      // סינון לפי כשרות
+      if (selectedKashrut) {
+        filteredOrders = Object.fromEntries(Object.entries(filteredOrders).filter(([key, order]) => {
+          return order.spec2 === selectedKashrut;
         }));
       }
 
@@ -3185,35 +3376,86 @@ function createLabelsReport(data, labelType = 'hot') {
       if (selectedLine) {
         filtered = filtered.filter(r => r.DISTRLINECODE === selectedLine);
       }
-      // סינון לפי שיטת אריזה ראשית בנתונים שטוחים יותר מורכב, נעשה לפי הזמנה
+
+      // סינון לפי שיטת אריזה (חמגשיות / גסטרונום בלבד / תפזורת)
       if (selectedPackingMethod) {
-        const ordersByPackingMethod = {};
+        const ordersByPacking = {};
         filtered.forEach(r => {
           const orderKey = r.ORDNAME;
-          if (!ordersByPackingMethod[orderKey]) {
-            ordersByPackingMethod[orderKey] = [];
+          if (!ordersByPacking[orderKey]) {
+            ordersByPacking[orderKey] = [];
           }
-          ordersByPackingMethod[orderKey].push(r);
+          ordersByPacking[orderKey].push(r);
         });
 
         const filteredOrders = {};
-        Object.keys(ordersByPackingMethod).forEach(orderKey => {
-          const orderItems = ordersByPackingMethod[orderKey];
-          const pspec1Groups = {};
-          orderItems.forEach(item => {
-            if (item.PSPEC1 && item.PACKMETHODCODE) {
-              if (!pspec1Groups[item.PSPEC1]) {
-                pspec1Groups[item.PSPEC1] = item.PACKMETHODCODE;
-              }
-            }
+        Object.keys(ordersByPacking).forEach(orderKey => {
+          const orderItems = ordersByPacking[orderKey];
+
+          const allItemsTray = orderItems.every(item => {
+            const packMethod = (item.PACKMETHODCODE || '').toLowerCase();
+            const packDes = (item.PACKDES || '').toLowerCase();
+            return packMethod.includes('חמגשית') || packDes.includes('חמגשית');
           });
-          const firstPSpec1 = Object.keys(pspec1Groups).sort()[0];
-          const mainPackingMethod = firstPSpec1 && pspec1Groups[firstPSpec1] ? pspec1Groups[firstPSpec1] : '';
-          if (mainPackingMethod === selectedPackingMethod) {
+
+          const hasOnlyGastronorm = orderItems.every(item => {
+            const packDes = (item.PACKDES || '').toLowerCase();
+            const packMethod = (item.PACKMETHODCODE || '').toLowerCase();
+            return (packDes.includes('גסטרונום') || packDes.includes('גסטרו')) &&
+                   !packMethod.includes('חמגשית') && !packDes.includes('חמגשית');
+          });
+
+          let match = false;
+          if (selectedPackingMethod === 'tray') {
+            match = allItemsTray;
+          } else if (selectedPackingMethod === 'gastronorm') {
+            match = hasOnlyGastronorm;
+          } else if (selectedPackingMethod === 'loose') {
+            match = !allItemsTray;
+          }
+
+          if (match) {
             filteredOrders[orderKey] = orderItems;
           }
         });
         filtered = Object.values(filteredOrders).flat();
+      }
+
+      // סינון לפי סוג לקוח (מילגם / לא מילגם)
+      if (selectedCustomerType) {
+        const ordersByCustomer = {};
+        filtered.forEach(r => {
+          const orderKey = r.ORDNAME;
+          if (!ordersByCustomer[orderKey]) {
+            ordersByCustomer[orderKey] = { items: [], custDes: r.CUSTDES, spec1: r.SPEC1 };
+          }
+          ordersByCustomer[orderKey].items.push(r);
+        });
+
+        const filteredOrders = {};
+        Object.keys(ordersByCustomer).forEach(orderKey => {
+          const order = ordersByCustomer[orderKey];
+          const custDes = (order.custDes || '').toLowerCase();
+          const spec1 = (order.spec1 || '').toLowerCase();
+          const isMilgam = custDes.includes('מילגם') || spec1.includes('מילגם');
+
+          let match = false;
+          if (selectedCustomerType === 'milgam') {
+            match = isMilgam;
+          } else if (selectedCustomerType === 'notMilgam') {
+            match = !isMilgam;
+          }
+
+          if (match) {
+            filteredOrders[orderKey] = order.items;
+          }
+        });
+        filtered = Object.values(filteredOrders).flat();
+      }
+
+      // סינון לפי כשרות
+      if (selectedKashrut) {
+        filtered = filtered.filter(r => r.SPEC2 === selectedKashrut);
       }
 
       // סינון לפי חיפוש - שם מוסד או מספר לקוח
@@ -3234,6 +3476,8 @@ function createLabelsReport(data, labelType = 'hot') {
   distrLineSelect.onchange = applyFilters;
   packingMethodSelect.onchange = applyFilters;
   if (sortModeSelect) sortModeSelect.onchange = applyFilters;
+  if (customerTypeSelect) customerTypeSelect.onchange = applyFilters;
+  if (kashrutSelect) kashrutSelect.onchange = applyFilters;
 
   // הוספת event listener לשדה החיפוש
   if (searchInput) {
@@ -3456,12 +3700,19 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       const packDes = String(item.packDes || '').toLowerCase();
       const pspec1 = String(item.pspec1 || '').toLowerCase();
       const mainPackingMethodStr = String(mainPackingMethod || '').toLowerCase();
-      
-      const isTray = packMethodCode.includes('חמגשית') || 
+
+      // זיהוי אלרגני/צמחוני - תמיד יטופלו כחמגשית!
+      const pspec1Lower = String(item.pspec1 || '').toLowerCase();
+      const isAllergenItem = pspec1Lower.includes('ללא אלרגני') || pspec1Lower.includes('לא אלרגני') ||
+                             pspec1Lower.includes('אלרגני');
+      const isVegetarianItem = item.isVegetarian === true;
+
+      const isTray = packMethodCode.includes('חמגשית') ||
                      packDes.includes('חמגשית') ||
                      pspec1.includes('חמגשית') ||
-                     mainPackingMethodStr.includes('חמגשית');
-      
+                     mainPackingMethodStr.includes('חמגשית') ||
+                     isAllergenItem || isVegetarianItem; // אלרגני/צמחוני = תמיד חמגשית
+
       if (isTray) {
         // עבור חמגשית - שמירת פריטים גולמיים (נקבץ אחר כך לפי ארוחה)
         trayItemsRaw.push({
@@ -3716,11 +3967,14 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
     };
 
     // פונקציה פנימית ליצירת מדבקה לפי שיטת אריזה
-    const renderLabelSticker = (itemsArray, isTray, traySize = '', currentLabelsMode = 'all') => {
+    const renderLabelSticker = (itemsArray, isTray, traySize = '', currentLabelsMode = 'all', cartonNumber = 0, totalCartons = 1) => {
       if (!itemsArray || itemsArray.length === 0) return;
-      
+
       // בדיקה אם זה מדבקה קרה
       const isColdLabel = currentLabelsMode === 'cold';
+
+      // הכנת טקסט מספר קרטון (אם יש יותר מ-1)
+      const cartonText = totalCartons > 1 ? `${cartonNumber}/${totalCartons}` : '';
 
       // קביעת טקסט למטה לפי סוג לקוח - אם מתחיל ב"מילגם" אז מילגם, אחרת פרטיים
       const spec1 = String(order.spec1 || '').trim();
@@ -3950,7 +4204,12 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
 
       // שורה ראשונה - שם מוסד וקו חלוקה - גובה קבוע
       html += '<td style="text-align:right !important;padding:1px 3px !important;border:1px solid #000 !important;line-height:1.0 !important;max-height:35px !important;height:35px !important;overflow:hidden !important;"><span style="font-size:1.2em !important;">שם מוסד: </span><strong style="font-size:' + institutionFontSize + ' !important;">' + institutionName + '</strong></td>';
-      html += '<td style="text-align:right !important;padding:1px 3px !important;border:1px solid #000 !important;font-size:1.4em !important;line-height:1.0 !important;max-height:35px !important;height:35px !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
+      // אם יש מספר קרטונים - להציג בעמודה נפרדת
+      if (cartonText) {
+        html += '<td style="text-align:center !important;padding:1px 3px !important;border:1px solid #000 !important;font-size:1.4em !important;line-height:1.0 !important;max-height:35px !important;height:35px !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + ' <span style="background:#ffeb3b !important;padding:2px 8px !important;border-radius:4px !important;font-weight:bold !important;font-size:1.2em !important;margin-right:10px !important;">' + cartonText + '</span></td>';
+      } else {
+        html += '<td style="text-align:right !important;padding:1px 3px !important;border:1px solid #000 !important;font-size:1.4em !important;line-height:1.0 !important;max-height:35px !important;height:35px !important;"><strong>קו חלוקה:</strong> ' + (order.distrLineDes || order.distrLineCode || '') + '</td>';
+      }
       html += '</tr>';
 
       html += '<tr>';
@@ -4136,11 +4395,15 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
         }
         
         // בדיקה אם זה פריט חמגשית או תפזורת
-        const itemIsTray = item.isTray === true;
-        
+        // פריטים אלרגניים או צמחוניים תמיד מוצגים כחמגשית!
+        const isAllergenOrVegetarian = item.hasNoAllergen || item.isVegetarian ||
+                                        partDesText.includes('אלרגני') || partDesText.includes('ללא אלרגנים');
+        const itemIsTray = item.isTray === true || isAllergenOrVegetarian;
+
         // בדיקה אם יש רק חמגשית (ללא תפזורת) - נשתמש במשתנים שנקבעו לפני הפונקציה
-        const isTrayOnly = hasTrayItems && !hasNonTrayItems && !isMixedMode;
-        
+        // אם יש פריט אלרגני/צמחוני - גם הוא נחשב כחמגשית לעניין זה
+        const isTrayOnly = (hasTrayItems && !hasNonTrayItems && !isMixedMode) || isAllergenOrVegetarian;
+
         if (itemIsTray && isTrayOnly) {
           // עבור חמגשית בלבד - 2 עמודות: כמות ותיאור מוצר
           const traySize = item.traySize || (item.eatQuantSmall > 0 && item.eatQuantLarge === 0 ? 'small' : 'large');
@@ -4359,7 +4622,65 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       // יצירת מדבקה אחת עם כל הפריטים (חמגשית ותפזורת)
       const allHotItems = [...allHotTrayItems, ...hotNonTrayItems.map(item => ({...item, isTray: false}))];
       if (allHotItems.length > 0) {
-        renderLabelSticker(allHotItems, false, '', 'hot'); // false = mixed mode (יכול להכיל גם חמגשית וגם תפזורת)
+        // חישוב מספר קרטונים נדרש
+        const hasTrayOnly = allHotItems.every(item => item.isTray === true);
+        let cartonsNeeded = 1;
+
+        if (hasTrayOnly) {
+          // חמגשית - לפי מספר חמגשיות
+          const smallTrays = allHotItems.filter(item => item.traySize === 'small');
+          const largeTrays = allHotItems.filter(item => item.traySize === 'large');
+          const totalSmall = smallTrays.reduce((sum, item) => sum + (item.eatQuant || item.totalQuantity || 0), 0);
+          const totalLarge = largeTrays.reduce((sum, item) => sum + (item.eatQuant || item.totalQuantity || 0), 0);
+
+          // חישוב קרטונים לפי גודל חמגשית
+          const smallCartons = totalSmall > 0 ? Math.ceil(totalSmall / CARTON_CONFIG.hotTray.smallTrayPerCarton) : 0;
+          const largeCartons = totalLarge > 0 ? Math.ceil(totalLarge / CARTON_CONFIG.hotTray.largeTrayPerCarton) : 0;
+          cartonsNeeded = Math.max(smallCartons, largeCartons, 1);
+        } else {
+          // תפזורת - לפי מיכלים ומארזים
+          const totalContainers = allHotItems.reduce((sum, item) => {
+            if (item.isTray) return sum;
+            return sum + (item.sumContainers || 0) + (item.sumPack5 || 0) + (item.sumPack7 || 0);
+          }, 0);
+          cartonsNeeded = Math.ceil(totalContainers / CARTON_CONFIG.hotLoose.containersPerCarton) || 1;
+        }
+
+        // הגבלה למקסימום 3 קרטונים
+        cartonsNeeded = Math.min(cartonsNeeded, 3);
+
+        if (cartonsNeeded <= 1) {
+          // קרטון בודד - כמו קודם
+          renderLabelSticker(allHotItems, false, '', 'hot');
+        } else {
+          // מספר קרטונים - יצירת מדבקה לכל קרטון
+          const dividedCartons = divideItemsToCartons(
+            allHotItems.map(item => ({
+              name: item.itemsKey || item.partDes || item.partName || '',
+              quantity: item.eatQuant || item.totalQuantity || item.sumQuant || 0,
+              containers: item.sumContainers || 0,
+              pack5: item.sumPack5 || 0,
+              pack7: item.sumPack7 || 0,
+              traySize: item.traySize || '',
+              ...item
+            })),
+            cartonsNeeded,
+            hasTrayOnly ? 'hotTray' : 'hotLoose'
+          );
+
+          dividedCartons.forEach((carton, index) => {
+            // עדכון הפריטים עם הכמויות המחולקות
+            const cartonItems = carton.items.map(item => ({
+              ...item,
+              eatQuant: item.quantity,
+              totalQuantity: item.quantity,
+              sumContainers: item.containers,
+              sumPack5: item.pack5,
+              sumPack7: item.pack7
+            }));
+            renderLabelSticker(cartonItems, false, '', 'hot', index + 1, cartonsNeeded);
+          });
+        }
       }
     }
     
@@ -4399,7 +4720,45 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       // יצירת מדבקה אחת עם כל הפריטים (חמגשית ותפזורת)
       const allColdItems = [...allColdTrayItems, ...coldNonTrayItems.map(item => ({...item, isTray: false}))];
       if (allColdItems.length > 0) {
-        renderLabelSticker(allColdItems, false, '', 'cold'); // false = mixed mode (יכול להכיל גם חמגשית וגם תפזורת)
+        // חישוב מספר קרטונים נדרש - לפי מספר פריטים ומנות
+        const itemCount = allColdItems.length;
+        const totalPortions = allColdItems.reduce((sum, item) =>
+          sum + (item.eatQuant || item.totalQuantity || item.sumQuant || 0), 0);
+
+        const portionsPerCarton = itemCount <= CARTON_CONFIG.cold.fewItemsThreshold
+          ? CARTON_CONFIG.cold.portionsPerCartonFewItems
+          : CARTON_CONFIG.cold.portionsPerCartonManyItems;
+
+        let cartonsNeeded = Math.ceil(totalPortions / portionsPerCarton) || 1;
+        // הגבלה למקסימום 3 קרטונים
+        cartonsNeeded = Math.min(cartonsNeeded, 3);
+
+        if (cartonsNeeded <= 1) {
+          // קרטון בודד - כמו קודם
+          renderLabelSticker(allColdItems, false, '', 'cold');
+        } else {
+          // מספר קרטונים - יצירת מדבקה לכל קרטון
+          const dividedCartons = divideItemsToCartons(
+            allColdItems.map(item => ({
+              name: item.itemsKey || item.partDes || item.partName || '',
+              quantity: item.eatQuant || item.totalQuantity || item.sumQuant || 0,
+              ...item
+            })),
+            cartonsNeeded,
+            'cold'
+          );
+
+          dividedCartons.forEach((carton, index) => {
+            // עדכון הפריטים עם הכמויות המחולקות
+            const cartonItems = carton.items.map(item => ({
+              ...item,
+              eatQuant: item.quantity,
+              totalQuantity: item.quantity,
+              sumQuant: item.quantity
+            }));
+            renderLabelSticker(cartonItems, false, '', 'cold', index + 1, cartonsNeeded);
+          });
+        }
       }
     }
   });
