@@ -381,7 +381,7 @@ function calculateContainersAndPacks(data) {
     }
     
     // חישוב מיכלים - אם יש פרמטר 7: (TQUANT / Y_9964_5_ESH) / מחלק, עגול כלפי מעלה
-    // מחלק: 6.5 לגסטרונום, 2 לשאר
+    // מחלק: 6.5 לגסטרונום, 2 למיכל רגיל בסניף צפון (3,4), 1 לסניף דרום (0,1)
     // חשוב: עיגול התוצאה ל-2 ספרות אחרי הנקודה לפני Math.ceil כדי למנוע בעיות floating point
     if (!isNaN(param7) && param7 > 0) {
       const divisionResult = tQuant / param7;
@@ -392,9 +392,21 @@ function calculateContainersAndPacks(data) {
       const packDes = String(newRow.PACKDES || newRow.packDes || '').toLowerCase();
       const isGastronome = pspec1.includes('גסטרונום') || packMethod.includes('גסטרונום') || packDes.includes('גסטרונום');
 
+      // בדיקת סניף - סניף דרום (0,1) לא מחלקים ב-2, סניף צפון (3,4) כן
+      const branchName = String(newRow.BRANCHNAME || '').trim();
+      const isSouthBranch = branchName === '0' || branchName === '1';
+
       // לגסטרונום: חילוק ב-6.5 ועיגול למעלה למספר שלם
-      // לשאר: חילוק ב-2
-      const divisor = isGastronome ? 6.5 : 2;
+      // למיכל רגיל בסניף צפון: חילוק ב-2
+      // למיכל רגיל בסניף דרום: לא מחלקים (מחלק = 1)
+      let divisor;
+      if (isGastronome) {
+        divisor = 6.5;
+      } else if (isSouthBranch) {
+        divisor = 1; // סניף דרום - לא מחלקים ב-2
+      } else {
+        divisor = 2; // סניף צפון - מחלקים ב-2
+      }
       const finalResult = divisionResult / divisor;
 
       // עיגול ל-2 ספרות אחרי הנקודה כדי למנוע בעיות floating point (למשל 3.0000000000000005 -> 3.00)
@@ -2556,15 +2568,25 @@ function showProductionReport() {
       const hasPacks = (pack5 > 0 || pack7 > 0) && param8 > 0;
 
       if (hasContainers) {
-        // מיכלים: כמות מיכלים × פרמטר 7
+        // מיכלים: כמות מיכלים × פרמטר 7 × מכפיל
         // זיהוי אם זה גסטרונום
         const isGastronome = pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום');
-        // מכפיל: 6.5 לגסטרונום, 2 למיכל רגיל
-        const multiplier = isGastronome ? 6.5 : 2;
+        // בדיקת סניף - סניף דרום (0,1) מכפיל 1, סניף צפון (3,4) מכפיל 2
+        const branchName = String(r.BRANCHNAME || r.branchName || '').trim();
+        const isSouthBranch = branchName === '0' || branchName === '1';
+        // מכפיל: 6.5 לגסטרונום, 1 לסניף דרום, 2 לסניף צפון
+        let multiplier;
+        if (isGastronome) {
+          multiplier = 6.5;
+        } else if (isSouthBranch) {
+          multiplier = 1; // סניף דרום - לא מכפילים
+        } else {
+          multiplier = 2; // סניף צפון - מכפילים ב-2
+        }
         const kgPerContainer = param7 * multiplier;
 
         if (!containerProduction[partDes]) {
-          containerProduction[partDes] = { containers: 0, kg: 0, param7: param7, multiplier: multiplier, kgPerContainer: kgPerContainer, isGastronome: isGastronome };
+          containerProduction[partDes] = { containers: 0, kg: 0, param7: param7, multiplier: multiplier, kgPerContainer: kgPerContainer, isGastronome: isGastronome, isSouthBranch: isSouthBranch };
         }
         containerProduction[partDes].containers += containers;
         containerProduction[partDes].kg += containers * kgPerContainer;
