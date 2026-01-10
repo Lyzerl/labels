@@ -2649,29 +2649,32 @@ function showProductionReport() {
     html += '<table style="width:100%;border-collapse:collapse;border:1px solid #ccc;margin-bottom:20px;">';
     html += '<thead><tr style="background:#fff3e0;">';
     html += '<th style="border:1px solid #ccc;padding:10px;text-align:right;">פריט</th>';
-    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">מארז 5</th>';
-    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">מארז 7</th>';
-    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">ק"ג למנה</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">כמות מארז 5</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">ק"ג למארז 5</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">כמות מארז 7</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">ק"ג למארז 7</th>';
     html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;background:#c8e6c9;font-weight:bold;">סה"כ ק"ג</th>';
     html += '</tr></thead><tbody>';
 
     let totalPacksKg = 0;
     packItems.forEach(([partDes, data], idx) => {
       const bgColor = idx % 2 === 0 ? '#fff' : '#f5f5f5';
-      const servings5 = data.pack5 * 5;
-      const servings7 = data.pack7 * 7;
+      // חישוב משקל למארז בודד: מנות × ק"ג למנה
+      const kgPerPack5 = 5 * data.param8;
+      const kgPerPack7 = 7 * data.param8;
       html += `<tr style="background:${bgColor};">`;
       html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;font-weight:bold;">${partDes}</td>`;
-      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${data.pack5.toFixed(0)} (${servings5} מנות)</td>`;
-      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${data.pack7.toFixed(0)} (${servings7} מנות)</td>`;
-      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${data.param8.toFixed(2)}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${data.pack5}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${kgPerPack5.toFixed(2)} ק"ג</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${data.pack7}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${kgPerPack7.toFixed(2)} ק"ג</td>`;
       html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;background:#e8f5e9;font-weight:bold;">${data.kg.toFixed(2)}</td>`;
       html += '</tr>';
       totalPacksKg += data.kg;
     });
 
     html += `<tr style="background:#c8e6c9;font-weight:bold;">`;
-    html += `<td style="border:1px solid #ccc;padding:10px;text-align:right;" colspan="4">סה"כ מארזים</td>`;
+    html += `<td style="border:1px solid #ccc;padding:10px;text-align:right;" colspan="5">סה"כ מארזים</td>`;
     html += `<td style="border:1px solid #ccc;padding:10px;text-align:center;font-size:1.1em;">${totalPacksKg.toFixed(2)} ק"ג</td>`;
     html += '</tr></tbody></table>';
   }
