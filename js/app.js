@@ -2532,10 +2532,12 @@ function showProductionReport() {
     filteredData = filteredData.filter(r => String(r.DISTRLINEDES || '').trim() === distrLineFilter);
   }
 
-  // איסוף נתונים לדוח ייצור
-  const containerProduction = {}; // מיכלים - לפי פריט
-  const packProduction = {}; // מארזים - לפי פריט
-  const trayProduction = {}; // חמגשיות - לפי שילוב פריטים
+  // איסוף נתונים לדוח ייצור - לפי קטגוריות כמו בדוח אריזה חמה
+  const gastronomeProduction = {}; // גסטרונום בנפרד
+  const looseProduction = {}; // תפזורת/מיכלים רגילים (לא גסטרונום)
+  const pack5Production = {}; // מארז 5
+  const pack7Production = {}; // מארז 7
+  const trayProduction = {}; // חמגשיות - לפי פריט
 
   filteredData.forEach(r => {
     const pm = String(r.PACKMETHODCODE || r.packMethodCode || '').trim().toLowerCase();
@@ -2547,60 +2549,58 @@ function showProductionReport() {
     const pack7 = parseFloat(r.PACK7 || r.pack7 || 0) || 0;
     const param7 = parseFloat(r.Y_9964_5_ESH || r.y9964 || 0) || 0; // כמות ק"ג למיכל
     const param8 = parseFloat(r.Y_9965_5_ESH || r.y9965 || 0) || 0; // כמות ק"ג למנה במארז
-    const eatQuant = parseFloat(r.EATQUANT || r.eatQuant || 0) || 0;
     const tQuant = parseFloat(r.TQUANT || r.tquant || 0) || 0; // משקל (כמות)
-    const orderName = String(r.ORDNAME || r.orderName || '').trim();
-    const mealName = String(r.MEALNAME || r.mealName || '').trim() || 'ללא_ארוחה';
+    const branchName = String(r.BRANCHNAME || r.branchName || '').trim();
+    const isSouthBranch = branchName === '0' || branchName === '1';
 
     // בדיקה אם זה חמגשית
     const isTray = pm.includes('חמגשית') || packDes.includes('חמגשית') || pspec1.includes('חמגשית');
-    const isLargeTray = packDes.includes('גד') || packDes.includes('גדול') || packDes.includes('גדולה');
+    // בדיקה אם זה גסטרונום
+    const isGastronome = pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום');
 
+    // לפי אותה לוגיקה כמו דוח אריזה חמה (else-if)
     if (isTray) {
       // חמגשית - סיכום משקל (TQUANT) לפי פריט
       if (!trayProduction[partDes]) {
         trayProduction[partDes] = { weight: 0 };
       }
       trayProduction[partDes].weight += tQuant;
-    } else {
-      // מיכלים ומארזים
-      const hasContainers = containers > 0 && param7 > 0;
-      const hasPacks = (pack5 > 0 || pack7 > 0) && param8 > 0;
-
-      if (hasContainers) {
-        // מיכלים: כמות מיכלים × פרמטר 7 × מכפיל
-        // זיהוי אם זה גסטרונום
-        const isGastronome = pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום');
-        // בדיקת סניף - סניף דרום (0,1) מכפיל 1, סניף צפון (3,4) מכפיל 2
-        const branchName = String(r.BRANCHNAME || r.branchName || '').trim();
-        const isSouthBranch = branchName === '0' || branchName === '1';
-        // מכפיל: 6.5 לגסטרונום, 1 לסניף דרום, 2 לסניף צפון
-        let multiplier;
-        if (isGastronome) {
-          multiplier = 6.5;
-        } else if (isSouthBranch) {
-          multiplier = 1; // סניף דרום - לא מכפילים
-        } else {
-          multiplier = 2; // סניף צפון - מכפילים ב-2
-        }
-        const kgPerContainer = param7 * multiplier;
-
-        if (!containerProduction[partDes]) {
-          containerProduction[partDes] = { containers: 0, kg: 0, param7: param7, multiplier: multiplier, kgPerContainer: kgPerContainer, isGastronome: isGastronome, isSouthBranch: isSouthBranch };
-        }
-        containerProduction[partDes].containers += containers;
-        containerProduction[partDes].kg += containers * kgPerContainer;
+    }
+    else if (isGastronome && containers > 0) {
+      // גסטרונום - מכפיל קבוע 6.5
+      const multiplier = 6.5;
+      const kgPerContainer = param7 * multiplier;
+      if (!gastronomeProduction[partDes]) {
+        gastronomeProduction[partDes] = { containers: 0, kg: 0, param7: param7, multiplier: multiplier, kgPerContainer: kgPerContainer };
       }
-
-      if (hasPacks) {
-        // מארזים: (מארז5 × 5 × פרמטר8) + (מארז7 × 7 × פרמטר8)
-        if (!packProduction[partDes]) {
-          packProduction[partDes] = { pack5: 0, pack7: 0, kg: 0, param8: param8 };
-        }
-        packProduction[partDes].pack5 += pack5;
-        packProduction[partDes].pack7 += pack7;
-        packProduction[partDes].kg += (pack5 * 5 * param8) + (pack7 * 7 * param8);
+      gastronomeProduction[partDes].containers += containers;
+      gastronomeProduction[partDes].kg += containers * kgPerContainer;
+    }
+    else if (pack7 > 0) {
+      // מארז 7 - לפני מיכלים
+      if (!pack7Production[partDes]) {
+        pack7Production[partDes] = { count: 0, kg: 0, param8: param8 };
       }
+      pack7Production[partDes].count += pack7;
+      pack7Production[partDes].kg += pack7 * 7 * param8;
+    }
+    else if (pack5 > 0) {
+      // מארז 5 - לפני מיכלים
+      if (!pack5Production[partDes]) {
+        pack5Production[partDes] = { count: 0, kg: 0, param8: param8 };
+      }
+      pack5Production[partDes].count += pack5;
+      pack5Production[partDes].kg += pack5 * 5 * param8;
+    }
+    else if (containers > 0) {
+      // תפזורת/מיכלים רגילים (לא גסטרונום)
+      const multiplier = isSouthBranch ? 1 : 2;
+      const kgPerContainer = param7 * multiplier;
+      if (!looseProduction[partDes]) {
+        looseProduction[partDes] = { containers: 0, kg: 0, param7: param7, multiplier: multiplier, kgPerContainer: kgPerContainer, isSouthBranch: isSouthBranch };
+      }
+      looseProduction[partDes].containers += containers;
+      looseProduction[partDes].kg += containers * kgPerContainer;
     }
   });
 
@@ -2610,10 +2610,40 @@ function showProductionReport() {
   let html = '<div style="padding:20px;direction:rtl;">';
   html += '<h2 style="text-align:center;color:#FF9800;">🏭 דוח ייצור - כמויות ק"ג</h2>';
 
-  // טבלת מיכלים
-  const containerItems = Object.entries(containerProduction).sort((a, b) => a[0].localeCompare(b[0]));
-  if (containerItems.length > 0) {
-    html += '<h3 style="background:#4FC3F7;padding:10px;margin:20px 0 0 0;border-radius:5px 5px 0 0;">📦 מיכלים</h3>';
+  // טבלת גסטרונום
+  const gastronomeItems = Object.entries(gastronomeProduction).sort((a, b) => a[0].localeCompare(b[0]));
+  if (gastronomeItems.length > 0) {
+    html += '<h3 style="background:#E91E63;padding:10px;margin:20px 0 0 0;border-radius:5px 5px 0 0;color:white;">🍲 גסטרונום</h3>';
+    html += '<table style="width:100%;border-collapse:collapse;border:1px solid #ccc;margin-bottom:20px;">';
+    html += '<thead><tr style="background:#fce4ec;">';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:right;">פריט</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">כמות</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">ק"ג למיכל (חישוב)</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;background:#c8e6c9;font-weight:bold;">סה"כ ק"ג</th>';
+    html += '</tr></thead><tbody>';
+
+    let totalGastronomeKg = 0;
+    gastronomeItems.forEach(([partDes, data], idx) => {
+      const bgColor = idx % 2 === 0 ? '#fff' : '#f5f5f5';
+      html += `<tr style="background:${bgColor};">`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;font-weight:bold;">${partDes}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${data.containers.toFixed(0)}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${data.kgPerContainer.toFixed(2)} <span style="font-size:0.8em;color:#666;">(${data.param7}×6.5)</span></td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;background:#e8f5e9;font-weight:bold;">${data.kg.toFixed(2)}</td>`;
+      html += '</tr>';
+      totalGastronomeKg += data.kg;
+    });
+
+    html += `<tr style="background:#c8e6c9;font-weight:bold;">`;
+    html += `<td style="border:1px solid #ccc;padding:10px;text-align:right;" colspan="3">סה"כ גסטרונום</td>`;
+    html += `<td style="border:1px solid #ccc;padding:10px;text-align:center;font-size:1.1em;">${totalGastronomeKg.toFixed(2)} ק"ג</td>`;
+    html += '</tr></tbody></table>';
+  }
+
+  // טבלת תפזורת/מיכלים רגילים
+  const looseItems = Object.entries(looseProduction).sort((a, b) => a[0].localeCompare(b[0]));
+  if (looseItems.length > 0) {
+    html += '<h3 style="background:#4FC3F7;padding:10px;margin:20px 0 0 0;border-radius:5px 5px 0 0;">📦 תפזורת (מיכלים)</h3>';
     html += '<table style="width:100%;border-collapse:collapse;border:1px solid #ccc;margin-bottom:20px;">';
     html += '<thead><tr style="background:#e3f2fd;">';
     html += '<th style="border:1px solid #ccc;padding:10px;text-align:right;">פריט</th>';
@@ -2622,60 +2652,83 @@ function showProductionReport() {
     html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;background:#c8e6c9;font-weight:bold;">סה"כ ק"ג</th>';
     html += '</tr></thead><tbody>';
 
-    let totalContainersKg = 0;
-    containerItems.forEach(([partDes, data], idx) => {
+    let totalLooseKg = 0;
+    looseItems.forEach(([partDes, data], idx) => {
       const bgColor = idx % 2 === 0 ? '#fff' : '#f5f5f5';
       html += `<tr style="background:${bgColor};">`;
       html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;font-weight:bold;">${partDes}</td>`;
       html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${data.containers.toFixed(0)}</td>`;
-      // הצגת החישוב: פרמטר7 × מכפיל = ק"ג למיכל
-      const containerType = data.isGastronome ? 'גסטרו' : 'מיכל';
       html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${data.kgPerContainer.toFixed(2)} <span style="font-size:0.8em;color:#666;">(${data.param7}×${data.multiplier})</span></td>`;
       html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;background:#e8f5e9;font-weight:bold;">${data.kg.toFixed(2)}</td>`;
       html += '</tr>';
-      totalContainersKg += data.kg;
+      totalLooseKg += data.kg;
     });
 
     html += `<tr style="background:#c8e6c9;font-weight:bold;">`;
-    html += `<td style="border:1px solid #ccc;padding:10px;text-align:right;" colspan="3">סה"כ מיכלים</td>`;
-    html += `<td style="border:1px solid #ccc;padding:10px;text-align:center;font-size:1.1em;">${totalContainersKg.toFixed(2)} ק"ג</td>`;
+    html += `<td style="border:1px solid #ccc;padding:10px;text-align:right;" colspan="3">סה"כ תפזורת</td>`;
+    html += `<td style="border:1px solid #ccc;padding:10px;text-align:center;font-size:1.1em;">${totalLooseKg.toFixed(2)} ק"ג</td>`;
     html += '</tr></tbody></table>';
   }
 
-  // טבלת מארזים
-  const packItems = Object.entries(packProduction).sort((a, b) => a[0].localeCompare(b[0]));
-  if (packItems.length > 0) {
-    html += '<h3 style="background:#FF9800;padding:10px;margin:20px 0 0 0;border-radius:5px 5px 0 0;color:white;">📦 מארזים</h3>';
+  // טבלת מארז 5
+  const pack5Items = Object.entries(pack5Production).sort((a, b) => a[0].localeCompare(b[0]));
+  if (pack5Items.length > 0) {
+    html += '<h3 style="background:#FF9800;padding:10px;margin:20px 0 0 0;border-radius:5px 5px 0 0;color:white;">📦 מארז 5</h3>';
     html += '<table style="width:100%;border-collapse:collapse;border:1px solid #ccc;margin-bottom:20px;">';
     html += '<thead><tr style="background:#fff3e0;">';
     html += '<th style="border:1px solid #ccc;padding:10px;text-align:right;">פריט</th>';
-    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">כמות מארז 5</th>';
-    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">ק"ג למארז 5</th>';
-    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">כמות מארז 7</th>';
-    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">ק"ג למארז 7</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">כמות מארזים</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">ק"ג למארז בודד</th>';
     html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;background:#c8e6c9;font-weight:bold;">סה"כ ק"ג</th>';
     html += '</tr></thead><tbody>';
 
-    let totalPacksKg = 0;
-    packItems.forEach(([partDes, data], idx) => {
+    let totalPack5Kg = 0;
+    pack5Items.forEach(([partDes, data], idx) => {
       const bgColor = idx % 2 === 0 ? '#fff' : '#f5f5f5';
-      // חישוב משקל למארז בודד: מנות × ק"ג למנה
-      const kgPerPack5 = 5 * data.param8;
-      const kgPerPack7 = 7 * data.param8;
+      const kgPerPack = 5 * data.param8;
       html += `<tr style="background:${bgColor};">`;
       html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;font-weight:bold;">${partDes}</td>`;
-      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${data.pack5}</td>`;
-      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${kgPerPack5.toFixed(2)} ק"ג</td>`;
-      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${data.pack7}</td>`;
-      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${kgPerPack7.toFixed(2)} ק"ג</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${data.count}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${kgPerPack.toFixed(2)} <span style="font-size:0.8em;color:#666;">(5×${data.param8})</span></td>`;
       html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;background:#e8f5e9;font-weight:bold;">${data.kg.toFixed(2)}</td>`;
       html += '</tr>';
-      totalPacksKg += data.kg;
+      totalPack5Kg += data.kg;
     });
 
     html += `<tr style="background:#c8e6c9;font-weight:bold;">`;
-    html += `<td style="border:1px solid #ccc;padding:10px;text-align:right;" colspan="5">סה"כ מארזים</td>`;
-    html += `<td style="border:1px solid #ccc;padding:10px;text-align:center;font-size:1.1em;">${totalPacksKg.toFixed(2)} ק"ג</td>`;
+    html += `<td style="border:1px solid #ccc;padding:10px;text-align:right;" colspan="3">סה"כ מארז 5</td>`;
+    html += `<td style="border:1px solid #ccc;padding:10px;text-align:center;font-size:1.1em;">${totalPack5Kg.toFixed(2)} ק"ג</td>`;
+    html += '</tr></tbody></table>';
+  }
+
+  // טבלת מארז 7
+  const pack7Items = Object.entries(pack7Production).sort((a, b) => a[0].localeCompare(b[0]));
+  if (pack7Items.length > 0) {
+    html += '<h3 style="background:#795548;padding:10px;margin:20px 0 0 0;border-radius:5px 5px 0 0;color:white;">📦 מארז 7</h3>';
+    html += '<table style="width:100%;border-collapse:collapse;border:1px solid #ccc;margin-bottom:20px;">';
+    html += '<thead><tr style="background:#efebe9;">';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:right;">פריט</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">כמות מארזים</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">ק"ג למארז בודד</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;background:#c8e6c9;font-weight:bold;">סה"כ ק"ג</th>';
+    html += '</tr></thead><tbody>';
+
+    let totalPack7Kg = 0;
+    pack7Items.forEach(([partDes, data], idx) => {
+      const bgColor = idx % 2 === 0 ? '#fff' : '#f5f5f5';
+      const kgPerPack = 7 * data.param8;
+      html += `<tr style="background:${bgColor};">`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;font-weight:bold;">${partDes}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${data.count}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${kgPerPack.toFixed(2)} <span style="font-size:0.8em;color:#666;">(7×${data.param8})</span></td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;background:#e8f5e9;font-weight:bold;">${data.kg.toFixed(2)}</td>`;
+      html += '</tr>';
+      totalPack7Kg += data.kg;
+    });
+
+    html += `<tr style="background:#c8e6c9;font-weight:bold;">`;
+    html += `<td style="border:1px solid #ccc;padding:10px;text-align:right;" colspan="3">סה"כ מארז 7</td>`;
+    html += `<td style="border:1px solid #ccc;padding:10px;text-align:center;font-size:1.1em;">${totalPack7Kg.toFixed(2)} ק"ג</td>`;
     html += '</tr></tbody></table>';
   }
 
