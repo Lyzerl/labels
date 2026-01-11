@@ -1,4 +1,154 @@
 
+// ========== מערכת Cache מרכזית לשיפור ביצועים ==========
+const DataCache = {
+  // נתונים שטוחים - מחושבים פעם אחת ומשותפים לכל הדוחות
+  flatData: null,
+
+  // metadata - ערכים ייחודיים לסינונים
+  metadata: {
+    branches: [],
+    distrLines: [],
+    pspec1Values: [],
+    pspec6Values: [],
+    kashrutValues: [],
+    packMethods: []
+  },
+
+  // מעקב אילו דוחות נבנו (lazy loading)
+  reportsBuilt: {
+    summary: false,
+    trays: false,
+    allergens: false,
+    labelsHot: false,
+    labelsCold: false,
+    allergenLabels: false,
+    driver: false
+  },
+
+  // איפוס cache כשמגיעים נתונים חדשים
+  reset: function() {
+    this.flatData = null;
+    this.metadata = {
+      branches: [],
+      distrLines: [],
+      pspec1Values: [],
+      pspec6Values: [],
+      kashrutValues: [],
+      packMethods: []
+    };
+    this.reportsBuilt = {
+      summary: false,
+      trays: false,
+      allergens: false,
+      labelsHot: false,
+      labelsCold: false,
+      allergenLabels: false,
+      driver: false
+    };
+  },
+
+  // יצירת flatData פעם אחת
+  getFlatData: function(structuredData) {
+    if (this.flatData) {
+      return this.flatData;
+    }
+
+    console.time('⚡ flattenData');
+    this.flatData = Object.values(structuredData).flatMap(order =>
+      order.items.map(item => ({
+        ...item,
+        BRANCHNAME: order.branchName || '',
+        PSPEC6: String(item.pspec6 || '').trim(),
+        PSPEC1: String(item.pspec1 || '').trim(),
+        PARTNAME: String(item.partName || '').trim(),
+        PARTDES: String(item.partDes || '').trim(),
+        TQUANT: parseFloat(item.tQuant || 0) || 0,
+        EATQUANT: parseFloat(item.eatQuant || 0) || 0,
+        SPEC2: String(order.spec2 || '').trim(),
+        CARTON_TYPE: String(item.cartonType || item.Y_37210_5_ESH || order.Y_37210_5_ESH || '').trim(),
+        PACKMETHODCODE: String(item.packMethodCode || '').trim(),
+        packMethodCode: String(item.packMethodCode || '').trim(),
+        CONTAINERS: item.containers || '',
+        PACK5: parseFloat(item.pack5) || 0,
+        PACK7: parseFloat(item.pack7) || 0,
+        PACKDES: String(item.packDes || '').trim(),
+        ORDNAME: String(order.orderName || '').trim(),
+        CUSTDES: String(order.custDes || '').trim(),
+        CODEDES: String(order.codeDes || '').trim(),
+        CUSTNAME: String(order.custName || '').trim(),
+        DISTRLINEDES: String(order.distrLineDes || '').trim(),
+        DISTRORDER: parseInt(order.distrOrder || 0) || 0,
+        LOADORDER: parseInt(order.loadOrder || 0) || 0,
+        KOSHERDES: String(order.kosherDes || item.kosherDes || '').trim(),
+        Y_37210_5_ESH: String(item.Y_37210_5_ESH || order.Y_37210_5_ESH || '').trim(),
+        Y_9964_5_ESH: item.Y_9964_5_ESH || item.y9964 || 0,
+        MEALNAME: String(item.mealName || '').trim()
+      }))
+    );
+    console.timeEnd('⚡ flattenData');
+    console.log('📊 Cache: flatData יצר', this.flatData.length, 'שורות');
+
+    // חישוב metadata פעם אחת
+    this.buildMetadata();
+
+    return this.flatData;
+  },
+
+  // חישוב metadata פעם אחת
+  buildMetadata: function() {
+    if (!this.flatData || this.metadata.branches.length > 0) return;
+
+    console.time('⚡ buildMetadata');
+    const data = this.flatData;
+
+    // איסוף כל הערכים הייחודיים במעבר אחד
+    const branchesSet = new Set();
+    const distrLinesSet = new Set();
+    const pspec1Set = new Set();
+    const pspec6Set = new Set();
+    const kashrutSet = new Set();
+    const packMethodsSet = new Set();
+
+    data.forEach(row => {
+      if (row.BRANCHNAME) branchesSet.add(row.BRANCHNAME);
+      if (row.DISTRLINEDES) distrLinesSet.add(row.DISTRLINEDES);
+      if (row.PSPEC1) pspec1Set.add(row.PSPEC1);
+      if (row.PSPEC6) pspec6Set.add(row.PSPEC6);
+      if (row.KOSHERDES) kashrutSet.add(row.KOSHERDES);
+      if (row.PACKMETHODCODE) packMethodsSet.add(row.PACKMETHODCODE);
+    });
+
+    this.metadata.branches = [...branchesSet].sort();
+    this.metadata.distrLines = [...distrLinesSet].sort();
+    this.metadata.pspec1Values = [...pspec1Set].sort();
+    this.metadata.pspec6Values = [...pspec6Set].sort();
+    this.metadata.kashrutValues = [...kashrutSet].sort();
+    this.metadata.packMethods = [...packMethodsSet].sort();
+
+    console.timeEnd('⚡ buildMetadata');
+    console.log('📊 Cache: metadata נבנה -',
+      this.metadata.branches.length, 'סניפים,',
+      this.metadata.distrLines.length, 'קווי חלוקה,',
+      this.metadata.kashrutValues.length, 'כשרויות'
+    );
+  },
+
+  // פונקציית עזר ליצירת dropdown
+  populateDropdown: function(selectElement, values, defaultText = 'הכל') {
+    if (!selectElement) return;
+    selectElement.innerHTML = `<option value="">${defaultText}</option>`;
+    values.forEach(value => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = value;
+      selectElement.appendChild(option);
+    });
+  }
+};
+
+// ייצוא גלובלי
+window.DataCache = DataCache;
+
 // פונקציות לניהול הגדרות קרטונים
 function openCartonSettingsModal() {
   const modal = document.getElementById('cartonSettingsModal');
@@ -500,6 +650,9 @@ async function fetchData() {
   tableContainer.innerHTML = '';
   currentData = [];
   currentStructuredData = {};
+
+  // איפוס cache לנתונים חדשים
+  DataCache.reset();
   
   try {
     let allData = [];
@@ -594,16 +747,19 @@ async function fetchData() {
       // שמירת הנתונים
       currentData = allDataWithCalculations;
       currentStructuredData = structuredData;
-      
-      // הצגת הטבלה והדוחות
+
+      // יצירת flatData ו-metadata פעם אחת (lazy - ייבנה בשימוש הראשון)
+      console.time('⚡ Pre-build cache');
+      DataCache.getFlatData(structuredData);
+      console.timeEnd('⚡ Pre-build cache');
+
+      // הצגת הטבלה הכללית בלבד (תמיד נראית)
       createTable(allDataWithCalculations);
-      createSummaryReport(structuredData);
-      createTraysReport(structuredData);
-      createAllergensReport(structuredData);
-      createLabelsReport(structuredData, 'hot');
-      createLabelsReport(structuredData, 'cold');
-      createAllergenLabelsReport(structuredData);
-      
+
+      // LAZY LOADING: הדוחות האחרים ייבנו רק כשלוחצים על הטאב שלהם
+      // אתחול containers ריקים עם הודעת טעינה
+      initLazyReportContainers();
+
       // הצגת טאבים
       document.getElementById('tabsContainer').style.display = 'flex';
       statusDiv.className = 'status success';
@@ -776,7 +932,30 @@ function downloadCSV() {
   link.click();
 }
 
-// פונקציה להחלפת טאבים
+// פונקציה לאתחול containers עם הודעת טעינה (lazy loading)
+function initLazyReportContainers() {
+  const loadingHTML = '<div style="text-align:center;padding:50px;color:#666;"><div class="loader"></div><p>לחץ על הטאב כדי לטעון את הדוח...</p></div>';
+
+  // אתחול כל ה-containers (הדוחות ייבנו רק כשלוחצים על הטאב)
+  const containers = {
+    summaryContainer: 'summary',
+    traysContainer: 'trays',
+    allergensContainer: 'allergens',
+    hotLabelsContainer: 'labelsHot',
+    coldLabelsContainer: 'labelsCold',
+    allergenLabelsContainer: 'allergenLabels',
+    driverReportContainer: 'driver'
+  };
+
+  Object.keys(containers).forEach(containerId => {
+    const container = document.getElementById(containerId);
+    if (container) {
+      container.innerHTML = loadingHTML;
+    }
+  });
+}
+
+// פונקציה להחלפת טאבים עם lazy loading
 function showTab(tabName, button) {
   // הסתרת כל התוכן
   document.querySelectorAll('.tab-content').forEach(tab => {
@@ -785,11 +964,35 @@ function showTab(tabName, button) {
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.remove('active');
   });
-  
+
   // הצגת הטאב הנבחר
   document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.add('active');
   if (button) {
     button.classList.add('active');
+  }
+
+  // LAZY LOADING: בניית הדוח רק אם עוד לא נבנה
+  if (!currentStructuredData || Object.keys(currentStructuredData).length === 0) {
+    return; // אין נתונים עדיין
+  }
+
+  const reportMap = {
+    'summary': { built: 'summary', builder: () => createSummaryReport(currentStructuredData) },
+    'trays': { built: 'trays', builder: () => createTraysReport(currentStructuredData) },
+    'allergens': { built: 'allergens', builder: () => createAllergensReport(currentStructuredData) },
+    'labelsHot': { built: 'labelsHot', builder: () => createLabelsReport(currentStructuredData, 'hot') },
+    'labelsCold': { built: 'labelsCold', builder: () => createLabelsReport(currentStructuredData, 'cold') },
+    'allergenLabels': { built: 'allergenLabels', builder: () => createAllergenLabelsReport(currentStructuredData) },
+    'driver': { built: 'driver', builder: () => createDriverReport(currentStructuredData) }
+  };
+
+  const report = reportMap[tabName];
+  if (report && !DataCache.reportsBuilt[report.built]) {
+    console.time(`⚡ Build report: ${tabName}`);
+    report.builder();
+    DataCache.reportsBuilt[report.built] = true;
+    console.timeEnd(`⚡ Build report: ${tabName}`);
+    console.log(`📊 Lazy loaded: ${tabName}`);
   }
 }
 
@@ -798,55 +1001,16 @@ function createSummaryReport(data) {
   const container = document.getElementById('summaryContainer');
   const branchFilter = document.getElementById('summaryBranchFilter');
   const pspec6Filter = document.getElementById('summaryPSPEC6Filter');
-  
-  // המרה לנתונים שטוחים אם צריך (אם זה NoSQL) - שימוש בנתונים מהטבלה המקורית בלבד
-  const flatData = Array.isArray(data) ? data : Object.values(data).flatMap(order => 
-    order.items.map(item => ({
-      ...item,
-      BRANCHNAME: order.branchName || '',
-      PSPEC6: String(item.pspec6 || '').trim(),
-      PSPEC1: String(item.pspec1 || '').trim(),
-      PARTNAME: String(item.partName || '').trim(),
-      PARTDES: String(item.partDes || '').trim(),
-      TQUANT: parseFloat(item.tQuant || 0) || 0,
-      EATQUANT: parseFloat(item.eatQuant || 0) || 0,
-      SPEC2: String(order.spec2 || '').trim(),
-      CARTON_TYPE: String(item.cartonType || item.Y_37210_5_ESH || order.Y_37210_5_ESH || '').trim(),
-      PACKMETHODCODE: String(item.packMethodCode || '').trim(), // שיטת אריזה - חשוב לבדיקה
-      packMethodCode: String(item.packMethodCode || '').trim(), // גם בשדה הקטן
-      CONTAINERS: item.containers || '',
-      PACK5: parseFloat(item.pack5) || 0,
-      PACK7: parseFloat(item.pack7) || 0,
-      PACKDES: String(item.packDes || '').trim(),
-      ORDNAME: String(order.orderName || '').trim()
-    }))
-  );
-  
+
+  // שימוש ב-cache במקום לחשב מחדש
+  const flatData = DataCache.getFlatData(data);
+
   // בדיקה - הצגת מידע על הנתונים
   console.log('📊 דוח סיכום - סה"כ נתונים:', flatData.length);
-  if (flatData.length > 0) {
-    const packMethods = [...new Set(flatData.map(r => r.PACKMETHODCODE || r.packMethodCode || '').filter(Boolean))];
-    console.log('📊 שיטות אריזה שנמצאו:', packMethods);
-  }
-  
-  // איסוף ערכים ייחודיים לסינונים
-  const branches = [...new Set(flatData.map(r => r.BRANCHNAME || '').filter(Boolean))].sort();
-  branchFilter.innerHTML = '<option value="">הכל</option>';
-  branches.forEach(branch => {
-    const option = document.createElement('option');
-    option.value = branch;
-    option.textContent = branch;
-    branchFilter.appendChild(option);
-  });
-  
-  const pspec6Values = [...new Set(flatData.map(r => r.PSPEC1 || '').filter(Boolean))].sort();
-  pspec6Filter.innerHTML = '<option value="all">הכל</option>';
-  pspec6Values.forEach(pspec6 => {
-    const option = document.createElement('option');
-    option.value = pspec6;
-    option.textContent = pspec6;
-    pspec6Filter.appendChild(option);
-  });
+
+  // שימוש ב-metadata מה-cache במקום לחשב מחדש
+  DataCache.populateDropdown(branchFilter, DataCache.metadata.branches);
+  DataCache.populateDropdown(pspec6Filter, DataCache.metadata.pspec1Values);
   
   // שמירת נתונים מקוריים
   window.allSummaryData = flatData;
@@ -1006,56 +1170,22 @@ function applySummaryFilters() {
 // דוח אריזה חמה - טבלאות נפרדות לפי קטגוריות
 function createTraysReport(data) {
   const container = document.getElementById('traysContainer');
-  
+
   // בדיקת בטיחות
   if (!container) {
     console.error('❌ אלמנטים לא נמצאו לדוח אריזה חמה');
     return;
   }
-  
+
   if (!data || (Array.isArray(data) && data.length === 0) || (!Array.isArray(data) && Object.keys(data).length === 0)) {
     console.warn('⚠️ אין נתונים לדוח אריזה חמה');
     container.innerHTML = '<p style="text-align:center;padding:50px;color:#999;">אין נתונים להצגה</p>';
     window.allTraysData = [];
     return;
   }
-  
-  // המרה לנתונים שטוחים - שימוש בנתונים מהטבלה המקורית בלבד
-  let flatData = Array.isArray(data) ? data : Object.values(data).flatMap(order => {
-    if (!order || !order.items || !Array.isArray(order.items)) {
-      return [];
-    }
-    return order.items.map(item => ({
-      ...item,
-      BRANCHNAME: order.branchName || '',
-      DISTRLINECODE: String(order.distrLineCode || item.distrLineCode || '').trim(),
-      distrLineCode: String(order.distrLineCode || item.distrLineCode || '').trim(),
-      DISTRLINEDES: String(order.distrLineDes || item.distrLineDes || '').trim(),
-      distrLineDes: String(order.distrLineDes || item.distrLineDes || '').trim(),
-      CUSTDES: String(order.custDes || item.custDes || '').trim(),
-      custDes: String(order.custDes || item.custDes || '').trim(),
-      PSPEC1: String(item.pspec1 || '').trim(),
-      PSPEC6: String(item.pspec6 || '').trim(),
-      PARTDES: String(item.partDes || '').trim(),
-      PACKMETHODCODE: String(item.packMethodCode || '').trim(),
-      packMethodCode: String(item.packMethodCode || '').trim(),
-      PACKDES: String(item.packDes || '').trim(),
-      TQUANT: parseFloat(item.tQuant || 0) || 0,
-      EATQUANT: parseFloat(item.eatQuant || 0) || 0,
-      SPEC2: String(order.spec2 || '').trim(),
-      PSPEC2: String(item.pspec2 || '').trim(),
-      ORDNAME: String(order.orderName || '').trim(),
-      MEALNAME: String(item.mealName || '').trim(),
-      CARTON_TYPE: String(item.cartonType || item.Y_37210_5_ESH || order.Y_37210_5_ESH || '').trim(),
-      cartonType: String(item.cartonType || item.Y_37210_5_ESH || order.Y_37210_5_ESH || '').trim(),
-      CONTAINERS: parseFloat(item.containers || 0) || 0,
-      containers: parseFloat(item.containers || 0) || 0,
-      PACK5: parseFloat(item.pack5 || 0) || 0,
-      pack5: parseFloat(item.pack5 || 0) || 0,
-      PACK7: parseFloat(item.pack7 || 0) || 0,
-      pack7: parseFloat(item.pack7 || 0) || 0
-    }));
-  });
+
+  // שימוש ב-cache במקום לחשב מחדש
+  let flatData = DataCache.getFlatData(data);
   
   console.log('📊 דוח אריזה חמה - סה"כ נתונים לפני סינון:', flatData.length);
   
