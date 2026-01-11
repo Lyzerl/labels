@@ -69,6 +69,7 @@
     <button class="tab-btn" onclick="showTab('labelsHot', this)">🏷️🔥 מדבקות חמים</button>
     <button class="tab-btn" onclick="showTab('labelsCold', this)">🏷️❄️ מדבקות קרים</button>
     <button class="tab-btn" onclick="showTab('allergenLabels', this)">🥜 מדבקות אלרגנים</button>
+    <button class="tab-btn" onclick="showTab('driver', this)">🚚 דוח נהג</button>
   </div>
 
   <!-- תוכן טאבים -->
@@ -214,6 +215,20 @@
       <button class="btn download" onclick="downloadAllergenLabelsPDF()" id="downloadAllergenLabelsPDFBtn">📄 הורד PDF</button>
     </div>
     <div class="table-container" id="allergenLabelsContainer"></div>
+  </div>
+
+  <div id="tabDriver" class="tab-content">
+    <div class="report-controls">
+      <label>קו חלוקה:</label>
+      <select id="driverDistrLineFilter">
+        <option value="">הכל</option>
+      </select>
+    </div>
+    <div class="labels-actions">
+      <button class="btn download" onclick="printDriverReport()">🖨️ הדפס דוח</button>
+      <button class="btn download" onclick="downloadDriverPDF()">📄 הורד PDF</button>
+    </div>
+    <div class="table-container" id="driverReportContainer"></div>
   </div>
 </div>
 

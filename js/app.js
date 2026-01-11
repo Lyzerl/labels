@@ -6360,4 +6360,224 @@ window.showTab = function(tabName, button) {
   if (tabName === 'packing') {
     loadPackingSettings();
   }
+
+  // טעינת דוח נהג אם צריך
+  if (tabName === 'driver') {
+    generateDriverReport();
+  }
 };
+
+// =====================================
+// דוח נהג - כמה קרטונים לכל לקוח
+// =====================================
+
+function generateDriverReport() {
+  const container = document.getElementById('driverReportContainer');
+  const distrLineFilter = document.getElementById('driverDistrLineFilter');
+
+  if (!globalData || Object.keys(globalData).length === 0) {
+    container.innerHTML = '<p style="text-align:center;color:#666;padding:20px;">אין נתונים להצגה</p>';
+    return;
+  }
+
+  // איסוף נתונים מכל ההזמנות
+  const customerData = {};
+
+  Object.values(globalData).forEach(order => {
+    const custDes = String(order.custDes || '').trim();
+    const custName = String(order.custName || '').trim();
+    const codeDes = String(order.codeDes || '').trim();
+    const distrLine = String(order.distrLine || '').trim();
+    const distrOrder = parseInt(order.distrOrder) || 999;
+
+    if (!custDes) return;
+
+    // מפתח ייחודי ללקוח
+    const key = `${distrLine}|${custDes}|${codeDes}`;
+
+    if (!customerData[key]) {
+      customerData[key] = {
+        custDes,
+        custName,
+        codeDes,
+        distrLine,
+        distrOrder,
+        hotCartons: 0,
+        coldCartons: 0
+      };
+    }
+
+    // ספירת קרטונים - כל מדבקה = קרטון
+    // מדבקות חמות
+    const items = order.items || [];
+    items.forEach(item => {
+      const cartonType = String(item.cartonType || item.Y_37210_5_ESH || order.Y_37210_5_ESH || '').trim();
+      const pspec6 = String(item.pspec6 || '').trim();
+      const pspec3 = String(item.pspec3 || '').trim();
+
+      // בדיקה אם הפריט חם
+      const isHot = cartonType.includes('חם') || pspec6.includes('חם') || pspec3.includes('חם');
+      // בדיקה אם הפריט קר
+      const isCold = cartonType.includes('קר') || pspec6.includes('קר') || pspec3.includes('קר');
+
+      if (isHot) {
+        customerData[key].hotCartons++;
+      }
+      if (isCold) {
+        customerData[key].coldCartons++;
+      }
+    });
+  });
+
+  // איסוף קווי חלוקה ייחודיים לסינון
+  const distrLines = [...new Set(Object.values(customerData).map(c => c.distrLine).filter(Boolean))].sort();
+  distrLineFilter.innerHTML = '<option value="">הכל</option>';
+  distrLines.forEach(line => {
+    const option = document.createElement('option');
+    option.value = line;
+    option.textContent = line;
+    distrLineFilter.appendChild(option);
+  });
+
+  // הוספת מאזין לשינוי סינון
+  distrLineFilter.onchange = () => renderDriverReport(customerData);
+
+  // הצגת הדוח
+  renderDriverReport(customerData);
+}
+
+function renderDriverReport(customerData) {
+  const container = document.getElementById('driverReportContainer');
+  const selectedLine = document.getElementById('driverDistrLineFilter').value;
+
+  // סינון לפי קו חלוקה
+  let filteredData = Object.values(customerData);
+  if (selectedLine) {
+    filteredData = filteredData.filter(c => c.distrLine === selectedLine);
+  }
+
+  // מיון לפי קו חלוקה ואז סדר הפצה
+  filteredData.sort((a, b) => {
+    if (a.distrLine !== b.distrLine) {
+      return a.distrLine.localeCompare(b.distrLine);
+    }
+    return a.distrOrder - b.distrOrder;
+  });
+
+  if (filteredData.length === 0) {
+    container.innerHTML = '<p style="text-align:center;color:#666;padding:20px;">אין נתונים להצגה</p>';
+    return;
+  }
+
+  // קיבוץ לפי קו חלוקה
+  const byDistrLine = {};
+  filteredData.forEach(customer => {
+    const line = customer.distrLine || 'לא מוגדר';
+    if (!byDistrLine[line]) {
+      byDistrLine[line] = [];
+    }
+    byDistrLine[line].push(customer);
+  });
+
+  // בניית ה-HTML
+  let html = '<div class="driver-report" id="driverReportContent">';
+
+  Object.entries(byDistrLine).forEach(([distrLine, customers]) => {
+    html += `<div class="driver-section">`;
+    html += `<h3 style="background:#2196F3;color:white;padding:10px;margin:20px 0 0 0;border-radius:5px 5px 0 0;">🚚 קו חלוקה: ${distrLine}</h3>`;
+    html += '<table style="width:100%;border-collapse:collapse;border:1px solid #ccc;margin-bottom:20px;">';
+    html += '<thead><tr style="background:#e3f2fd;">';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;width:60px;">#</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:right;">שם מוסד</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;">מס׳ לקוח</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;background:#ffcdd2;">🔥 קרטונים חמים</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;background:#bbdefb;">❄️ קרטונים קרים</th>';
+    html += '<th style="border:1px solid #ccc;padding:10px;text-align:center;background:#c8e6c9;font-weight:bold;">סה"כ</th>';
+    html += '</tr></thead><tbody>';
+
+    let totalHot = 0;
+    let totalCold = 0;
+
+    customers.forEach((customer, idx) => {
+      const bgColor = idx % 2 === 0 ? '#fff' : '#f5f5f5';
+      const total = customer.hotCartons + customer.coldCartons;
+      totalHot += customer.hotCartons;
+      totalCold += customer.coldCartons;
+
+      html += `<tr style="background:${bgColor};">`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${idx + 1}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:right;font-weight:bold;">${customer.custDes}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;">${customer.codeDes}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;background:#ffebee;font-size:1.1em;">${customer.hotCartons || '-'}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;background:#e3f2fd;font-size:1.1em;">${customer.coldCartons || '-'}</td>`;
+      html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;background:#e8f5e9;font-weight:bold;font-size:1.1em;">${total}</td>`;
+      html += '</tr>';
+    });
+
+    // שורת סיכום לקו החלוקה
+    html += `<tr style="background:#1976D2;color:white;font-weight:bold;">`;
+    html += `<td style="border:1px solid #ccc;padding:10px;text-align:right;" colspan="3">סה"כ קו ${distrLine}</td>`;
+    html += `<td style="border:1px solid #ccc;padding:10px;text-align:center;font-size:1.2em;">${totalHot}</td>`;
+    html += `<td style="border:1px solid #ccc;padding:10px;text-align:center;font-size:1.2em;">${totalCold}</td>`;
+    html += `<td style="border:1px solid #ccc;padding:10px;text-align:center;font-size:1.2em;">${totalHot + totalCold}</td>`;
+    html += '</tr>';
+
+    html += '</tbody></table>';
+    html += '</div>';
+  });
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function printDriverReport() {
+  const content = document.getElementById('driverReportContent');
+  if (!content) {
+    alert('אין דוח להדפסה');
+    return;
+  }
+
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html dir="rtl" lang="he">
+    <head>
+      <meta charset="UTF-8">
+      <title>דוח נהג</title>
+      <style>
+        body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        th { background: #e3f2fd; }
+        h3 { background: #2196F3; color: white; padding: 10px; margin: 20px 0 0 0; }
+        @media print {
+          .driver-section { page-break-inside: avoid; }
+        }
+      </style>
+    </head>
+    <body>
+      ${content.innerHTML}
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.print();
+}
+
+function downloadDriverPDF() {
+  const content = document.getElementById('driverReportContent');
+  if (!content) {
+    alert('אין דוח להורדה');
+    return;
+  }
+
+  const opt = {
+    margin: 10,
+    filename: 'driver-report.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+
+  html2pdf().set(opt).from(content).save();
+}
