@@ -1233,6 +1233,26 @@ function applyTraysFilters() {
     pack5: []  // מארז 5
   };
   
+  // לוגים לדיבוג - בדיקת כמה שורות יש עם PACK5, PACK7, CONTAINERS
+  const rowsWithPack5 = filteredData.filter(r => parseFloat(r.PACK5 || r.pack5 || 0) > 0);
+  const rowsWithPack7 = filteredData.filter(r => parseFloat(r.PACK7 || r.pack7 || 0) > 0);
+  const rowsWithContainers = filteredData.filter(r => parseFloat(r.CONTAINERS || r.containers || 0) > 0);
+  console.log('🔍 דוח אריזה חמה - נתונים:', {
+    totalRows: filteredData.length,
+    rowsWithPack5: rowsWithPack5.length,
+    rowsWithPack7: rowsWithPack7.length,
+    rowsWithContainers: rowsWithContainers.length
+  });
+  if (rowsWithPack5.length > 0) {
+    console.log('  דוגמה PACK5:', rowsWithPack5[0].PARTDES || rowsWithPack5[0].partDes, 'PACK5=', rowsWithPack5[0].PACK5 || rowsWithPack5[0].pack5);
+  }
+  if (rowsWithPack7.length > 0) {
+    console.log('  דוגמה PACK7:', rowsWithPack7[0].PARTDES || rowsWithPack7[0].partDes, 'PACK7=', rowsWithPack7[0].PACK7 || rowsWithPack7[0].pack7);
+  }
+  if (rowsWithContainers.length > 0) {
+    console.log('  דוגמה CONTAINERS:', rowsWithContainers[0].PARTDES || rowsWithContainers[0].partDes, 'CONTAINERS=', rowsWithContainers[0].CONTAINERS || rowsWithContainers[0].containers);
+  }
+
   filteredData.forEach(r => {
     const pm = String(r.PACKMETHODCODE || r.packMethodCode || '').trim();
     const packDes = String(r.PACKDES || r.packDes || '').trim().toLowerCase();
