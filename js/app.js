@@ -1180,28 +1180,12 @@ function applyTraysFilters() {
     filteredData = filteredData.filter(r => String(r.DISTRLINECODE || r.distrLineCode || '') === distrLineFilter.value);
   }
   
-  // סינון רק קרטון חמים
-  // פריטים עם PACK5/PACK7/CONTAINERS נחשבים חמים גם אם לא מסומנים כ"חם" מפורשות
-  filteredData = filteredData.filter(r => {
-    const ct = String(r.CARTON_TYPE || r.cartonType || '').trim().toLowerCase();
-    const pspec6 = String(r.PSPEC6 || r.pspec6 || '').trim().toLowerCase();
-    const pack5 = parseFloat(r.PACK5 || r.pack5 || 0) || 0;
-    const pack7 = parseFloat(r.PACK7 || r.pack7 || 0) || 0;
-    const containers = parseFloat(r.CONTAINERS || r.containers || 0) || 0;
+  // ללא סינון לפי חם/קר - מציגים לפי נתונים בעמודות הרלוונטיות:
+  // - חמגשית: לפי שיטת אריזה שמכילה "חמגשית"
+  // - מארז 5/7: לפי ערכים בעמודות PACK5/PACK7
+  // - מיכלים/גסטרונום: לפי ערכים בעמודת CONTAINERS ושיטת אריזה
 
-    // בדיקה אם מסומן כ"חם" ב-CARTON_TYPE או PSPEC6
-    const isMarkedHot = ct.includes('חם') || ct.includes('חמים') || pspec6.includes('חם') || pspec6.includes('חמים');
-
-    // בדיקה אם לא מסומן כ"קר"
-    const isMarkedCold = ct.includes('קר') || ct.includes('קרים') || pspec6.includes('קר') || pspec6.includes('קרים');
-
-    // פריטים עם PACK5/PACK7/CONTAINERS נחשבים חמים (אלא אם מסומנים מפורשות כקר)
-    const hasHotContainers = pack5 > 0 || pack7 > 0 || containers > 0;
-
-    return isMarkedHot || (hasHotContainers && !isMarkedCold);
-  });
-  
-  console.log('✅ דוח אריזה חמה - אחרי סינון קרטון חמים:', filteredData.length, 'שורות מתוך', flatData.length);
+  console.log('✅ דוח אריזה חמה - סה"כ שורות:', filteredData.length);
   
   // לוגים לבדיקה - בדיקת הזמנות עם חמגשיות אחרי סינון
   const ordersWithTraysAfterFilter = {};
