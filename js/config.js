@@ -414,7 +414,260 @@ function divideItemsEvenlyToTwoCartons(items, type) {
     return cartons;
 }
 
+/**
+ * ========== מילון הגדרות מרכזי ==========
+ * כל ההגדרות החוזרות במערכת - לשימוש אחיד בכל הקוד
+ */
+const DEFINITIONS = {
+
+    // ========== זיהוי סוג פריט (חם/קר) ==========
+    hotKeywords: ['חם', 'חמים'],
+    coldKeywords: ['קר', 'קרים'],
+
+    /**
+     * בדיקה אם פריט הוא חם
+     * @param {Object} item - פריט עם שדות cartonType, pspec6, pspec3
+     * @returns {boolean}
+     */
+    isHotItem: function(item) {
+        const cartonType = String(item.cartonType || item.CARTON_TYPE || item.Y_37210_5_ESH || '').toLowerCase();
+        const pspec6 = String(item.pspec6 || item.PSPEC6 || '').toLowerCase();
+        const pspec3 = String(item.pspec3 || item.PSPEC3 || '').toLowerCase();
+
+        return this.hotKeywords.some(kw =>
+            cartonType.includes(kw) || pspec6.includes(kw) || pspec3.includes(kw)
+        );
+    },
+
+    /**
+     * בדיקה אם פריט הוא קר
+     * @param {Object} item - פריט עם שדות cartonType, pspec6, pspec3
+     * @returns {boolean}
+     */
+    isColdItem: function(item) {
+        const cartonType = String(item.cartonType || item.CARTON_TYPE || item.Y_37210_5_ESH || '').toLowerCase();
+        const pspec6 = String(item.pspec6 || item.PSPEC6 || '').toLowerCase();
+        const pspec3 = String(item.pspec3 || item.PSPEC3 || '').toLowerCase();
+
+        return this.coldKeywords.some(kw =>
+            cartonType.includes(kw) || pspec6.includes(kw) || pspec3.includes(kw)
+        );
+    },
+
+    // ========== זיהוי שיטת אריזה ==========
+    trayKeywords: ['חמגשית'],
+    gastronormKeywords: ['גסטרונום', 'גסטרו'],
+
+    /**
+     * בדיקה אם פריט הוא חמגשית
+     * @param {Object} item - פריט עם שדות packMethodCode, packDes, pspec1
+     * @returns {boolean}
+     */
+    isTrayItem: function(item) {
+        const packMethodCode = String(item.packMethodCode || item.PACKMETHODCODE || '').toLowerCase();
+        const packDes = String(item.packDes || item.PACKDES || '').toLowerCase();
+        const pspec1 = String(item.pspec1 || item.PSPEC1 || '').toLowerCase();
+
+        return this.trayKeywords.some(kw =>
+            packMethodCode.includes(kw) || packDes.includes(kw) || pspec1.includes(kw)
+        );
+    },
+
+    /**
+     * בדיקה אם פריט הוא גסטרונום
+     * @param {Object} item - פריט עם שדות packDes, pspec1
+     * @returns {boolean}
+     */
+    isGastronormItem: function(item) {
+        const packDes = String(item.packDes || item.PACKDES || '').toLowerCase();
+        const pspec1 = String(item.pspec1 || item.PSPEC1 || '').toLowerCase();
+
+        return this.gastronormKeywords.some(kw =>
+            packDes.includes(kw) || pspec1.includes(kw)
+        );
+    },
+
+    // ========== זיהוי גודל חמגשית ==========
+    smallTrayKeywords: ['קט', 'קטן', 'קטנה'],
+    largeTrayKeywords: ['גד', 'גדול', 'גדולה'],
+
+    /**
+     * בדיקה אם חמגשית קטנה
+     * @param {Object} item - פריט עם שדה packDes
+     * @returns {boolean}
+     */
+    isSmallTray: function(item) {
+        const packDes = String(item.packDes || item.PACKDES || '').toLowerCase();
+        return this.smallTrayKeywords.some(kw => packDes.includes(kw));
+    },
+
+    /**
+     * בדיקה אם חמגשית גדולה
+     * @param {Object} item - פריט עם שדה packDes
+     * @returns {boolean}
+     */
+    isLargeTray: function(item) {
+        const packDes = String(item.packDes || item.PACKDES || '').toLowerCase();
+        return this.largeTrayKeywords.some(kw => packDes.includes(kw));
+    },
+
+    // ========== זיהוי אלרגנים ==========
+    noAllergenKeywords: ['ללא אלרגני', 'לא אלרגני', 'ללא אלרגנים'],
+
+    /**
+     * בדיקה אם פריט ללא אלרגנים
+     * @param {Object} item - פריט עם שדות spec2, pspec2, pspec1
+     * @returns {boolean}
+     */
+    isNoAllergen: function(item) {
+        const spec2 = String(item.spec2 || item.SPEC2 || '').toLowerCase();
+        const pspec2 = String(item.pspec2 || item.PSPEC2 || '').toLowerCase();
+        const pspec1 = String(item.pspec1 || item.PSPEC1 || '').toLowerCase();
+
+        return this.noAllergenKeywords.some(kw =>
+            spec2.includes(kw) || pspec2.includes(kw) || pspec1.includes(kw)
+        );
+    },
+
+    // ========== זיהוי צמחוני ==========
+    /**
+     * בדיקה אם פריט צמחוני
+     * @param {Object} item - פריט עם שדה Y_36827_0_ESH או isVegetarian
+     * @returns {boolean}
+     */
+    isVegetarian: function(item) {
+        const vegField = item.Y_36827_0_ESH || item.isVegetarian;
+        return vegField === 'Y' || vegField === true || vegField === 1 || vegField === '1';
+    },
+
+    // ========== זיהוי מרק ==========
+    soupKeywords: ['מרק'],
+
+    /**
+     * בדיקה אם פריט הוא מרק
+     * @param {Object} item - פריט עם שדה partDes
+     * @returns {boolean}
+     */
+    isSoup: function(item) {
+        const partDes = String(item.partDes || item.PARTDES || '').toLowerCase();
+        return this.soupKeywords.some(kw => partDes.includes(kw));
+    },
+
+    // ========== זיהוי כשרות ==========
+    chabadKeywords: ['חב"ד', 'חבד'],
+    badatzKeywords: ['בד"ץ', 'בדץ'],
+
+    /**
+     * בדיקה אם כשרות חב"ד
+     * @param {Object} item - פריט עם שדה spec2
+     * @returns {boolean}
+     */
+    isChabad: function(item) {
+        const spec2 = String(item.spec2 || item.SPEC2 || '').toLowerCase();
+        return this.chabadKeywords.some(kw => spec2.includes(kw));
+    },
+
+    /**
+     * בדיקה אם כשרות בד"ץ
+     * @param {Object} item - פריט עם שדה spec2
+     * @returns {boolean}
+     */
+    isBadatz: function(item) {
+        const spec2 = String(item.spec2 || item.SPEC2 || '').toLowerCase();
+        return this.badatzKeywords.some(kw => spec2.includes(kw));
+    },
+
+    // ========== זיהוי מילגם ==========
+    milgamKeywords: ['מילגם'],
+
+    /**
+     * בדיקה אם לקוח מילגם
+     * @param {Object} order - הזמנה עם שדות custDes, spec1
+     * @returns {boolean}
+     */
+    isMilgam: function(order) {
+        const custDes = String(order.custDes || order.CUSTDES || '').toLowerCase();
+        const spec1 = String(order.spec1 || order.SPEC1 || '').toLowerCase();
+        return this.milgamKeywords.some(kw => custDes.includes(kw) || spec1.includes(kw));
+    },
+
+    // ========== חישוב מארזים ==========
+    /**
+     * חישוב אופטימלי של מארז 5 ומארז 7
+     * מטרה: להגיע למספר מנות עם כמה שפחות מארזים
+     * @param {number} target - מספר המנות הרצוי
+     * @returns {Object} - { five: מספר מארזי 5, seven: מספר מארזי 7 }
+     */
+    calculateOptimalPacks: function(target) {
+        if (!target || target <= 0) return { five: 0, seven: 0 };
+
+        let bestFive = 0;
+        let bestSeven = 0;
+        let minPacks = Infinity;
+
+        // נסה כל צירוף אפשרי
+        const maxSeven = Math.ceil(target / 7);
+        for (let seven = 0; seven <= maxSeven; seven++) {
+            const remaining = target - (seven * 7);
+            if (remaining >= 0 && remaining % 5 === 0) {
+                const five = remaining / 5;
+                const totalPacks = five + seven;
+                if (totalPacks < minPacks) {
+                    minPacks = totalPacks;
+                    bestFive = five;
+                    bestSeven = seven;
+                }
+            }
+        }
+
+        // אם לא נמצא צירוף מדויק, חפש את הקרוב ביותר
+        if (minPacks === Infinity) {
+            for (let seven = maxSeven; seven >= 0; seven--) {
+                for (let five = 0; five <= Math.ceil(target / 5); five++) {
+                    const total = (five * 5) + (seven * 7);
+                    if (total >= target) {
+                        bestFive = five;
+                        bestSeven = seven;
+                        return { five: bestFive, seven: bestSeven };
+                    }
+                }
+            }
+        }
+
+        return { five: bestFive, seven: bestSeven };
+    },
+
+    // ========== קבלת ערכי מיכלים ==========
+    /**
+     * קבלת כמות מיכלים מפריט
+     * @param {Object} item - פריט
+     * @returns {number}
+     */
+    getContainers: function(item) {
+        return parseFloat(item.containers || item.CONTAINERS || 0) || 0;
+    },
+
+    /**
+     * קבלת כמות מארז 5 מפריט
+     * @param {Object} item - פריט
+     * @returns {number}
+     */
+    getPack5: function(item) {
+        return parseFloat(item.pack5 || item.PACK5 || 0) || 0;
+    },
+
+    /**
+     * קבלת כמות מארז 7 מפריט
+     * @param {Object} item - פריט
+     * @returns {number}
+     */
+    getPack7: function(item) {
+        return parseFloat(item.pack7 || item.PACK7 || 0) || 0;
+    }
+};
+
 // ייצוא לשימוש גלובלי
+window.DEFINITIONS = DEFINITIONS;
 window.CARTON_CONFIG = CARTON_CONFIG;
 window.calculateCartons = calculateCartons;
 window.divideItemsToCartons = divideItemsToCartons;
