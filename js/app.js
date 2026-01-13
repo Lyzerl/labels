@@ -1978,39 +1978,10 @@ function applyTraysFilters() {
     html += '</tbody></table></div></div>';
   }
   
-  // טבלת מארז 5 - מכל הנתונים של קרטון חמים, לפי PACK5, כל מה שיש לו PACK5 > 0
-  // חמגשית בד"ץ מוחרגת, חמגשית אחרת נכללת
+  // טבלת מארז 5 - כל מה שיש לו PACK5 > 0 (ללא סינון נוסף)
   const pack5Data = filteredData.filter(r => {
     const pack5 = parseFloat(r.PACK5 || r.pack5 || 0) || 0;
-    if (pack5 <= 0) return false;
-    
-    const pm = String(r.PACKMETHODCODE || r.packMethodCode || '').trim().toLowerCase();
-    const packDes = String(r.PACKDES || r.packDes || '').trim().toLowerCase();
-    const pspec1 = String(r.PSPEC1 || r.pspec1 || '').trim().toLowerCase();
-    const pspec6 = String(r.PSPEC6 || r.pspec6 || '').trim().toLowerCase();
-    const spec2 = String(r.SPEC2 || r.spec2 || '').trim().toLowerCase();
-    const pspec2 = String(r.PSPEC2 || r.pspec2 || '').trim().toLowerCase();
-    
-    const isTray = pm.includes('חמגשית') || packDes.includes('חמגשית') || pspec1.includes('חמגשית');
-    const isBadatz = spec2.includes('בדץ') || spec2.includes('בד"ץ') || spec2.includes('badatz') ||
-                     pspec2.includes('בדץ') || pspec2.includes('בד"ץ') || pspec2.includes('badatz');
-    if (isTray && isBadatz) return false; // חמגשית בד"ץ מוחרגת
-    
-    // אם זה גסטרונום - לא נכלל (בודק בכל השדות הרלוונטיים)
-    if (pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום')) {
-      return false;
-    }
-
-    // בדיקה אם זה סיפט - בודק בכל השדות הרלוונטיים
-    const isSift = pm.includes('סיפט') || packDes.includes('סיפט') || pspec1.includes('סיפט');
-
-    // אם זה צמחוני בפרמטר 6 - לא נכלל, אלא אם כן זה סיפט
-    if (pspec6.includes('צמחוני') && !isSift) {
-      return false;
-    }
-
-    // כל השאר נכלל
-    return true;
+    return pack5 > 0;
   });
   if (pack5Data.length > 0) {
     const summary = {};
@@ -2139,39 +2110,10 @@ function applyTraysFilters() {
     html += '</tbody></table></div></div>';
   }
   
-  // טבלת מארז 7 - מכל הנתונים של קרטון חמים, לפי PACK7, כל מה שיש לו PACK7 > 0
-  // חמגשית בד"ץ מוחרגת, חמגשית אחרת נכללת
+  // טבלת מארז 7 - כל מה שיש לו PACK7 > 0 (ללא סינון נוסף)
   const pack7Data = filteredData.filter(r => {
     const pack7 = parseFloat(r.PACK7 || r.pack7 || 0) || 0;
-    if (pack7 <= 0) return false;
-
-    const pm = String(r.PACKMETHODCODE || r.packMethodCode || '').trim().toLowerCase();
-    const packDes = String(r.PACKDES || r.packDes || '').trim().toLowerCase();
-    const pspec1 = String(r.PSPEC1 || r.pspec1 || '').trim().toLowerCase();
-    const pspec6 = String(r.PSPEC6 || r.pspec6 || '').trim().toLowerCase();
-    const spec2 = String(r.SPEC2 || r.spec2 || '').trim().toLowerCase();
-    const pspec2 = String(r.PSPEC2 || r.pspec2 || '').trim().toLowerCase();
-
-    const isTray = pm.includes('חמגשית') || packDes.includes('חמגשית') || pspec1.includes('חמגשית');
-    const isBadatz = spec2.includes('בדץ') || spec2.includes('בד"ץ') || spec2.includes('badatz') ||
-                     pspec2.includes('בדץ') || pspec2.includes('בד"ץ') || pspec2.includes('badatz');
-    if (isTray && isBadatz) return false; // חמגשית בד"ץ מוחרגת
-
-    // אם זה גסטרונום - לא נכלל (בודק בכל השדות הרלוונטיים)
-    if (pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום')) {
-      return false;
-    }
-
-    // בדיקה אם זה סיפט - בודק בכל השדות הרלוונטיים
-    const isSift = pm.includes('סיפט') || packDes.includes('סיפט') || pspec1.includes('סיפט');
-
-    // אם זה צמחוני בפרמטר 6 - לא נכלל, אלא אם כן זה סיפט
-    if (pspec6.includes('צמחוני') && !isSift) {
-      return false;
-    }
-
-    // כל השאר נכלל
-    return true;
+    return pack7 > 0;
   });
   if (pack7Data.length > 0) {
     const summary = {};
