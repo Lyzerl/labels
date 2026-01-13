@@ -1243,14 +1243,28 @@ function applyTraysFilters() {
     rowsWithPack7: rowsWithPack7.length,
     rowsWithContainers: rowsWithContainers.length
   });
-  if (rowsWithPack5.length > 0) {
-    console.log('  דוגמה PACK5:', rowsWithPack5[0].PARTDES || rowsWithPack5[0].partDes, 'PACK5=', rowsWithPack5[0].PACK5 || rowsWithPack5[0].pack5);
+
+  // חיפוש ספציפי לתירס/שניצל
+  const tirasRows = filteredData.filter(r => {
+    const partDes = String(r.PARTDES || r.partDes || '').toLowerCase();
+    return partDes.includes('תירס') || partDes.includes('שניצל');
+  });
+  if (tirasRows.length > 0) {
+    console.log('🌽 פריטי תירס/שניצל שנמצאו:', tirasRows.length);
+    tirasRows.forEach(r => {
+      console.log(`  - ${r.PARTDES || r.partDes}: PACK5=${r.PACK5 || r.pack5 || 'אין'}, PACK7=${r.PACK7 || r.pack7 || 'אין'}, CONTAINERS=${r.CONTAINERS || r.containers || 'אין'}`);
+    });
+  } else {
+    console.log('🌽 לא נמצאו פריטי תירס/שניצל ב-filteredData');
   }
-  if (rowsWithPack7.length > 0) {
-    console.log('  דוגמה PACK7:', rowsWithPack7[0].PARTDES || rowsWithPack7[0].partDes, 'PACK7=', rowsWithPack7[0].PACK7 || rowsWithPack7[0].pack7);
-  }
-  if (rowsWithContainers.length > 0) {
-    console.log('  דוגמה CONTAINERS:', rowsWithContainers[0].PARTDES || rowsWithContainers[0].partDes, 'CONTAINERS=', rowsWithContainers[0].CONTAINERS || rowsWithContainers[0].containers);
+
+  // הדפסת כל הפריטים עם PACK5/PACK7
+  if (rowsWithPack5.length > 0 || rowsWithPack7.length > 0) {
+    console.log('📦 כל הפריטים עם מארז 5/7:');
+    const allPackRows = filteredData.filter(r => parseFloat(r.PACK5 || r.pack5 || 0) > 0 || parseFloat(r.PACK7 || r.pack7 || 0) > 0);
+    allPackRows.forEach(r => {
+      console.log(`  - ${r.PARTDES || r.partDes}: PACK5=${r.PACK5 || r.pack5 || 0}, PACK7=${r.PACK7 || r.pack7 || 0}`);
+    });
   }
 
   filteredData.forEach(r => {
