@@ -3325,63 +3325,53 @@ function createLabelsReport(data, labelType = 'hot') {
       }
 
       // סינון לפי שיטת אריזה (חמגשיות / גסטרונום בלבד / תפזורת)
-      // משתמשים באותה לוגיקה כמו בסדר העמסה
+      // בודקים את כל הפריטים בהזמנה (לא רק חמים) - כי זה טאב מדבקות חמים
       if (selectedPackingMethod) {
         filteredOrders = Object.fromEntries(Object.entries(filteredOrders).filter(([key, order]) => {
           // בדיקת בטיחות
           if (!order || !order.items || !Array.isArray(order.items)) return false;
 
-          // שימוש באותה לוגיקה כמו בסדר העמסה - isTrayOnlyOrder
-          // בודקים רק פריטים חמים (pspec6 או pspec3 מכילים 'חם')
-          let hasHotTray = false;
-          let hasHotNonTray = false;
-          let hasHotGastronorm = false;
+          // בדיקת שיטת אריזה של כל הפריטים בהזמנה
+          let hasTray = false;      // יש חמגשית
+          let hasNonTray = false;   // יש פריט שאינו חמגשית
+          let hasGastronorm = false; // יש גסטרונום
 
           order.items.forEach(item => {
-            // בדיקה אם זה פריט חם - לפי CARTON_TYPE, PSPEC6 או PSPEC3
-            const cartonType = String(item.cartonType || '').toLowerCase();
-            const pspec6 = String(item.pspec6 || '').toLowerCase();
-            const pspec3 = String(item.pspec3 || '').toLowerCase();
-            const isHotItem = cartonType.includes('חם') || pspec6.includes('חם') || pspec3.includes('חם');
+            const packMethodCode = String(item.packMethodCode || '').toLowerCase();
+            const packDes = String(item.packDes || '').toLowerCase();
+            const pspec1 = String(item.pspec1 || '').toLowerCase();
 
-            // רק פריטים חמים רלוונטיים
-            if (isHotItem) {
-              const packMethodCode = String(item.packMethodCode || '').toLowerCase();
-              const packDes = String(item.packDes || '').toLowerCase();
-              const pspec1 = String(item.pspec1 || '').toLowerCase();
+            // זיהוי חמגשית - לפי שיטת אריזה
+            const isTrayItem = packMethodCode.includes('חמגשית') || packDes.includes('חמגשית');
 
-              // זיהוי חמגשית - לפי שיטת אריזה
-              const isTrayItem = packMethodCode.includes('חמגשית') || packDes.includes('חמגשית');
+            if (isTrayItem) {
+              hasTray = true;
+            } else {
+              // כל פריט שאינו חמגשית = תפזורת (כולל ללא שיטת אריזה)
+              hasNonTray = true;
+            }
 
-              if (isTrayItem) {
-                hasHotTray = true;
-              } else {
-                // כל פריט חם שאינו חמגשית = תפזורת (כולל ללא שיטת אריזה)
-                hasHotNonTray = true;
-              }
-
-              // בדיקה לגסטרונום
-              if (packDes.includes('גסטרונום') || packDes.includes('גסטרו') || pspec1.includes('גסטרונום')) {
-                hasHotGastronorm = true;
-              }
+            // בדיקה לגסטרונום
+            if (packDes.includes('גסטרונום') || packDes.includes('גסטרו') || pspec1.includes('גסטרונום')) {
+              hasGastronorm = true;
             }
           });
 
-          // אם אין פריטים חמים כלל, לא להציג
-          if (!hasHotTray && !hasHotNonTray) return false;
+          // אם אין פריטים כלל, לא להציג
+          if (!hasTray && !hasNonTray) return false;
 
-          // חמגשית בלבד = כל הפריטים החמים הם חמגשית (אין תפזורת בכלל)
-          const isTrayOnly = hasHotTray && !hasHotNonTray;
+          // חמגשית בלבד = כל הפריטים הם חמגשית (אין תפזורת בכלל)
+          const isTrayOnly = hasTray && !hasNonTray;
 
           if (selectedPackingMethod === 'tray') {
-            // חמגשיות - כל הפריטים החמים הם חמגשית
+            // חמגשיות - כל הפריטים הם חמגשית
             return isTrayOnly;
           } else if (selectedPackingMethod === 'gastronorm') {
             // גסטרונום בלבד - יש גסטרונום, ללא חמגשית
-            return hasHotGastronorm && !hasHotTray;
+            return hasGastronorm && !hasTray;
           } else if (selectedPackingMethod === 'loose') {
-            // תפזורת - לא חמגשיות בלבד (יש לפחות פריט אחד שהוא לא חמגשית)
-            return hasHotNonTray;
+            // תפזורת - יש לפחות פריט אחד שהוא לא חמגשית
+            return hasNonTray;
           }
           return true;
         }));
