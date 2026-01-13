@@ -1181,12 +1181,24 @@ function applyTraysFilters() {
   }
   
   // סינון רק קרטון חמים
+  // פריטים עם PACK5/PACK7/CONTAINERS נחשבים חמים גם אם לא מסומנים כ"חם" מפורשות
   filteredData = filteredData.filter(r => {
     const ct = String(r.CARTON_TYPE || r.cartonType || '').trim().toLowerCase();
     const pspec6 = String(r.PSPEC6 || r.pspec6 || '').trim().toLowerCase();
-    // בדיקה גם ב-CARTON_TYPE וגם ב-PSPEC6
-    const isHot = ct.includes('חם') || ct.includes('חמים') || pspec6.includes('חם') || pspec6.includes('חמים');
-    return isHot;
+    const pack5 = parseFloat(r.PACK5 || r.pack5 || 0) || 0;
+    const pack7 = parseFloat(r.PACK7 || r.pack7 || 0) || 0;
+    const containers = parseFloat(r.CONTAINERS || r.containers || 0) || 0;
+
+    // בדיקה אם מסומן כ"חם" ב-CARTON_TYPE או PSPEC6
+    const isMarkedHot = ct.includes('חם') || ct.includes('חמים') || pspec6.includes('חם') || pspec6.includes('חמים');
+
+    // בדיקה אם לא מסומן כ"קר"
+    const isMarkedCold = ct.includes('קר') || ct.includes('קרים') || pspec6.includes('קר') || pspec6.includes('קרים');
+
+    // פריטים עם PACK5/PACK7/CONTAINERS נחשבים חמים (אלא אם מסומנים מפורשות כקר)
+    const hasHotContainers = pack5 > 0 || pack7 > 0 || containers > 0;
+
+    return isMarkedHot || (hasHotContainers && !isMarkedCold);
   });
   
   console.log('✅ דוח אריזה חמה - אחרי סינון קרטון חמים:', filteredData.length, 'שורות מתוך', flatData.length);
@@ -1244,37 +1256,49 @@ function applyTraysFilters() {
     const pack7 = parseFloat(r.PACK7 || r.pack7 || 0) || 0;
     const pack5 = parseFloat(r.PACK5 || r.pack5 || 0) || 0;
     const containers = parseFloat(r.CONTAINERS || r.containers || 0) || 0;
-    
-    // חמגשית קטנה - קודם כל לבדוק חמגשית קטנה
+
+    let addedToCategory = false;
+
+    // חמגשית קטנה
     if (pm.includes('חמגשית') && (packDes.includes('קט') || packDes.includes('קטן') || packDes.includes('קטנה'))) {
       categories.smallTray.push(r);
+      addedToCategory = true;
     }
-    // חמגשית גדולה - אחר כך חמגשית גדולה
+    // חמגשית גדולה
     else if (pm.includes('חמגשית') && (packDes.includes('גד') || packDes.includes('גדול') || packDes.includes('גדולה'))) {
       categories.largeTray.push(r);
+      addedToCategory = true;
     }
-    // גסטרונום - לבדוק לפי PSPEC1 או PACKMETHODCODE, רק אם יש כמות (containers > 0)
-    else if ((pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום')) && containers > 0) {
-      categories.gastronome.push(r);
-    }
-    // מארז 7 - לבדוק לפני מיכלים
-    else if (pack7 > 0) {
+
+    // מארז 7 - בנפרד, לפי ערך PACK7 (לא else if!)
+    if (pack7 > 0) {
       categories.pack7.push(r);
+      addedToCategory = true;
     }
-    // מארז 5 - לבדוק לפני מיכלים
-    else if (pack5 > 0) {
+
+    // מארז 5 - בנפרד, לפי ערך PACK5 (לא else if!)
+    if (pack5 > 0) {
       categories.pack5.push(r);
+      addedToCategory = true;
     }
-    // מיכל 2 ליטר - לבדוק לפני מיכל 1 ליטר
+
+    // גסטרונום - לפי PSPEC1 או PACKMETHODCODE, רק אם יש כמות (containers > 0)
+    if ((pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום')) && containers > 0) {
+      categories.gastronome.push(r);
+      addedToCategory = true;
+    }
+    // מיכל 2 ליטר
     else if (packDes.includes('2 ליטר') || (packDes.includes('2') && packDes.includes('ליטר'))) {
       categories.container2L.push(r);
+      addedToCategory = true;
     }
-    // מיכל 1 ליטר - אחרון
+    // מיכל 1 ליטר
     else if (packDes.includes('1 ליטר') || (packDes.includes('1') && packDes.includes('ליטר') && !packDes.includes('2'))) {
       categories.container1L.push(r);
+      addedToCategory = true;
     }
-    // אם יש CONTAINERS אבל לא נכנס לאף קטגוריה אחרת, נכניס למיכל 2 ליטר
-    else if (containers > 0) {
+    // אם יש CONTAINERS אבל לא נכנס לגסטרונום/מיכל, נכניס למיכל 2 ליטר
+    else if (containers > 0 && !addedToCategory) {
       categories.container2L.push(r);
     }
   });
