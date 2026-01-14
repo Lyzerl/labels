@@ -3317,15 +3317,16 @@ function createLabelsReport(data, labelType = 'hot') {
 
           // בדיקת שיטת אריזה של פריטים חמים בלבד
           let hasHotTray = false;      // יש פריט חם שהוא חמגשית
-          let hasHotNonTray = false;   // יש פריט חם שאינו חמגשית
-          let hasHotGastronorm = false; // יש פריט חם שהוא גסטרונום
+          let hasHotGastronorm = false; // יש פריט חם שהוא גסטרונום (לא חמגשית)
+          let hasHotLoose = false;     // יש פריט חם תפזורת (לא חמגשית ולא גסטרונום)
 
           order.items.forEach(item => {
-            // בדיקה אם זה פריט חם - לפי CARTON_TYPE, PSPEC6 או PSPEC3
-            const cartonType = String(item.cartonType || '').toLowerCase();
-            const pspec6 = String(item.pspec6 || '').toLowerCase();
-            const pspec3 = String(item.pspec3 || '').toLowerCase();
-            const isHotItem = cartonType.includes('חם') || pspec6.includes('חם') || pspec3.includes('חם');
+            // בדיקה אם זה פריט חם - משתמשים ב-DEFINITIONS אם קיים
+            const isHotItem = (typeof DEFINITIONS !== 'undefined' && DEFINITIONS.isHotItem)
+              ? DEFINITIONS.isHotItem(item)
+              : (String(item.cartonType || '').includes('חם') ||
+                 String(item.pspec6 || '').includes('חם') ||
+                 String(item.pspec3 || '').includes('חם'));
 
             // רק פריטים חמים רלוונטיים לסינון
             if (!isHotItem) return;
@@ -3334,37 +3335,33 @@ function createLabelsReport(data, labelType = 'hot') {
             const packDes = String(item.packDes || '').toLowerCase();
             const pspec1 = String(item.pspec1 || '').toLowerCase();
 
-            // זיהוי חמגשית - לפי שיטת אריזה
+            // זיהוי סוג אריזה - סדר עדיפות: חמגשית > גסטרונום > תפזורת
             const isTrayItem = packMethodCode.includes('חמגשית') || packDes.includes('חמגשית');
+            const isGastronormItem = packDes.includes('גסטרונום') || packDes.includes('גסטרו') || pspec1.includes('גסטרונום');
 
             if (isTrayItem) {
               hasHotTray = true;
-            } else if (packMethodCode || packDes) {
-              // פריט חם עם שיטת אריזה שהיא לא חמגשית = תפזורת
-              hasHotNonTray = true;
-            }
-
-            // בדיקה לגסטרונום
-            if (packDes.includes('גסטרונום') || packDes.includes('גסטרו') || pspec1.includes('גסטרונום')) {
+            } else if (isGastronormItem) {
               hasHotGastronorm = true;
+            } else {
+              // פריט חם שאינו חמגשית ואינו גסטרונום = תפזורת
+              hasHotLoose = true;
             }
           });
 
           // אם אין פריטים חמים כלל, לא להציג
-          if (!hasHotTray && !hasHotNonTray) return false;
-
-          // חמגשית בלבד = כל הפריטים החמים הם חמגשית (אין תפזורת חמה בכלל)
-          const isTrayOnly = hasHotTray && !hasHotNonTray;
+          if (!hasHotTray && !hasHotGastronorm && !hasHotLoose) return false;
 
           if (selectedPackingMethod === 'tray') {
-            // חמגשיות - כל הפריטים החמים הם חמגשית
-            return isTrayOnly;
+            // חמגשיות - כל הפריטים החמים הם חמגשית בלבד (אין גסטרונום ואין תפזורת)
+            return hasHotTray && !hasHotGastronorm && !hasHotLoose;
           } else if (selectedPackingMethod === 'gastronorm') {
             // גסטרונום בלבד - יש גסטרונום חם, ללא חמגשית
             return hasHotGastronorm && !hasHotTray;
           } else if (selectedPackingMethod === 'loose') {
-            // תפזורת - יש לפחות פריט חם אחד שהוא לא חמגשית
-            return hasHotNonTray;
+            // תפזורת - יש תפזורת או גסטרונום, אבל לא חמגשית בלבד
+            // (כלומר: לא כל הפריטים הם חמגשית)
+            return (hasHotLoose || hasHotGastronorm) && !(hasHotTray && !hasHotGastronorm && !hasHotLoose);
           }
           return true;
         }));
