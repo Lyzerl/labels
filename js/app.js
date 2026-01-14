@@ -3348,14 +3348,14 @@ function createLabelsReport(data, labelType = 'hot') {
           const isTrayOnly = hasTray && !hasNonTray;
 
           if (selectedPackingMethod === 'tray') {
-            // חמגשיות - יש לפחות פריט אחד שהוא חמגשית
-            return hasTray;
+            // חמגשיות - כל הפריטים החמים הם חמגשית (אין תפזורת בכלל)
+            return isTrayOnly;
           } else if (selectedPackingMethod === 'gastronorm') {
             // גסטרונום בלבד - יש גסטרונום, ללא חמגשית
             return hasGastronorm && !hasTray;
           } else if (selectedPackingMethod === 'loose') {
-            // תפזורת - יש לפחות פריט אחד שהוא לא חמגשית, וגם אין חמגשית
-            return hasNonTray && !hasTray;
+            // תפזורת - יש לפחות פריט אחד שהוא לא חמגשית
+            return hasNonTray;
           }
           return true;
         }));
@@ -3425,32 +3425,38 @@ function createLabelsReport(data, labelType = 'hot') {
           // אם אין פריטים חמים, לא להציג
           if (hotItems.length === 0) return;
 
-          // בדיקה אם יש לפחות פריט חם אחד שהוא חמגשית
-          const hasAnyTray = hotItems.some(item => {
+          // בדיקה אם כל הפריטים החמים הם חמגשית
+          const allItemsTray = hotItems.every(item => {
             const packMethod = String(item.PACKMETHODCODE || '').trim();
             return packMethod.includes('חמגשית');
           });
 
-          // בדיקה אם יש גסטרונום (ללא חמגשית)
-          const hasOnlyGastronorm = hotItems.length > 0 && !hasAnyTray && hotItems.some(item => {
-            const packDes = String(item.PACKDES || '').toLowerCase();
-            const pspec1 = String(item.PSPEC1 || '').toLowerCase();
-            return packDes.includes('גסטרונום') || packDes.includes('גסטרו') || pspec1.includes('גסטרונום');
+          // בדיקה אם יש לפחות פריט אחד שאינו חמגשית
+          const hasNonTray = hotItems.some(item => {
+            const packMethod = String(item.PACKMETHODCODE || '').trim();
+            return !packMethod.includes('חמגשית');
           });
 
-          // בדיקה אם יש תפזורת (ללא חמגשית)
-          const hasLooseOnly = hotItems.length > 0 && !hasAnyTray;
+          // בדיקה אם יש גסטרונום (ללא חמגשית)
+          const hasOnlyGastronorm = hotItems.length > 0 && !allItemsTray && hotItems.some(item => {
+            const packDes = String(item.PACKDES || '').toLowerCase();
+            const pspec1 = String(item.PSPEC1 || '').toLowerCase();
+            const packMethod = String(item.PACKMETHODCODE || '').trim();
+            const isGastronorm = packDes.includes('גסטרונום') || packDes.includes('גסטרו') || pspec1.includes('גסטרונום');
+            const isTray = packMethod.includes('חמגשית');
+            return isGastronorm && !isTray;
+          });
 
           let match = false;
           if (selectedPackingMethod === 'tray') {
-            // חמגשיות - יש לפחות פריט אחד שהוא חמגשית
-            match = hasAnyTray;
+            // חמגשיות - כל הפריטים החמים הם חמגשית
+            match = allItemsTray;
           } else if (selectedPackingMethod === 'gastronorm') {
             // גסטרונום בלבד - יש גסטרונום, ללא חמגשית
             match = hasOnlyGastronorm;
           } else if (selectedPackingMethod === 'loose') {
-            // תפזורת - אין חמגשית בכלל
-            match = hasLooseOnly;
+            // תפזורת - יש לפחות פריט אחד שאינו חמגשית
+            match = hasNonTray;
           }
 
           if (match) {
