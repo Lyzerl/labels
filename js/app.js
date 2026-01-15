@@ -4847,12 +4847,43 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
     }
     
     // יצירת מדבקה אחת לכל הזמנה - עבור קרים
-    // למדבקות קר - תמיד קרטון אחד בלבד (ללא חלוקה)
+    // למדבקות קר - חלוקה לפי מספר מנות (כל מדבקה עד 22 מנות), אבל בלי מספור קרטונים
     if (coldRawItems.length > 0 && (labelsMode === 'all' || labelsMode === 'cold')) {
-      // מדבקות קר - פשוט: כל פריט בשורה נפרדת, קרטון אחד בלבד
       const allColdItems = coldRawItems.map(item => ({...item, isTray: false}));
       if (allColdItems.length > 0) {
-        renderLabelSticker(allColdItems, false, '', 'cold');
+        // חישוב סך המנות
+        const totalPortions = allColdItems.reduce((sum, item) =>
+          sum + (item.tQuant || item.eatQuant || item.sumQuant || 0), 0);
+
+        const maxPortionsPerLabel = 22; // מקסימום מנות למדבקה
+
+        if (totalPortions <= maxPortionsPerLabel) {
+          // מדבקה אחת - כל הפריטים
+          renderLabelSticker(allColdItems, false, '', 'cold');
+        } else {
+          // חלוקה לכמה מדבקות לפי מנות - בלי מספור קרטונים
+          let currentItems = [];
+          let currentPortions = 0;
+
+          allColdItems.forEach((item, index) => {
+            const itemPortions = item.tQuant || item.eatQuant || item.sumQuant || 0;
+
+            // אם הוספת הפריט תעבור את הסף, ניצור מדבקה חדשה
+            if (currentPortions + itemPortions > maxPortionsPerLabel && currentItems.length > 0) {
+              renderLabelSticker(currentItems, false, '', 'cold');
+              currentItems = [];
+              currentPortions = 0;
+            }
+
+            currentItems.push(item);
+            currentPortions += itemPortions;
+          });
+
+          // מדבקה אחרונה עם הפריטים שנשארו
+          if (currentItems.length > 0) {
+            renderLabelSticker(currentItems, false, '', 'cold');
+          }
+        }
       }
     }
   });
