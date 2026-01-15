@@ -4348,9 +4348,40 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       
       // עטיפה ב-div שמגביל את הגובה כדי שהטבלה לא תעבור את הפוטר
       html += `<div style="flex:1 !important;max-height:${availableHeight}px !important;min-height:0 !important;display:flex !important;flex-direction:column !important;overflow:hidden !important;position:relative !important;">`;
-      html += `<table class="label-card-table" style="width:100% !important;border-collapse:collapse !important;margin-bottom:10px !important;border:1px solid #000 !important;table-layout:auto !important;display:table !important;">`;
-      html += '<thead><tr>';
-      
+
+      // === מדבקות קר - פורמט פשוט: רק פריט + כמות ===
+      if (isColdLabel) {
+        html += `<table class="label-card-table" style="width:100% !important;border-collapse:collapse !important;margin-bottom:10px !important;border:1px solid #000 !important;table-layout:fixed !important;display:table !important;">`;
+        html += '<thead><tr>';
+        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#b3e5fc !important;text-align:right !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;width:70% !important;">פריט</th>`;
+        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#b3e5fc !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;width:30% !important;">כמות</th>`;
+        html += '</tr></thead><tbody>';
+
+        // הצגת כל פריט בשורה נפרדת - פשוט וברור
+        itemsArray.forEach(item => {
+          const partDes = item.partDes || item.itemsKey || item.partName || '';
+          const quantity = item.sumQuant || item.eatQuant || item.totalQuantity || 0;
+
+          // זיהוי צבע רקע לפי סוג הפריט
+          const isAllergen = item.hasNoAllergen || partDes.includes('אלרגני');
+          const isVeg = item.isVegetarian;
+          const isSoup = partDes.toLowerCase().includes('מרק');
+          const bgColor = isAllergen ? '#ff5252' : (isVeg ? '#64b5f6' : (isSoup ? '#fff59d' : '#fff'));
+
+          html += '<tr>';
+          html += `<td style="border:1px solid #000 !important;padding:2px 4px !important;text-align:right !important;background:${bgColor} !important;font-size:1.2em !important;height:${finalRowHeight}px !important;">${partDes}</td>`;
+          html += `<td style="border:1px solid #000 !important;padding:2px !important;text-align:center !important;font-weight:bold !important;background:${bgColor} !important;font-size:2.2em !important;height:${finalRowHeight}px !important;">${quantity > 0 ? (quantity % 1 === 0 ? quantity : quantity.toFixed(2)) : ''}</td>`;
+          html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+        html += '</div>'; // סוגר את ה-div שמגביל את הגובה
+
+      } else {
+        // === מדבקות חם - הפורמט המלא עם מיכלים/מארזים ===
+        html += `<table class="label-card-table" style="width:100% !important;border-collapse:collapse !important;margin-bottom:10px !important;border:1px solid #000 !important;table-layout:auto !important;display:table !important;">`;
+        html += '<thead><tr>';
+
       // בדיקה אם יש גם חמגשית וגם תפזורת (mixed mode)
       const hasTrayItems = itemsArray.some(item => item.isTray === true);
       const hasNonTrayItems = itemsArray.some(item => item.isTray === false || !item.isTray);
@@ -4618,6 +4649,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           html += '</div>';
         }
       }
+      } // סוגר את ה-else של מדבקות חם
 
       // אזור שלישי - מקום להערות - מוקטן מאוד
       html += `<div style="height:${notesHeight}px !important;min-height:${notesHeight}px !important;margin-bottom:0 !important;padding:2px !important;border:1px solid #ccc !important;font-size:1.0em !important;flex-shrink:0 !important;box-sizing:border-box !important;">`;

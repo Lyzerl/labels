@@ -17,7 +17,8 @@
       "Bash(find:*)",
       "Bash(sort:*)",
       "Bash(git revert:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(node --check:*)"
     ]
   }
 }
