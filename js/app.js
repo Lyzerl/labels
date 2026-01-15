@@ -3780,6 +3780,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
     // הפרדה בין פריטים לפי שיטת אריזה (חמגשית / לא חמגשית)
     const trayItemsRaw = []; // פריטים גולמיים עם חמגשית (לקבץ לפי ארוחה)
     const nonTrayItemsMap = {}; // פריטים ללא חמגשית (לקבץ לפי partKey)
+    const coldRawItems = []; // פריטים קרים גולמיים - ללא קיבוץ (למדבקות קר)
     
     order.items.forEach(item => {
       // רק פריטים שיש להם סוג קרטון
@@ -3841,6 +3842,23 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
         // זיהוי צמחוני - לפי שדה Y_36827_0_ESH (בוליאני)
         const isVegetarianItem = item.isVegetarian || false;
 
+        // שמירת פריט גולמי למדבקות קר (ללא קיבוץ)
+        // בדיקה אם הפריט קר לפי cartonType
+        const cartonTypeLower = String(item.cartonType || '').toLowerCase();
+        const isColdItem = cartonTypeLower.includes('קר') || cartonTypeLower.includes('cold');
+        if (isColdItem) {
+          coldRawItems.push({
+            partName: item.partName,
+            partDes: item.partDes,
+            cartonType: item.cartonType || '',
+            mealName: item.mealName || '',
+            tQuant: parseFloat(item.tQuant) || 0,
+            eatQuant: parseFloat(item.eatQuant || item.EATQUANT || 0) || 0,
+            hasNoAllergen: isNoAllergenItem,
+            isVegetarian: isVegetarianItem
+          });
+        }
+
         // יצירת מפתח ייחודי - כולל ארוחה וסימון אלרגני/צמחוני
         // פריטים מאותה ארוחה יקובצו יחד
         let uniqueKey = `${partKey}|${mealName}`;
@@ -3849,7 +3867,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
         } else if (isVegetarianItem) {
           uniqueKey += '|צמחוני';
         }
-        
+
         if (!nonTrayItemsMap[uniqueKey]) {
           nonTrayItemsMap[uniqueKey] = {
             partName: item.partName,
@@ -4360,7 +4378,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
         // הצגת כל פריט בשורה נפרדת - פשוט וברור
         itemsArray.forEach(item => {
           const partDes = item.partDes || item.itemsKey || item.partName || '';
-          const quantity = item.sumQuant || item.eatQuant || item.totalQuantity || 0;
+          const quantity = item.tQuant || item.eatQuant || item.sumQuant || item.totalQuantity || 0;
 
           // זיהוי צבע רקע לפי סוג הפריט
           const isAllergen = item.hasNoAllergen || partDes.includes('אלרגני');
@@ -4811,27 +4829,28 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
     }
     
     // יצירת מדבקה אחת לכל הזמנה - עבור קרים
-    if ((coldTrayItems.length > 0 || coldNonTrayItems.length > 0) && (labelsMode === 'all' || labelsMode === 'cold')) {
+    // למדבקות קר - משתמשים ב-coldRawItems (פריטים גולמיים ללא קיבוץ)
+    if ((coldTrayItems.length > 0 || coldRawItems.length > 0) && (labelsMode === 'all' || labelsMode === 'cold')) {
       // קיבוץ כל פריטי החמגשית הקרים
       const allColdTrayItems = [];
       if (coldTrayItems.length > 0) {
         // חלוקה לפי גודל חמגשית (קטנה/גדולה)
         const smallTrayItems = [];
         const largeTrayItems = [];
-        
+
         coldTrayItems.forEach(item => {
           const packDes = String(item.packDes || item.PACKDES || '').toLowerCase();
           const packMethodCode = String(item.packMethodCode || item.PACKMETHODCODE || '').toLowerCase();
           const isLarge = packDes.includes('גד') || packDes.includes('גדול') || packDes.includes('גדולה') ||
                           packMethodCode.includes('גד') || packMethodCode.includes('גדול');
-          
+
           if (isLarge) {
             largeTrayItems.push(item);
           } else {
             smallTrayItems.push(item);
           }
         });
-        
+
         // קיבוץ פריטים לפי ארוחה
         if (smallTrayItems.length > 0) {
           const groupedSmallTray = groupTrayItemsByMeal(smallTrayItems, order);
@@ -4842,9 +4861,9 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           allColdTrayItems.push(...groupedLargeTray.map(item => ({...item, isTray: true, traySize: 'large'})));
         }
       }
-      
-      // יצירת מדבקה אחת עם כל הפריטים (חמגשית ותפזורת)
-      const allColdItems = [...allColdTrayItems, ...coldNonTrayItems.map(item => ({...item, isTray: false}))];
+
+      // יצירת מדבקה אחת עם כל הפריטים - משתמשים בפריטים גולמיים (coldRawItems) ולא במקובצים
+      const allColdItems = [...allColdTrayItems, ...coldRawItems.map(item => ({...item, isTray: false}))];
       if (allColdItems.length > 0) {
         // חישוב מספר קרטונים נדרש - לפי מספר פריטים ומנות
         const itemCount = allColdItems.length;
