@@ -4847,50 +4847,12 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
     }
     
     // יצירת מדבקה אחת לכל הזמנה - עבור קרים
-    // למדבקות קר - משתמשים רק ב-coldRawItems (כל הפריטים הקרים ללא קיבוץ)
+    // למדבקות קר - תמיד קרטון אחד בלבד (ללא חלוקה)
     if (coldRawItems.length > 0 && (labelsMode === 'all' || labelsMode === 'cold')) {
-      // מדבקות קר - פשוט: כל פריט בשורה נפרדת (ללא קיבוץ!)
+      // מדבקות קר - פשוט: כל פריט בשורה נפרדת, קרטון אחד בלבד
       const allColdItems = coldRawItems.map(item => ({...item, isTray: false}));
       if (allColdItems.length > 0) {
-        // חישוב מספר קרטונים נדרש - לפי מספר פריטים ומנות
-        const itemCount = allColdItems.length;
-        const totalPortions = allColdItems.reduce((sum, item) =>
-          sum + (item.eatQuant || item.totalQuantity || item.sumQuant || 0), 0);
-
-        const portionsPerCarton = itemCount <= CARTON_CONFIG.cold.fewItemsThreshold
-          ? CARTON_CONFIG.cold.portionsPerCartonFewItems
-          : CARTON_CONFIG.cold.portionsPerCartonManyItems;
-
-        let cartonsNeeded = Math.ceil(totalPortions / portionsPerCarton) || 1;
-        // הגבלה למקסימום 3 קרטונים
-        cartonsNeeded = Math.min(cartonsNeeded, 3);
-
-        if (cartonsNeeded <= 1) {
-          // קרטון בודד - כמו קודם
-          renderLabelSticker(allColdItems, false, '', 'cold');
-        } else {
-          // מספר קרטונים - יצירת מדבקה לכל קרטון
-          const dividedCartons = divideItemsToCartons(
-            allColdItems.map(item => ({
-              name: item.itemsKey || item.partDes || item.partName || '',
-              quantity: item.eatQuant || item.totalQuantity || item.sumQuant || 0,
-              ...item
-            })),
-            cartonsNeeded,
-            'cold'
-          );
-
-          dividedCartons.forEach((carton, index) => {
-            // עדכון הפריטים עם הכמויות המחולקות
-            const cartonItems = carton.items.map(item => ({
-              ...item,
-              eatQuant: item.quantity,
-              totalQuantity: item.quantity,
-              sumQuant: item.quantity
-            }));
-            renderLabelSticker(cartonItems, false, '', 'cold', index + 1, cartonsNeeded);
-          });
-        }
+        renderLabelSticker(allColdItems, false, '', 'cold');
       }
     }
   });
