@@ -4387,30 +4387,51 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
 
       // === מדבקות קר - פורמט פשוט: רק פריט + כמות ===
       if (isColdLabel) {
-        html += `<table class="label-card-table" style="width:100% !important;border-collapse:collapse !important;margin-bottom:10px !important;border:1px solid #000 !important;table-layout:fixed !important;display:table !important;">`;
-        html += '<thead><tr>';
-        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#b3e5fc !important;text-align:right !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;width:70% !important;">פריט</th>`;
-        html += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#b3e5fc !important;text-align:center !important;font-weight:bold !important;font-size:${headerFontSize} !important;height:${finalRowHeight}px !important;width:30% !important;">כמות</th>`;
-        html += '</tr></thead><tbody>';
+        const maxItemsPerColumn = 6; // מקסימום פריטים בעמודה אחת לפני פיצול
+        const useTwoColumns = itemsArray.length > maxItemsPerColumn;
 
-        // הצגת כל פריט בשורה נפרדת - פשוט וברור
-        itemsArray.forEach(item => {
-          const partDes = item.partDes || item.itemsKey || item.partName || '';
-          const quantity = item.tQuant || item.eatQuant || item.sumQuant || item.totalQuantity || 0;
+        // פונקציה לבניית טבלה עם פריטים
+        const buildColdTable = (items, tableWidth) => {
+          let tableHtml = `<table class="label-card-table" style="width:${tableWidth} !important;border-collapse:collapse !important;border:1px solid #000 !important;table-layout:fixed !important;display:table !important;">`;
+          tableHtml += '<thead><tr>';
+          tableHtml += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#b3e5fc !important;text-align:center !important;font-weight:bold !important;font-size:1em !important;height:${finalRowHeight}px !important;width:20% !important;">כמות</th>`;
+          tableHtml += `<th style="border:1px solid #000 !important;padding:${headerPadding} !important;background:#b3e5fc !important;text-align:right !important;font-weight:bold !important;font-size:1em !important;height:${finalRowHeight}px !important;width:80% !important;">פריט</th>`;
+          tableHtml += '</tr></thead><tbody>';
 
-          // זיהוי צבע רקע לפי סוג הפריט
-          const isAllergen = item.hasNoAllergen || partDes.includes('אלרגני');
-          const isVeg = item.isVegetarian;
-          const isSoup = partDes.toLowerCase().includes('מרק');
-          const bgColor = isAllergen ? '#ff5252' : (isVeg ? '#64b5f6' : (isSoup ? '#fff59d' : '#fff'));
+          items.forEach(item => {
+            const partDes = item.partDes || item.itemsKey || item.partName || '';
+            const quantity = item.tQuant || item.eatQuant || item.sumQuant || item.totalQuantity || 0;
 
-          html += '<tr>';
-          html += `<td style="border:1px solid #000 !important;padding:2px 4px !important;text-align:right !important;background:${bgColor} !important;font-size:1.2em !important;height:${finalRowHeight}px !important;">${partDes}</td>`;
-          html += `<td style="border:1px solid #000 !important;padding:2px !important;text-align:center !important;font-weight:bold !important;background:${bgColor} !important;font-size:2.2em !important;height:${finalRowHeight}px !important;">${quantity > 0 ? (quantity % 1 === 0 ? quantity : quantity.toFixed(2)) : ''}</td>`;
-          html += '</tr>';
-        });
+            const isAllergen = item.hasNoAllergen || partDes.includes('אלרגני');
+            const isVeg = item.isVegetarian;
+            const isSoup = partDes.toLowerCase().includes('מרק');
+            const bgColor = isAllergen ? '#ff5252' : (isVeg ? '#64b5f6' : (isSoup ? '#fff59d' : '#fff'));
 
-        html += '</tbody></table>';
+            tableHtml += '<tr>';
+            tableHtml += `<td style="border:1px solid #000 !important;padding:2px !important;text-align:center !important;font-weight:bold !important;background:${bgColor} !important;font-size:1.8em !important;height:${finalRowHeight}px !important;">${quantity > 0 ? (quantity % 1 === 0 ? quantity : quantity.toFixed(2)) : ''}</td>`;
+            tableHtml += `<td style="border:1px solid #000 !important;padding:2px 4px !important;text-align:right !important;background:${bgColor} !important;font-size:1em !important;height:${finalRowHeight}px !important;">${partDes}</td>`;
+            tableHtml += '</tr>';
+          });
+
+          tableHtml += '</tbody></table>';
+          return tableHtml;
+        };
+
+        if (useTwoColumns) {
+          // פיצול ל-2 עמודות זו לצד זו
+          const midPoint = Math.ceil(itemsArray.length / 2);
+          const leftItems = itemsArray.slice(0, midPoint);
+          const rightItems = itemsArray.slice(midPoint);
+
+          html += `<div style="display:flex !important;gap:5px !important;width:100% !important;">`;
+          html += `<div style="flex:1 !important;">${buildColdTable(rightItems, '100%')}</div>`;
+          html += `<div style="flex:1 !important;">${buildColdTable(leftItems, '100%')}</div>`;
+          html += `</div>`;
+        } else {
+          // עמודה אחת רגילה
+          html += buildColdTable(itemsArray, '100%');
+        }
+
         html += '</div>'; // סוגר את ה-div שמגביל את הגובה
 
       } else {
