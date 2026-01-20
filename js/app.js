@@ -3802,10 +3802,11 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
                              pspec1Lower.includes('אלרגני');
       const isVegetarianItem = item.isVegetarian === true;
 
+      // זיהוי חמגשית רק לפי שיטת האריזה של הפריט עצמו (לא לפי mainPackingMethod!)
+      // כל פריט מסווג בנפרד לפי packMethodCode, packDes או pspec1 שלו
       const isTray = packMethodCode.includes('חמגשית') ||
                      packDes.includes('חמגשית') ||
                      pspec1.includes('חמגשית') ||
-                     mainPackingMethodStr.includes('חמגשית') ||
                      isAllergenItem || isVegetarianItem; // אלרגני/צמחוני = תמיד חמגשית
 
       if (isTray) {
