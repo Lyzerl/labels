@@ -12,536 +12,94 @@
 <meta name="apple-mobile-web-app-title" content="ביק הזמנות">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+<!-- CSS משותף -->
+<link rel="stylesheet" href="css/styles.css">
+<!-- סגנונות ספציפיים לדף חיפוש -->
 <style>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+.container { max-width: 1200px; padding: 15px; }
+@media (min-width: 768px) { .container { padding: 30px; } }
 
-body {
-    font-family: Arial, sans-serif;
-    direction: rtl;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    padding: 10px;
-}
+.search-section { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+@media (min-width: 768px) { .search-section { padding: 25px; margin-bottom: 30px; } }
 
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    background: white;
-    border-radius: 15px;
-    padding: 15px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-}
+.search-box { display: flex; flex-direction: column; gap: 10px; }
+@media (min-width: 768px) { .search-box { flex-direction: row; } }
 
-/* תפריט ניווט */
-.main-nav {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    padding: 12px;
-    border-radius: 10px;
-    flex-wrap: wrap;
-    justify-content: center;
-}
+.search-input { width: 100%; padding: 14px 20px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px; transition: border-color 0.3s; }
+@media (min-width: 768px) { .search-input { flex: 1; width: auto; padding: 12px 20px; } }
+.search-input:focus { outline: none; border-color: #4285f4; }
 
-.nav-link {
-    padding: 10px 20px;
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    text-decoration: none;
-    border-radius: 8px;
-    font-weight: bold;
-    font-size: 0.95em;
-    transition: all 0.3s;
-    border: 2px solid transparent;
-}
+.search-btn { width: 100%; padding: 14px 30px; background: #4285f4; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: all 0.3s; }
+@media (min-width: 768px) { .search-btn { width: auto; padding: 12px 30px; font-size: 16px; } }
+.search-btn:hover:not(:disabled) { background: #3367d6; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(66, 133, 244, 0.3); }
+.search-btn:disabled { background: #ccc; cursor: not-allowed; }
 
-.nav-link:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-}
-
-.nav-link.active {
-    background: white;
-    color: #667eea;
-    border-color: white;
-}
-
-@media (min-width: 768px) {
-    body {
-        padding: 20px;
-    }
-
-    .container {
-        padding: 30px;
-    }
-
-    .main-nav {
-        margin-bottom: 25px;
-        padding: 15px;
-    }
-
-    .nav-link {
-        padding: 12px 24px;
-        font-size: 1.05em;
-    }
-}
-
-h1 {
-    color: #4285f4;
-    text-align: center;
-    margin-bottom: 20px;
-    font-size: 24px;
-}
-
-@media (min-width: 768px) {
-    h1 {
-        margin-bottom: 30px;
-        font-size: 32px;
-    }
-}
-
-.search-section {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 10px;
-    margin-bottom: 20px;
-}
-
-@media (min-width: 768px) {
-    .search-section {
-        padding: 25px;
-        margin-bottom: 30px;
-    }
-}
-
-.search-box {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-@media (min-width: 768px) {
-    .search-box {
-        flex-direction: row;
-    }
-}
-
-.search-input {
-    width: 100%;
-    padding: 14px 20px;
-    font-size: 16px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    transition: border-color 0.3s;
-}
-
-@media (min-width: 768px) {
-    .search-input {
-        flex: 1;
-        width: auto;
-        padding: 12px 20px;
-    }
-}
-
-.search-input:focus {
-    outline: none;
-    border-color: #4285f4;
-}
-
-.search-btn {
-    width: 100%;
-    padding: 14px 30px;
-    background: #4285f4;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 18px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-@media (min-width: 768px) {
-    .search-btn {
-        width: auto;
-        padding: 12px 30px;
-        font-size: 16px;
-    }
-}
-
-.search-btn:hover:not(:disabled) {
-    background: #3367d6;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(66, 133, 244, 0.3);
-}
-
-.search-btn:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-}
-
-.status {
-    padding: 15px;
-    margin: 15px 0;
-    border-radius: 8px;
-    text-align: center;
-    font-weight: bold;
-}
-
-.status.loading {
-    background: #fff3e0;
-    color: #ff9800;
-}
-
-.status.success {
-    background: #e8f5e9;
-    color: #4caf50;
-}
-
-.status.error {
-    background: #ffebee;
-    color: #f44336;
-}
-
-.results-info {
-    background: #e3f2fd;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    display: none;
-}
-
-.results-info.show {
-    display: block;
-}
-
-.labels-container {
-    margin-top: 30px;
-}
+.results-info { background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none; }
+.results-info.show { display: block; }
 
 /* מבנה עמוד למדבקות */
-.labels-container {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    align-items: center;
-}
-
-.label-page {
-    width: 210mm;
-    height: 149mm;
-    position: relative;
-    margin: 0 auto 15px auto;
-    page-break-after: always;
-    background: white;
-}
-
-.label-item {
-    width: 210mm;
-    height: 149mm;
-    page-break-inside: avoid;
-    break-inside: avoid;
-    border: 2px solid #333;
-    border-radius: 8px;
-    overflow: hidden;
-    background: white;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.label-header {
-    display: grid;
-    grid-template-columns: 1fr 2fr 1fr;
-    gap: 10px;
-    background: #f5f5f5;
-    padding: 8mm;
-    border-bottom: 2px solid #333;
-    flex-shrink: 0;
-}
-
-.label-logo {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.label-logo img {
-    max-width: 100%;
-    max-height: 65px;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-}
-
-.label-customer {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    text-align: center;
-}
-
-.label-customer-name {
-    font-size: 22px;
-    font-weight: bold;
-    margin-bottom: 5px;
-}
-
-.label-customer-code {
-    font-size: 17px;
-    color: #666;
-}
-
-.label-date {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-}
-
-.label-date-label {
-    font-size: 15px;
-    color: #666;
-    margin-bottom: 3px;
-}
-
-.label-date-value {
-    font-size: 20px;
-    font-weight: bold;
-}
-
-.label-boxes {
-    padding: 8mm;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.label-box-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    flex: 1;
-    overflow: hidden;
-}
-
-.label-box {
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 8px;
-    background: #fafafa;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.label-box-hot {
-    border-color: #ff6b6b;
-    background: #fff5f5;
-}
-
-.label-box-cold {
-    border-color: #4dabf7;
-    background: #f0f7ff;
-}
-
-.label-box-name {
-    font-weight: bold;
-    font-size: 14px;
-    margin-bottom: 8px;
-    color: #333;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 5px;
-}
-
-.label-box-items {
-    font-size: 13px;
-    line-height: 1.6;
-    flex: 1;
-    overflow-y: auto;
-}
-
-.label-box-item {
-    padding: 3px 0;
-    border-bottom: 1px dotted #e0e0e0;
-}
-
-.label-box-item:last-child {
-    border-bottom: none;
-}
-
-.label-footer {
-    background: #f5f5f5;
-    padding: 6mm;
-    text-align: center;
-    border-top: 2px solid #333;
-    flex-shrink: 0;
-}
-
-.label-notes {
-    font-size: 13px;
-    color: #666;
-    margin-bottom: 5px;
-}
-
-.label-delivery {
-    font-size: 14px;
-    font-weight: bold;
-    color: #333;
-}
+.labels-container { margin-top: 30px; display: flex; flex-direction: column; gap: 15px; align-items: center; }
+.label-page { width: 210mm; height: 149mm; position: relative; margin: 0 auto 15px auto; page-break-after: always; background: white; }
+.label-item { width: 210mm; height: 149mm; page-break-inside: avoid; break-inside: avoid; border: 2px solid #333; border-radius: 8px; overflow: hidden; background: white; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
+.label-header { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; background: #f5f5f5; padding: 8mm; border-bottom: 2px solid #333; flex-shrink: 0; }
+.label-logo { display: flex; align-items: center; justify-content: center; }
+.label-logo img { max-width: 100%; max-height: 65px; width: auto; height: auto; object-fit: contain; }
+.label-customer { display: flex; flex-direction: column; justify-content: center; text-align: center; }
+.label-customer-name { font-size: 22px; font-weight: bold; margin-bottom: 5px; }
+.label-customer-code { font-size: 17px; color: #666; }
+.label-date { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.label-date-label { font-size: 15px; color: #666; margin-bottom: 3px; }
+.label-date-value { font-size: 20px; font-weight: bold; }
+.label-boxes { padding: 8mm; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.label-box-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; overflow: hidden; }
+.label-box { border: 1px solid #ddd; border-radius: 6px; padding: 8px; background: #fafafa; display: flex; flex-direction: column; overflow: hidden; }
+.label-box-hot { border-color: #ff6b6b; background: #fff5f5; }
+.label-box-cold { border-color: #4dabf7; background: #f0f7ff; }
+.label-box-name { font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+.label-box-items { font-size: 13px; line-height: 1.6; flex: 1; overflow-y: auto; }
+.label-box-item { padding: 3px 0; border-bottom: 1px dotted #e0e0e0; }
+.label-box-item:last-child { border-bottom: none; }
+.label-footer { background: #f5f5f5; padding: 6mm; text-align: center; border-top: 2px solid #333; flex-shrink: 0; }
+.label-notes { font-size: 13px; color: #666; margin-bottom: 5px; }
+.label-delivery { font-size: 14px; font-weight: bold; color: #333; }
 
 @media print {
-    @page {
-        size: A5 landscape;
-        margin: 0;
-    }
-
-    body {
-        background: white;
-        padding: 0;
-        margin: 0;
-    }
-
-    .container {
-        box-shadow: none;
-        padding: 0;
-        margin: 0;
-        max-width: 100%;
-    }
-
-    .main-nav,
-    .search-section,
-    .status,
-    .results-info,
-    h1 {
-        display: none !important;
-    }
-
-    .labels-container {
-        gap: 0;
-        margin: 0;
-        padding: 0;
-    }
-
-    .label-page {
-        width: 210mm;
-        height: 149mm;
-        margin: 0;
-        page-break-after: always;
-        page-break-inside: avoid;
-    }
-
-    .label-item {
-        width: 210mm;
-        height: 149mm;
-        margin: 0;
-        page-break-inside: avoid;
-        page-break-after: always;
-        border: 2px solid #000;
-        box-shadow: none;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-
-    .label-item:last-child {
-        page-break-after: auto;
-    }
-
-    .label-box-hot,
-    .label-box-cold {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
+    @page { size: A5 landscape; margin: 0; }
+    body { background: white; padding: 0; margin: 0; }
+    .container { box-shadow: none; padding: 0; margin: 0; max-width: 100%; }
+    .main-nav, .search-section, .status, .results-info, h1 { display: none !important; }
+    .labels-container { gap: 0; margin: 0; padding: 0; }
+    .label-page { width: 210mm; height: 149mm; margin: 0; page-break-after: always; page-break-inside: avoid; }
+    .label-item { width: 210mm; height: 149mm; margin: 0; page-break-inside: avoid; page-break-after: always; border: 2px solid #000; box-shadow: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .label-item:last-child { page-break-after: auto; }
+    .label-box-hot, .label-box-cold { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 
 @media screen and (max-width: 768px) {
-    .label-page {
-        width: 100%;
-        height: auto;
-        margin-bottom: 20px;
-    }
-
-    .label-item {
-        width: 100%;
-        height: auto;
-        min-height: auto;
-    }
-
-    .label-header {
-        grid-template-columns: 1fr;
-        gap: 15px;
-        padding: 15px;
-    }
-
-    .label-logo {
-        order: 1;
-    }
-
-    .label-customer {
-        order: 2;
-    }
-
-    .label-date {
-        order: 3;
-    }
-
-    .label-boxes {
-        padding: 15px;
-    }
-
-    .label-box-row {
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-    }
-
-    .label-footer {
-        padding: 15px;
-    }
-
-    .label-customer-name {
-        font-size: 16px;
-    }
-
-    .label-customer-code {
-        font-size: 13px;
-    }
-
-    .label-date-value {
-        font-size: 14px;
-    }
-
-    .label-box {
-        padding: 10px;
-    }
-
-    .label-box-name {
-        font-size: 13px;
-    }
-
-    .label-box-items {
-        font-size: 12px;
-    }
+    .label-page { width: 100%; height: auto; margin-bottom: 20px; }
+    .label-item { width: 100%; height: auto; min-height: auto; }
+    .label-header { grid-template-columns: 1fr; gap: 15px; padding: 15px; }
+    .label-logo { order: 1; }
+    .label-customer { order: 2; }
+    .label-date { order: 3; }
+    .label-boxes { padding: 15px; }
+    .label-box-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .label-footer { padding: 15px; }
+    .label-customer-name { font-size: 16px; }
+    .label-customer-code { font-size: 13px; }
+    .label-date-value { font-size: 14px; }
+    .label-box { padding: 10px; }
+    .label-box-name { font-size: 13px; }
+    .label-box-items { font-size: 12px; }
 }
 </style>
 </head>
 <body>
 
 <div class="container">
-    <!-- תפריט ניווט -->
-    <nav class="main-nav">
-        <a href="index.html" class="nav-link">🏠 דף הבית</a>
-        <a href="menu.html" class="nav-link">📅 תפריטים</a>
-        <a href="search-labels.html" class="nav-link active">🔍 חיפוש מוסד</a>
-    </nav>
+    <!-- תפריט ניווט משותף -->
+    <nav id="main-nav"></nav>
+    <script src="js/nav.js"></script>
 
     <h1>🔍 חיפוש מהיר למדבקות</h1>
 
@@ -584,8 +142,10 @@ h1 {
     <div id="labelsContainer" class="labels-container"></div>
 </div>
 
+<!-- טעינת קונפיגורציה משותפת -->
+<script src="js/config.js"></script>
 <script>
-const PROXY_URL = 'https://priority-proxy.lyzer-64d.workers.dev';
+// PROXY_URL מגיע מ-config.js
 
 // הגדרת תאריך ברירת מחדל להיום
 window.addEventListener('DOMContentLoaded', function() {

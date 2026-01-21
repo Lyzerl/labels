@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>דוח ייצור חם - 4 ימים</title>
+<!-- PWA Meta Tags -->
+<meta name="theme-color" content="#667eea">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ביק הזמנות">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+<!-- CSS משותף -->
+<link rel="stylesheet" href="css/styles.css">
+<!-- סגנונות ספציפיים לדף -->
+<style>
+.container { max-width: 1400px; padding: 20px; }
+h1 { margin-bottom: 20px; }
+
+.date-range-info {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.1em;
+}
+
+.date-range-info strong {
+    font-size: 1.2em;
+}
+
+.day-table-container {
+    margin-bottom: 40px;
+    page-break-inside: avoid;
+}
+
+.day-title {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 10px 10px 0 0;
+    font-size: 1.3em;
+    font-weight: bold;
+    text-align: center;
+}
+
+.section-title {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    color: white;
+    padding: 10px 20px;
+    font-size: 1.1em;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 15px;
+}
+
+.section-title.gastronorm {
+    background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+}
+
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95em;
+}
+
+.report-table th, .report-table td {
+    border: 2px solid #333;
+    padding: 10px 8px;
+    text-align: center;
+}
+
+.report-table th {
+    background: #4285f4;
+    color: white;
+    font-weight: bold;
+    font-size: 1em;
+}
+
+.report-table th.product-col {
+    background: #2c3e50;
+    min-width: 200px;
+    text-align: right;
+    padding-right: 15px;
+}
+
+.report-table td.product-name {
+    background: #ecf0f1;
+    font-weight: bold;
+    text-align: right;
+    padding-right: 15px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.report-table td.product-name:hover {
+    background: #d5dbdb;
+    text-decoration: underline;
+}
+
+.report-table td.total-row {
+    background: #f39c12;
+    font-weight: bold;
+    color: #fff;
+}
+
+.report-table tr:hover td:not(.product-name):not(.total-row) {
+    background: #fff3e0;
+}
+
+.report-table td {
+    background: #fafafa;
+}
+
+.controls {
+    justify-content: flex-start;
+}
+
+.actions-bar {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 25px;
+}
+
+.summary-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.summary-card.hot {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+}
+
+.summary-card.gastronorm {
+    background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+}
+
+.summary-card h3 {
+    margin: 0 0 8px 0;
+    font-size: 0.85em;
+    opacity: 0.9;
+}
+
+.summary-card .value {
+    font-size: 1.6em;
+    font-weight: bold;
+}
+
+.branch-filter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.branch-filter label {
+    font-weight: bold;
+}
+
+.branch-filter select {
+    padding: 10px 15px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 1em;
+    min-width: 150px;
+}
+
+/* Modal styles */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 15px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.2em;
+    color: white;
+}
+
+.modal-close {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background 0.2s;
+}
+
+.modal-close:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+.modal-body {
+    padding: 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.modal-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.modal-item:last-child {
+    border-bottom: none;
+}
+
+.modal-item strong {
+    color: #333;
+    font-size: 1em;
+}
+
+.modal-item span {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.modal-item:hover {
+    background: #f8f9fa;
+}
+
+@media print {
+    body { background: white; padding: 5px; }
+    .container { box-shadow: none; max-width: 100%; padding: 10px; }
+    .main-nav, .actions-bar, #status, .modal-overlay { display: none !important; }
+    .report-table { font-size: 0.8em; }
+    .report-table th, .report-table td { padding: 6px 4px; }
+    .summary-cards { display: none; }
+    h1 { font-size: 1.3em; margin-bottom: 10px; }
+    .date-range-info { padding: 8px; font-size: 0.9em; margin-bottom: 15px; }
+    .day-table-container { margin-bottom: 25px; page-break-inside: avoid; }
+    .day-title { padding: 10px; font-size: 1.1em; }
+    .section-title { padding: 8px; font-size: 1em; }
+    .report-table td.product-name { cursor: default; }
+    .report-table td.product-name:hover { background: #ecf0f1; text-decoration: none; }
+}
+
+@media (max-width: 768px) {
+    .report-table { font-size: 0.75em; }
+    .report-table th, .report-table td { padding: 5px 3px; }
+    .summary-cards { grid-template-columns: repeat(2, 1fr); }
+    .actions-bar { flex-direction: column; align-items: stretch; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <!-- תפריט ניווט משותף -->
+    <nav id="main-nav"></nav>
+    <script src="js/nav.js"></script>
+
+    <h1>🔥 דוח ייצור חם - 4 ימי עבודה קדימה</h1>
+
+    <div id="dateRangeInfo" class="date-range-info">
+        טוען תאריכים...
+    </div>
+
+    <div class="actions-bar">
+        <div class="branch-filter">
+            <label for="branchSelect">סניף:</label>
+            <select id="branchSelect">
+                <option value="all">הכל</option>
+                <option value="south">דרום</option>
+                <option value="north">צפון</option>
+            </select>
+        </div>
+        <button class="btn" onclick="loadReport()" id="loadBtn">🔄 טען דוח</button>
+        <button class="btn download" onclick="printReport()" id="printBtn" disabled>🖨️ הדפס</button>
+        <button class="btn download" onclick="downloadCSV()" id="csvBtn" disabled>📥 הורד CSV</button>
+    </div>
+
+    <div id="status"></div>
+
+    <div id="summaryCards" class="summary-cards" style="display: none;"></div>
+
+    <div id="reportContainer"></div>
+</div>
+
+<!-- Modal for showing order details -->
+<div id="itemModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">פרטי הזמנות</h2>
+            <button class="modal-close" onclick="closeItemModal()">✕ סגור</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- Content will be inserted here -->
+        </div>
+    </div>
+</div>
+
+<!-- טעינת קונפיגורציה משותפת -->
+<script src="js/config.js"></script>
+<script>
+// משתנים גלובליים
+let reportData = null;
+let workingDays = [];
+let allDaysDataGlobal = []; // שמירת הנתונים לכל הימים
+let productOrdersData = {}; // שמירת ההזמנות לכל מוצר בכל יום
+
+// חישוב 4 ימי עבודה קדימה (ראשון עד חמישי) - מתחילים מהיום הבא
+function calculateWorkingDays() {
+    const days = [];
+    const today = new Date();
+    let currentDate = new Date(today);
+
+    // מתחילים מהיום הבא (לא כולל היום)
+    currentDate.setDate(currentDate.getDate() + 1);
+
+    while (days.length < 4) {
+        const dayOfWeek = currentDate.getDay(); // 0 = ראשון, 6 = שבת
+
+        // ימים 0-4 הם ראשון עד חמישי (ימי עבודה)
+        if (dayOfWeek >= 0 && dayOfWeek <= 4) {
+            days.push(new Date(currentDate));
+        }
+
+        // עוברים ליום הבא
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return days;
+}
+
+// פורמט תאריך לעברית
+function formatDateHebrew(date) {
+    const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+    const dayName = days[date.getDay()];
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `יום ${dayName} ${day}/${month}/${year}`;
+}
+
+// פורמט תאריך קצר
+function formatDateShort(date) {
+    const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+    const dayName = days[date.getDay()];
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `יום ${dayName} (${day}/${month})`;
+}
+
+// פורמט תאריך ל-API
+function formatDateForAPI(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// עדכון תצוגת טווח התאריכים
+function updateDateRangeDisplay() {
+    workingDays = calculateWorkingDays();
+    const infoDiv = document.getElementById('dateRangeInfo');
+
+    if (workingDays.length >= 4) {
+        const firstDate = formatDateHebrew(workingDays[0]);
+        const lastDate = formatDateHebrew(workingDays[3]);
+        infoDiv.innerHTML = `<strong>טווח תאריכים:</strong> ${firstDate} עד ${lastDate}`;
+    }
+}
+
+// משיכת נתונים מהשרת
+async function fetchDataForDate(date, branch) {
+    const dateStr = formatDateForAPI(date) + 'T00:00:00Z';
+    let filter = `$filter=DUEDATE eq ${dateStr}`;
+
+    // הוספת פילטר סניף
+    if (branch === 'south') {
+        filter += ` and BRANCHNAME le '1'`;
+    } else if (branch === 'north') {
+        filter += ` and BRANCHNAME ge '3'`;
+    }
+
+    const url = `${PROXY_URL}?filter=${encodeURIComponent(filter)}&fetchAll=true`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`שגיאת שרת: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.value || data;
+}
+
+// סינון רק פריטים חמים - משתמש בפונקציה מ-DEFINITIONS שבודקת כל השדות הרלוונטיים
+function filterHotItems(data) {
+    return data.filter(row => {
+        // משתמשים בפונקציה isHotItem מ-DEFINITIONS שבודקת:
+        // CARTON_TYPE, PSPEC6, PSPEC3
+        return DEFINITIONS.isHotItem(row);
+    });
+}
+
+// עיבוד הנתונים לטבלה מסכמת - ליום אחד
+// מפריד בין: גסטרונום, מארזים (5 ו-7), מיכלים רגילים, חמגשיות
+// חשוב:
+// - אם אותו מוצר באותה הזמנה עם כמה שורות (סוגי אריזה) - סופר פעם אחת
+// - אם אותו מוצר באותה הזמנה בכמה ארוחות - סופר כל ארוחה בנפרד
+// - אם אותו מוצר מכמה הזמנות - מסכם יחד בטבלה
+function processDataForDay(dayData, dayIndex) {
+    // שלב 1: איחוד שורות לפי הזמנה+מוצר+ארוחה
+    // מפתח ייחודי = ORDNAME + PARTDES + MEALNAME (כל ארוחה נספרת בנפרד)
+    const uniqueItems = {};
+
+    dayData.forEach(row => {
+        const productName = String(row.PARTDES || '').trim();
+        if (!productName) return;
+
+        const orderName = String(row.ORDNAME || '');
+        const mealName = String(row.MEALNAME || '');
+        // מפתח ייחודי כולל ארוחה - כל ארוחה נספרת בנפרד
+        const uniqueKey = `${orderName}|${productName}|${mealName}`;
+
+        // אם כבר ראינו את השילוב הזה - מדלגים (לא סופרים פעמיים שורות כפולות מסוגי אריזה)
+        if (uniqueItems[uniqueKey]) return;
+
+        // שומרים את השורה הראשונה של השילוב הזה
+        uniqueItems[uniqueKey] = row;
+    });
+
+    // שלב 2: עיבוד הנתונים המאוחדים
+    // מוצרי גסטרונום - נפרד
+    const gastronormProducts = {};
+    // מוצרי מארזים (5 ו-7) - ללא מיכלים
+    const packProducts = {};
+    // מוצרי מיכלים רגילים - רק אם אין מארזים
+    const containerProducts = {};
+    // חמגשיות
+    const trayProducts = {};
+
+    Object.values(uniqueItems).forEach(row => {
+        const productName = String(row.PARTDES || '').trim();
+
+        // בדיקה אם זה חמגשית אלרגנית - מדלגים עליה
+        const pspec2 = String(row.PSPEC2 || '').toLowerCase();
+        const spec2 = String(row.SPEC2 || '').toLowerCase();
+        const packMethod = String(row.PACKMETHODCODE || '').toLowerCase();
+        const isTray = packMethod.includes('חמגשית');
+        const isAllergen = pspec2.includes('אלרגנ') || spec2.includes('אלרגנ');
+
+        // מדלגים על חמגשיות אלרגניות
+        if (isTray && isAllergen) return;
+
+        // זיהוי סוג המיכל - גסטרונום
+        const packDes = String(row.PACKDES || '').toLowerCase();
+        const pspec1 = String(row.PSPEC1 || '').toLowerCase();
+        const isGastronorm = packDes.includes('גסטרונום') || pspec1.includes('גסטרונום') || packMethod.includes('גסטרונום');
+
+        // בדיקה אם זה לקוח חב"ד עם מנה עיקרית בשרית - מתייחסים כתפזורת
+        // PSPEC3 מכיל את הפרמטר של בשרי/פרווה
+        const pspec3 = String(row.PSPEC3 || '').toLowerCase();
+        const isChabad = spec2.includes('חבד') || spec2.includes('חב"ד');
+        const isMeatMain = pspec3.includes('בשרי');
+        const isChabadMeatTray = isChabad && isMeatMain && isTray;
+
+        // שמירת פרטי ההזמנה לפופאפ
+        const orderKey = `${dayIndex}_${productName}`;
+        if (!productOrdersData[orderKey]) {
+            productOrdersData[orderKey] = [];
+        }
+
+        // בדיקה אם ההזמנה+ארוחה כבר קיימת
+        const orderName = row.ORDNAME || '';
+        const mealName = row.MEALNAME || '';
+        const existingOrder = productOrdersData[orderKey].find(o =>
+            o.orderName === orderName && o.mealName === mealName
+        );
+        if (!existingOrder) {
+            productOrdersData[orderKey].push({
+                orderName: orderName,
+                mealName: mealName,
+                custDes: row.CUSTDES || '',
+                custName: row.CUSTNAME || '',
+                quantity: parseFloat(row.TQUANT) || 0,
+                eatQuant: parseFloat(row.EATQUANT) || 0
+            });
+        }
+
+        // חישוב הערכים
+        const tquant = parseFloat(row.TQUANT) || 0;
+        const eatQuant = parseFloat(row.EATQUANT) || 0;
+        const param7 = parseFloat(row.Y_9964_5_ESH) || 0;
+        const param8 = parseFloat(row.Y_9965_5_ESH) || 0;
+
+        // חמגשיות - נפרד (אלא אם זה חב"ד עם מנה בשרית - אז מתייחסים כתפזורת)
+        if (isTray && !isAllergen && !isChabadMeatTray) {
+            if (!trayProducts[productName]) {
+                trayProducts[productName] = { name: productName, trays: 0 };
+            }
+            trayProducts[productName].trays += eatQuant;
+            return; // חמגשיות לא נספרות במיכלים/מארזים
+        }
+
+        // חב"ד עם מנה בשרית בחמגשית - מתייחסים כתפזורת (ממשיכים לבדיקות הבאות)
+
+        // גסטרונום - נפרד לחלוטין
+        if (isGastronorm) {
+            if (!gastronormProducts[productName]) {
+                gastronormProducts[productName] = { name: productName, containers: 0, weight: 0 };
+            }
+            // חישוב מיכלי גסטרונום
+            let containers = 0;
+            if (tquant > 0 && param7 > 0) {
+                const divisionResult = tquant / param7;
+                containers = Math.ceil(divisionResult / 6.5);
+            }
+            gastronormProducts[productName].containers += containers;
+            gastronormProducts[productName].weight += tquant;
+            return; // גסטרונום לא נספר במארזים/מיכלים רגילים
+        }
+
+        // בדיקה אם יש פרמטר 8 (מארזים)
+        const hasPacks = param8 > 0;
+
+        if (hasPacks) {
+            // מארזים 5 ו-7
+            if (!packProducts[productName]) {
+                packProducts[productName] = { name: productName, pack5: 0, pack7: 0, packWeight: 0 };
+            }
+            // חישוב מארזים
+            if (tquant > 0) {
+                const totalServings = Math.ceil(tquant / param8);
+                const optimized = DEFINITIONS.calculateOptimalPacks(totalServings);
+                packProducts[productName].pack5 += optimized.five;
+                packProducts[productName].pack7 += optimized.seven;
+                packProducts[productName].packWeight += tquant;
+            }
+        } else {
+            // מיכלים רגילים - רק אם אין מארזים
+            if (!containerProducts[productName]) {
+                containerProducts[productName] = { name: productName, containers: 0, weight: 0 };
+            }
+            // חישוב מיכלים
+            let containers = 0;
+            if (tquant > 0 && param7 > 0) {
+                const divisionResult = tquant / param7;
+                containers = Math.ceil(divisionResult / 2); // מיכל רגיל - חילוק ב-2
+            }
+            containerProducts[productName].containers += containers;
+            containerProducts[productName].weight += tquant;
+        }
+    });
+
+    return {
+        gastronorm: gastronormProducts,
+        packs: packProducts,
+        containers: containerProducts,
+        trays: trayProducts
+    };
+}
+
+// פתיחת פופאפ הזמנות
+function openItemModal(productName, dayIndex) {
+    const modal = document.getElementById('itemModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+
+    if (!modal || !modalTitle || !modalBody) return;
+
+    const safeProductName = String(productName || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const dayDate = workingDays[dayIndex] ? formatDateHebrew(workingDays[dayIndex]) : '';
+    modalTitle.textContent = `הזמנות - ${safeProductName}`;
+
+    const orderKey = `${dayIndex}_${productName}`;
+    const ordersData = productOrdersData[orderKey];
+
+    let html = '';
+
+    if (ordersData && ordersData.length > 0) {
+        // כותרת עם התאריך
+        html += `<div style="background:#e3f2fd;padding:10px;border-radius:5px;margin-bottom:15px;text-align:center;font-weight:bold;">${dayDate}</div>`;
+
+        // מיון לפי שם לקוח
+        const sortedOrders = ordersData.sort((a, b) => {
+            const nameA = String(a.custDes || '').trim();
+            const nameB = String(b.custDes || '').trim();
+            return nameA.localeCompare(nameB, 'he');
+        });
+
+        sortedOrders.forEach(order => {
+            const orderName = String(order.orderName || 'ללא').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            const custDes = String(order.custDes || 'ללא').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            const custName = String(order.custName || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            const mealName = String(order.mealName || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            html += '<div class="modal-item">';
+            html += `<strong>הזמנה: ${orderName}</strong>`;
+            html += `<span>לקוח: ${custDes}</span>`;
+            if (custName) {
+                html += `<span>מספר לקוח: ${custName}</span>`;
+            }
+            if (mealName) {
+                html += `<span>ארוחה: ${mealName}</span>`;
+            }
+            if (order.quantity > 0) {
+                html += `<span>כמות: ${order.quantity.toFixed(1)}</span>`;
+            }
+            html += '</div>';
+        });
+
+        html += `<div style="margin-top:15px;padding:10px;background:#e8f5e9;border-radius:5px;text-align:center;font-weight:bold;">סה"כ: ${sortedOrders.length} הזמנות</div>`;
+    } else {
+        html = '<p style="text-align:center;padding:20px;color:#999;">אין נתונים להצגה</p>';
+    }
+
+    modalBody.innerHTML = html;
+    modal.classList.add('active');
+}
+
+// סגירת פופאפ
+function closeItemModal() {
+    const modal = document.getElementById('itemModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+// סגירת modal בלחיצה מחוץ לתוכן
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('itemModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeItemModal();
+            }
+        });
+    }
+});
+
+// בניית טבלה ליום אחד - עם הפרדה לסקציות
+function buildDayTable(dayProducts, date, dayIndex) {
+    const { gastronorm, packs, containers, trays } = dayProducts;
+
+    const hasGastronorm = Object.keys(gastronorm).length > 0;
+    const hasPacks = Object.keys(packs).length > 0;
+    const hasContainers = Object.keys(containers).length > 0;
+    const hasTrays = Object.keys(trays).length > 0;
+
+    if (!hasGastronorm && !hasPacks && !hasContainers && !hasTrays) {
+        return {
+            html: `
+                <div class="day-table-container">
+                    <div class="day-title">${formatDateHebrew(date)}</div>
+                    <p style="text-align:center;padding:20px;color:#999;background:#fafafa;border:2px solid #333;border-top:none;">לא נמצאו נתונים</p>
+                </div>
+            `,
+            totals: { gastronormContainers: 0, gastronormWeight: 0, containers: 0, containerWeight: 0, pack5: 0, pack7: 0, packWeight: 0, trays: 0 }
+        };
+    }
+
+    let html = `<div class="day-table-container">`;
+    html += `<div class="day-title">${formatDateHebrew(date)}</div>`;
+
+    const totals = {
+        gastronormContainers: 0,
+        gastronormWeight: 0,
+        containers: 0,
+        containerWeight: 0,
+        pack5: 0,
+        pack7: 0,
+        packWeight: 0,
+        trays: 0
+    };
+
+    // טבלת גסטרונום
+    if (hasGastronorm) {
+        html += '<div class="section-title gastronorm">🍱 גסטרונום</div>';
+        html += '<table class="report-table">';
+        html += '<thead><tr>';
+        html += '<th class="product-col">מוצר</th>';
+        html += '<th>מיכלים</th>';
+        html += '<th>משקל (ק"ג)</th>';
+        html += '</tr></thead><tbody>';
+
+        const sortedGastronorm = Object.values(gastronorm).sort((a, b) => a.name.localeCompare(b.name, 'he'));
+        sortedGastronorm.forEach(product => {
+            const escapedName = product.name.replace(/'/g, "\\'").replace(/"/g, '\\"');
+            html += '<tr>';
+            html += `<td class="product-name" onclick="openItemModal('${escapedName}', ${dayIndex})" title="לחץ לצפייה בהזמנות">${product.name}</td>`;
+            html += `<td>${product.containers > 0 ? product.containers : '-'}</td>`;
+            html += `<td>${product.weight > 0 ? product.weight.toFixed(1) : '-'}</td>`;
+            html += '</tr>';
+            totals.gastronormContainers += product.containers;
+            totals.gastronormWeight += product.weight;
+        });
+
+        html += '<tr>';
+        html += '<td class="total-row">סה"כ גסטרונום</td>';
+        html += `<td class="total-row">${totals.gastronormContainers}</td>`;
+        html += `<td class="total-row">${totals.gastronormWeight.toFixed(1)}</td>`;
+        html += '</tr></tbody></table>';
+    }
+
+    // טבלת מארזים (5 ו-7)
+    if (hasPacks) {
+        html += '<div class="section-title">📦 מארזים</div>';
+        html += '<table class="report-table">';
+        html += '<thead><tr>';
+        html += '<th class="product-col">מוצר</th>';
+        html += '<th>מארז 5</th>';
+        html += '<th>מארז 7</th>';
+        html += '<th>משקל (ק"ג)</th>';
+        html += '</tr></thead><tbody>';
+
+        const sortedPacks = Object.values(packs).sort((a, b) => a.name.localeCompare(b.name, 'he'));
+        sortedPacks.forEach(product => {
+            const escapedName = product.name.replace(/'/g, "\\'").replace(/"/g, '\\"');
+            html += '<tr>';
+            html += `<td class="product-name" onclick="openItemModal('${escapedName}', ${dayIndex})" title="לחץ לצפייה בהזמנות">${product.name}</td>`;
+            html += `<td>${product.pack5 > 0 ? product.pack5 : '-'}</td>`;
+            html += `<td>${product.pack7 > 0 ? product.pack7 : '-'}</td>`;
+            html += `<td>${product.packWeight > 0 ? product.packWeight.toFixed(1) : '-'}</td>`;
+            html += '</tr>';
+            totals.pack5 += product.pack5;
+            totals.pack7 += product.pack7;
+            totals.packWeight += product.packWeight;
+        });
+
+        html += '<tr>';
+        html += '<td class="total-row">סה"כ מארזים</td>';
+        html += `<td class="total-row">${totals.pack5}</td>`;
+        html += `<td class="total-row">${totals.pack7}</td>`;
+        html += `<td class="total-row">${totals.packWeight.toFixed(1)}</td>`;
+        html += '</tr></tbody></table>';
+    }
+
+    // טבלת מיכלים רגילים
+    if (hasContainers) {
+        html += '<div class="section-title">🥡 מיכלים</div>';
+        html += '<table class="report-table">';
+        html += '<thead><tr>';
+        html += '<th class="product-col">מוצר</th>';
+        html += '<th>מיכלים</th>';
+        html += '<th>משקל (ק"ג)</th>';
+        html += '</tr></thead><tbody>';
+
+        const sortedContainers = Object.values(containers).sort((a, b) => a.name.localeCompare(b.name, 'he'));
+        sortedContainers.forEach(product => {
+            const escapedName = product.name.replace(/'/g, "\\'").replace(/"/g, '\\"');
+            html += '<tr>';
+            html += `<td class="product-name" onclick="openItemModal('${escapedName}', ${dayIndex})" title="לחץ לצפייה בהזמנות">${product.name}</td>`;
+            html += `<td>${product.containers > 0 ? product.containers : '-'}</td>`;
+            html += `<td>${product.weight > 0 ? product.weight.toFixed(1) : '-'}</td>`;
+            html += '</tr>';
+            totals.containers += product.containers;
+            totals.containerWeight += product.weight;
+        });
+
+        html += '<tr>';
+        html += '<td class="total-row">סה"כ מיכלים</td>';
+        html += `<td class="total-row">${totals.containers}</td>`;
+        html += `<td class="total-row">${totals.containerWeight.toFixed(1)}</td>`;
+        html += '</tr></tbody></table>';
+    }
+
+    // טבלת חמגשיות
+    if (hasTrays) {
+        html += '<div class="section-title">🍽️ חמגשיות</div>';
+        html += '<table class="report-table">';
+        html += '<thead><tr>';
+        html += '<th class="product-col">מוצר</th>';
+        html += '<th>כמות מנות</th>';
+        html += '</tr></thead><tbody>';
+
+        const sortedTrays = Object.values(trays).sort((a, b) => a.name.localeCompare(b.name, 'he'));
+        sortedTrays.forEach(product => {
+            const escapedName = product.name.replace(/'/g, "\\'").replace(/"/g, '\\"');
+            html += '<tr>';
+            html += `<td class="product-name" onclick="openItemModal('${escapedName}', ${dayIndex})" title="לחץ לצפייה בהזמנות">${product.name}</td>`;
+            html += `<td>${product.trays > 0 ? product.trays : '-'}</td>`;
+            html += '</tr>';
+            totals.trays += product.trays;
+        });
+
+        html += '<tr>';
+        html += '<td class="total-row">סה"כ חמגשיות</td>';
+        html += `<td class="total-row">${totals.trays}</td>`;
+        html += '</tr></tbody></table>';
+    }
+
+    html += '</div>';
+
+    return { html, totals };
+}
+
+// עדכון כרטיסי סיכום
+function updateSummaryCards(grandTotal) {
+    const container = document.getElementById('summaryCards');
+    container.style.display = 'grid';
+
+    container.innerHTML = `
+        <div class="summary-card gastronorm">
+            <h3>גסטרונום - מיכלים</h3>
+            <div class="value">${grandTotal.gastronormContainers}</div>
+        </div>
+        <div class="summary-card gastronorm">
+            <h3>גסטרונום - משקל</h3>
+            <div class="value">${grandTotal.gastronormWeight.toFixed(1)}</div>
+        </div>
+        <div class="summary-card hot">
+            <h3>מיכלים רגילים</h3>
+            <div class="value">${grandTotal.containers}</div>
+        </div>
+        <div class="summary-card">
+            <h3>מארז 5</h3>
+            <div class="value">${grandTotal.pack5}</div>
+        </div>
+        <div class="summary-card">
+            <h3>מארז 7</h3>
+            <div class="value">${grandTotal.pack7}</div>
+        </div>
+        <div class="summary-card hot">
+            <h3>חמגשיות</h3>
+            <div class="value">${grandTotal.trays}</div>
+        </div>
+    `;
+}
+
+// טעינת הדוח
+async function loadReport() {
+    const statusDiv = document.getElementById('status');
+    const reportContainer = document.getElementById('reportContainer');
+    const loadBtn = document.getElementById('loadBtn');
+    const printBtn = document.getElementById('printBtn');
+    const csvBtn = document.getElementById('csvBtn');
+    const branchSelect = document.getElementById('branchSelect').value;
+
+    loadBtn.disabled = true;
+    printBtn.disabled = true;
+    csvBtn.disabled = true;
+    statusDiv.className = 'status loading';
+    statusDiv.innerHTML = 'טוען נתונים מהשרת...';
+    reportContainer.innerHTML = '';
+    document.getElementById('summaryCards').style.display = 'none';
+
+    // איפוס נתוני ההזמנות
+    productOrdersData = {};
+
+    try {
+        // משיכת נתונים לכל 4 הימים
+        allDaysDataGlobal = [];
+        reportData = [];
+
+        let allHTML = '';
+        const grandTotal = {
+            gastronormContainers: 0,
+            gastronormWeight: 0,
+            containers: 0,
+            containerWeight: 0,
+            pack5: 0,
+            pack7: 0,
+            packWeight: 0,
+            trays: 0
+        };
+
+        for (let i = 0; i < workingDays.length; i++) {
+            statusDiv.innerHTML = `טוען נתונים ליום ${i + 1} מתוך 4...`;
+            const dayData = await fetchDataForDate(workingDays[i], branchSelect);
+            // סינון רק פריטים חמים
+            const hotData = filterHotItems(dayData);
+            allDaysDataGlobal.push(hotData);
+
+            // עיבוד הנתונים ליום זה (עם שמירת הזמנות)
+            const dayProducts = processDataForDay(hotData, i);
+            reportData.push(dayProducts);
+
+            // בניית הטבלה ליום זה
+            const result = buildDayTable(dayProducts, workingDays[i], i);
+            allHTML += result.html;
+
+            // צבירת סיכומים כלליים
+            grandTotal.gastronormContainers += result.totals.gastronormContainers;
+            grandTotal.gastronormWeight += result.totals.gastronormWeight;
+            grandTotal.containers += result.totals.containers;
+            grandTotal.containerWeight += result.totals.containerWeight;
+            grandTotal.pack5 += result.totals.pack5;
+            grandTotal.pack7 += result.totals.pack7;
+            grandTotal.packWeight += result.totals.packWeight;
+            grandTotal.trays += result.totals.trays;
+        }
+
+        reportContainer.innerHTML = allHTML;
+
+        // עדכון כרטיסי סיכום
+        updateSummaryCards(grandTotal);
+
+        const totalProducts = new Set();
+        reportData.forEach(day => {
+            Object.keys(day.gastronorm).forEach(p => totalProducts.add(p));
+            Object.keys(day.packs).forEach(p => totalProducts.add(p));
+            Object.keys(day.containers).forEach(p => totalProducts.add(p));
+            Object.keys(day.trays).forEach(p => totalProducts.add(p));
+        });
+
+        statusDiv.className = 'status success';
+        statusDiv.innerHTML = `נטענו ${totalProducts.size} מוצרים חמים ל-4 ימים`;
+
+        printBtn.disabled = false;
+        csvBtn.disabled = false;
+
+    } catch (error) {
+        console.error('שגיאה בטעינת הדוח:', error);
+        statusDiv.className = 'status error';
+        statusDiv.innerHTML = `שגיאה: ${error.message}`;
+    } finally {
+        loadBtn.disabled = false;
+    }
+}
+
+// הדפסת הדוח
+function printReport() {
+    window.print();
+}
+
+// הורדת CSV
+function downloadCSV() {
+    if (!reportData || reportData.length === 0) return;
+
+    let csv = '\uFEFF'; // BOM for UTF-8
+
+    // עבור כל יום - טבלאות נפרדות
+    workingDays.forEach((date, dayIndex) => {
+        const dayProducts = reportData[dayIndex];
+        if (!dayProducts) return;
+
+        csv += `\n${formatDateHebrew(date)}\n`;
+
+        // גסטרונום
+        if (Object.keys(dayProducts.gastronorm).length > 0) {
+            csv += '\nגסטרונום\n';
+            csv += 'מוצר,מיכלים,משקל\n';
+            Object.values(dayProducts.gastronorm).sort((a, b) => a.name.localeCompare(b.name, 'he')).forEach(product => {
+                csv += `"${product.name}",${product.containers},${product.weight.toFixed(1)}\n`;
+            });
+        }
+
+        // מארזים
+        if (Object.keys(dayProducts.packs).length > 0) {
+            csv += '\nמארזים\n';
+            csv += 'מוצר,מארז 5,מארז 7,משקל\n';
+            Object.values(dayProducts.packs).sort((a, b) => a.name.localeCompare(b.name, 'he')).forEach(product => {
+                csv += `"${product.name}",${product.pack5},${product.pack7},${product.packWeight.toFixed(1)}\n`;
+            });
+        }
+
+        // מיכלים
+        if (Object.keys(dayProducts.containers).length > 0) {
+            csv += '\nמיכלים\n';
+            csv += 'מוצר,מיכלים,משקל\n';
+            Object.values(dayProducts.containers).sort((a, b) => a.name.localeCompare(b.name, 'he')).forEach(product => {
+                csv += `"${product.name}",${product.containers},${product.weight.toFixed(1)}\n`;
+            });
+        }
+
+        // חמגשיות
+        if (Object.keys(dayProducts.trays).length > 0) {
+            csv += '\nחמגשיות\n';
+            csv += 'מוצר,כמות\n';
+            Object.values(dayProducts.trays).sort((a, b) => a.name.localeCompare(b.name, 'he')).forEach(product => {
+                csv += `"${product.name}",${product.trays}\n`;
+            });
+        }
+
+        csv += '\n';
+    });
+
+    // הורדה
+    const branchSelect = document.getElementById('branchSelect').value;
+    const branchName = branchSelect === 'south' ? 'דרום' : branchSelect === 'north' ? 'צפון' : 'הכל';
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `דוח_ייצור_חם_${branchName}_${formatDateForAPI(new Date())}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// אתחול בטעינת הדף
+document.addEventListener('DOMContentLoaded', function() {
+    updateDateRangeDisplay();
+});
+</script>
+
+</body>
+</html>

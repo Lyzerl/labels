@@ -11,62 +11,14 @@
     <meta name="apple-mobile-web-app-title" content="ביק הזמנות">
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+    <!-- CSS משותף -->
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- סגנונות ספציפיים לדף תפריטים -->
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-            padding: 20px;
-            direction: rtl;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-
-        /* תפריט ניווט */
-        .main-nav {
-            display: flex;
-            gap: 10px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .nav-link {
-            padding: 12px 24px;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 1.05em;
-            transition: all 0.3s;
-            border: 2px solid transparent;
-        }
-
-        .nav-link:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .nav-link.active {
-            background: white;
-            color: #667eea;
-            border-color: white;
-        }
+        /* דריסת הרקע של body לדף זה */
+        body { background: #f5f5f5; }
+        .container { max-width: 1200px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+        .main-nav { margin-bottom: 0; border-radius: 0; }
 
         .header {
             background: #4a90e2;
@@ -74,215 +26,48 @@
             padding: 20px;
             text-align: center;
         }
+        .header h1 { font-size: 2em; margin-bottom: 10px; color: white; }
 
-        .header h1 {
-            font-size: 2em;
-            margin-bottom: 10px;
-        }
-
-        .controls {
-            padding: 15px;
-            background: #f8f9fa;
-            text-align: center;
-            border-bottom: 1px solid #ddd;
-        }
-
-        .week-selector {
-            padding: 8px 16px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-            margin: 0 10px;
-        }
-
-        .content {
-            padding: 20px;
-        }
-
-        .week-section {
-            margin-bottom: 30px;
-        }
-
-        .week-title {
-            background: #90c695;
-            color: black;
-            padding: 8px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 18px;
-            border: 1px solid #333;
-        }
-
-        .week-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-
-        .week-table th,
-        .week-table td {
-            border: 1px solid #333;
-            padding: 8px;
-            text-align: center;
-            vertical-align: top;
-        }
-
-        .week-table th {
-            background: #e8e8e8;
-            font-weight: bold;
-        }
-
-        .menu-name {
-            background: #f0f0f0;
-            font-weight: bold;
-            width: 150px;
-        }
-
-        .day-cell {
-            width: 150px;
-            min-height: 80px;
-            padding: 5px;
-        }
-
-        .menu-items {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            text-align: right;
-        }
-
-        .menu-item {
-            font-size: 12px;
-            padding: 2px 0;
-            border-bottom: 1px dotted #ccc;
-        }
-
-        .menu-item:last-child {
-            border-bottom: none;
-        }
-
-        .no-items {
-            color: #999;
-            font-style: italic;
-            font-size: 12px;
-        }
+        .controls { text-align: center; border-bottom: 1px solid #ddd; display: block; }
+        .week-selector { padding: 8px 16px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; margin: 0 10px; }
+        .content { padding: 20px; }
+        .week-section { margin-bottom: 30px; }
+        .week-title { background: #90c695; color: black; padding: 8px; text-align: center; font-weight: bold; font-size: 18px; border: 1px solid #333; }
+        .week-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .week-table th, .week-table td { border: 1px solid #333; padding: 8px; text-align: center; vertical-align: top; }
+        .week-table th { background: #e8e8e8; font-weight: bold; color: black; }
+        .menu-name { background: #f0f0f0; font-weight: bold; width: 150px; }
+        .day-cell { width: 150px; min-height: 80px; padding: 5px; }
+        .menu-items { list-style: none; padding: 0; margin: 0; text-align: right; }
+        .menu-item { font-size: 12px; padding: 2px 0; border-bottom: 1px dotted #ccc; }
+        .menu-item:last-child { border-bottom: none; }
+        .no-items { color: #999; font-style: italic; font-size: 12px; }
 
         @media (max-width: 768px) {
-            .week-table {
-                font-size: 12px;
-            }
-            
-            .day-cell {
-                width: 120px;
-                padding: 3px;
-            }
-            
-            .menu-item {
-                font-size: 10px;
-            }
+            .week-table { font-size: 12px; }
+            .day-cell { width: 120px; padding: 3px; }
+            .menu-item { font-size: 10px; }
         }
 
-        .menu-filter-btn {
-            padding: 10px 20px;
-            background: #5a67d8;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 16px;
-            transition: all 0.3s;
-            position: relative;
-        }
-
-        .menu-filter-btn:hover {
-            background: #4c51bf;
-        }
-
-        .menu-dropdown {
-            display: none;
-            position: absolute;
-            top: 100%;
-            right: 0;
-            background: white;
-            border: 2px solid #5a67d8;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 1000;
-            min-width: 300px;
-            max-height: 400px;
-            overflow-y: auto;
-            margin-top: 5px;
-        }
-
-        .menu-dropdown.show {
-            display: block;
-        }
-
-        .menu-dropdown-header {
-            background: #5a67d8;
-            color: white;
-            padding: 12px 15px;
-            font-weight: bold;
-            border-radius: 6px 6px 0 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .menu-dropdown-item {
-            padding: 10px 15px;
-            border-bottom: 1px solid #e8e8e8;
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .menu-dropdown-item:hover {
-            background: #f5f7fa;
-        }
-
-        .menu-dropdown-item:last-child {
-            border-bottom: none;
-        }
-
-        .menu-dropdown-item input[type="checkbox"] {
-            margin-left: 10px;
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-
-        .menu-dropdown-item label {
-            cursor: pointer;
-            flex: 1;
-            margin-right: 10px;
-        }
-
-        .menu-count-badge {
-            background: #e53e3e;
-            color: white;
-            border-radius: 12px;
-            padding: 2px 8px;
-            font-size: 12px;
-            margin-right: 8px;
-        }
-
-        .filter-wrapper {
-            position: relative;
-            display: inline-block;
-        }
+        .menu-filter-btn { padding: 10px 20px; background: #5a67d8; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; transition: all 0.3s; position: relative; }
+        .menu-filter-btn:hover { background: #4c51bf; }
+        .menu-dropdown { display: none; position: absolute; top: 100%; right: 0; background: white; border: 2px solid #5a67d8; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 300px; max-height: 400px; overflow-y: auto; margin-top: 5px; }
+        .menu-dropdown.show { display: block; }
+        .menu-dropdown-header { background: #5a67d8; color: white; padding: 12px 15px; font-weight: bold; border-radius: 6px 6px 0 0; display: flex; justify-content: space-between; align-items: center; }
+        .menu-dropdown-item { padding: 10px 15px; border-bottom: 1px solid #e8e8e8; display: flex; align-items: center; cursor: pointer; transition: background 0.2s; }
+        .menu-dropdown-item:hover { background: #f5f7fa; }
+        .menu-dropdown-item:last-child { border-bottom: none; }
+        .menu-dropdown-item input[type="checkbox"] { margin-left: 10px; width: 18px; height: 18px; cursor: pointer; }
+        .menu-dropdown-item label { cursor: pointer; flex: 1; margin-right: 10px; }
+        .menu-count-badge { background: #e53e3e; color: white; border-radius: 12px; padding: 2px 8px; font-size: 12px; margin-right: 8px; }
+        .filter-wrapper { position: relative; display: inline-block; }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- תפריט ניווט -->
-        <nav class="main-nav">
-            <a href="index.html" class="nav-link">🏠 דף הבית</a>
-            <a href="menu.html" class="nav-link active">📅 תפריטים</a>
-            <a href="search-labels.html" class="nav-link">🔍 חיפוש מוסד</a>
-        </nav>
+        <!-- תפריט ניווט משותף -->
+        <nav id="main-nav"></nav>
+        <script src="js/nav.js"></script>
 
         <div class="header">
             <h1>📅 תפריטים שבועיים</h1>
@@ -330,9 +115,11 @@
         </div>
     </div>
 
+    <!-- טעינת קונפיגורציה משותפת -->
+    <script src="js/config.js"></script>
     <script>
-        // כתובת השרת
-        const SERVER_URL = 'https://priority-proxy.lyzer-64d.workers.dev';
+        // שימוש ב-PROXY_URL מ-config.js
+        const SERVER_URL = PROXY_URL;
 
         // נתוני התפריטים
         const realMenuData = {};
