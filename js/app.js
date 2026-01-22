@@ -392,20 +392,27 @@ function calculateContainersAndPacks(data) {
       const packDes = String(newRow.PACKDES || newRow.packDes || '').toLowerCase();
       const isGastronome = pspec1.includes('גסטרונום') || packMethod.includes('גסטרונום') || packDes.includes('גסטרונום');
 
-      // בדיקת סניף - סניף דרום (0,1) לא מחלקים ב-2, סניף צפון (3,4) כן
+      // בדיקת סניף - סניף דרום (0,1), סניף צפון (3,4)
       const branchName = String(newRow.BRANCHNAME || '').trim();
       const isSouthBranch = branchName === '0' || branchName === '1';
 
+      // בדיקת קטגוריה לפי PSPEC1 - ירקנית או פחמימה
+      const isYarkenit = pspec1.includes('ירקנית');
+      const isPachmima = pspec1.includes('פחמימה');
+
       // לגסטרונום: חילוק ב-6.5 ועיגול למעלה למספר שלם
       // למיכל רגיל בסניף צפון: חילוק ב-2
-      // למיכל רגיל בסניף דרום: לא מחלקים (מחלק = 1)
+      // למיכל רגיל בסניף דרום:
+      //   - ירקנית: חילוק ב-2 (כמו צפון)
+      //   - פחמימה: לא מחלקים (מחלק = 1)
       let divisor;
       if (isGastronome) {
         divisor = 6.5;
       } else if (isSouthBranch) {
-        divisor = 1; // סניף דרום - לא מחלקים ב-2
+        // סניף דרום - ירקנית מחלקים ב-2, פחמימה לא מחלקים
+        divisor = isYarkenit ? 2 : 1;
       } else {
-        divisor = 2; // סניף צפון - מחלקים ב-2
+        divisor = 2; // סניף צפון - תמיד מחלקים ב-2
       }
       const finalResult = divisionResult / divisor;
 
