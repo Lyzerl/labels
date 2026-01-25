@@ -3170,16 +3170,49 @@ function printAllergensReport() {
   const printWindow = window.open('', '_blank');
   printWindow.document.write('<html dir="rtl"><head><title>דוח אלרגנים</title>');
   printWindow.document.write('<style>');
-  printWindow.document.write('body { font-family: Arial, sans-serif; direction: rtl; margin: 20px; }');
-  printWindow.document.write('table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }');
-  printWindow.document.write('th, td { border: 1px solid #ccc; padding: 5px; text-align: right; font-size: 11px; }');
-  printWindow.document.write('th { background: #f0f0f0; }');
-  printWindow.document.write('h3 { margin: 5px 0; font-size: 14px; }');
-  printWindow.document.write('.table-wrapper { display: inline-block; width: 48%; margin: 1%; vertical-align: top; }');
-  printWindow.document.write('@media print { @page { margin: 10mm; } }');
+  printWindow.document.write('@page { size: A4 landscape; margin: 8mm; }');
+  printWindow.document.write('* { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }');
+  printWindow.document.write('body { font-family: Arial, sans-serif; direction: rtl; margin: 0; padding: 10px; }');
+  printWindow.document.write('h2 { text-align: center; margin: 5px 0 15px 0; font-size: 16px; }');
+
+  // כותרות חמגשית/תפזורת
+  printWindow.document.write('.section-title { text-align: center; padding: 8px; margin: 10px 0; border-radius: 5px; font-size: 14px; font-weight: bold; }');
+
+  // מיכל לטבלאות - 3 עמודות
+  printWindow.document.write('.tables-container { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 8px; }');
+  printWindow.document.write('.table-block { width: 32%; box-sizing: border-box; break-inside: avoid; page-break-inside: avoid; }');
+
+  // טבלאות
+  printWindow.document.write('table { border-collapse: collapse; width: 100%; margin-bottom: 8px; font-size: 9px; }');
+  printWindow.document.write('th, td { border: 1px solid #999; padding: 3px 4px; text-align: right; }');
+  printWindow.document.write('th { background: #e0e0e0 !important; font-weight: bold; }');
+  printWindow.document.write('thead { display: table-header-group; }');
+  printWindow.document.write('tr { page-break-inside: avoid; break-inside: avoid; }');
+
+  // כותרות קטגוריות (בד"ץ/חב"ד)
+  printWindow.document.write('.category-header { padding: 5px 8px; margin-bottom: 5px; border-radius: 4px; font-weight: bold; font-size: 11px; }');
+
+  // מניעת שבירת טבלאות באמצע
+  printWindow.document.write('@media print {');
+  printWindow.document.write('  .table-block { break-inside: avoid !important; page-break-inside: avoid !important; }');
+  printWindow.document.write('  table { break-inside: avoid !important; page-break-inside: avoid !important; }');
+  printWindow.document.write('  tr { break-inside: avoid !important; }');
+  printWindow.document.write('}');
+
   printWindow.document.write('</style></head><body>');
-  printWindow.document.write('<h2 style="text-align:center;">דוח אלרגנים</h2>');
-  printWindow.document.write(container.innerHTML);
+  printWindow.document.write('<h2>דוח אלרגנים</h2>');
+
+  // עיבוד התוכן - שינוי מבנה ל-3 עמודות
+  let content = container.innerHTML;
+
+  // החלפת ה-inline-block ב-class שלנו
+  content = content.replace(/display:\s*inline-block[^"']*/g, '');
+  content = content.replace(/style="[^"]*margin:\s*10px[^"]*vertical-align:\s*top[^"]*"/g, 'class="table-block"');
+
+  // עדכון גודל הטבלאות
+  content = content.replace(/style="[^"]*display:\s*flex[^"]*flex-wrap:\s*wrap[^"]*justify-content:\s*center[^"]*gap:\s*40px[^"]*padding[^"]*"/g, 'class="tables-container"');
+
+  printWindow.document.write(content);
   printWindow.document.write('</body></html>');
   printWindow.document.close();
   printWindow.focus();
