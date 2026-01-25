@@ -3178,13 +3178,13 @@ function printAllergensReport() {
   // כותרות חמגשית/תפזורת
   printWindow.document.write('.section-title { text-align: center; padding: 8px; margin: 10px 0; border-radius: 5px; font-size: 14px; font-weight: bold; }');
 
-  // מיכל לטבלאות - 3 עמודות
-  printWindow.document.write('.tables-container { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 8px; }');
-  printWindow.document.write('.table-block { width: 32%; box-sizing: border-box; break-inside: avoid; page-break-inside: avoid; }');
+  // מיכל לטבלאות - 4 עמודות
+  printWindow.document.write('.tables-container { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 5px; }');
+  printWindow.document.write('.table-block { width: 24%; box-sizing: border-box; break-inside: avoid; page-break-inside: avoid; }');
 
-  // טבלאות
-  printWindow.document.write('table { border-collapse: collapse; width: 100%; margin-bottom: 8px; font-size: 9px; }');
-  printWindow.document.write('th, td { border: 1px solid #999; padding: 3px 4px; text-align: right; }');
+  // טבלאות - גופן קטן יותר ל-4 עמודות
+  printWindow.document.write('table { border-collapse: collapse; width: 100%; margin-bottom: 5px; font-size: 8px; }');
+  printWindow.document.write('th, td { border: 1px solid #999; padding: 2px 3px; text-align: right; }');
   printWindow.document.write('th { background: #e0e0e0 !important; font-weight: bold; }');
   printWindow.document.write('thead { display: table-header-group; }');
   printWindow.document.write('tr { page-break-inside: avoid; break-inside: avoid; }');
