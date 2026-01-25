@@ -1,9 +1,10 @@
-const CACHE_NAME = 'bik-order-v2';
+const CACHE_NAME = 'bik-order-v3';
 const urlsToCache = [
   '/',
   '/index.html',
   '/menu.html',
   '/search-labels.html',
+  '/production-report.html',
   '/css/styles.css',
   '/js/config.js',
   '/js/nav.js',

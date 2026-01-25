@@ -12,6 +12,12 @@
 <meta name="apple-mobile-web-app-title" content="ביק הזמנות">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+<!-- Preconnect לטעינה מהירה יותר של CDN -->
+<link rel="preconnect" href="https://code.jquery.com" crossorigin>
+<link rel="preconnect" href="https://cdn.datatables.net" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<!-- ניווט משותף - נטען מוקדם -->
+<script src="js/nav.js" defer></script>
 <!-- DataTables CSS -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
@@ -22,9 +28,8 @@
 <body>
 
 <div class="container">
-  <!-- תפריט ניווט משותף -->
+  <!-- תפריט ניווט משותף - הסקריפט נטען ב-head עם defer -->
   <nav id="main-nav"></nav>
-  <script src="js/nav.js"></script>
 
   <h1>📊 נתוני Priority - לפי תאריך וסניף</h1>
 
@@ -182,6 +187,18 @@
       <select id="packingMethodFilterCold">
         <option value="">הכל</option>
       </select>
+      <label>סוג מוסד:</label>
+      <select id="institutionTypeFilterCold">
+        <option value="">הכל</option>
+        <option value="gan">גן</option>
+        <option value="school">בית ספר</option>
+      </select>
+      <label>סוג לקוח:</label>
+      <select id="customerTypeFilterCold">
+        <option value="">הכל</option>
+        <option value="milgam">מילגם</option>
+        <option value="private">פרטי</option>
+      </select>
       <label>סדר מיון:</label>
       <select id="labelsSortModeFilterCold">
         <option value="distribution">קו חלוקה + סדר הפצה</option>
@@ -319,17 +336,17 @@
 </div>
 
 
-<!-- jQuery and DataTables - נטען קודם כי הקוד שלנו תלוי בהם -->
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<!-- jQuery and DataTables - defer לטעינה מהירה יותר -->
+<script src="https://code.jquery.com/jquery-3.7.0.min.js" defer></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js" defer></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js" defer></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js" defer></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 
-<!-- קבצי JavaScript של האפליקציה -->
-<script src="js/config.js"></script>
-<script src="js/app.js"></script>
+<!-- קבצי JavaScript של האפליקציה - defer שומר על סדר הטעינה -->
+<script src="js/config.js" defer></script>
+<script src="js/app.js" defer></script>
 
 <!-- רישום Service Worker -->
 <script>

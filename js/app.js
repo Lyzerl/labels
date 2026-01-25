@@ -2843,11 +2843,47 @@ function createAllergensReport(data) {
     return;
   }
   
-  // המרה לנתונים שטוחים
+  // פונקציה לבדוק אם כל הפריטים החמים בהזמנה הם חמגשית
+  const isOrderTrayOnly = (order) => {
+    if (!order || !order.items) return false;
+
+    let hasHotTray = false;
+    let hasHotNonTray = false;
+
+    order.items.forEach(item => {
+      // בדיקה אם זה פריט חם
+      const cartonType = String(item.cartonType || '').toLowerCase();
+      const pspec6 = String(item.pspec6 || '').toLowerCase();
+      const pspec3 = String(item.pspec3 || '').toLowerCase();
+      const isHotItem = cartonType.includes('חם') || pspec6.includes('חם') || pspec3.includes('חם');
+
+      if (isHotItem) {
+        const packMethodCode = String(item.packMethodCode || '').toLowerCase();
+        const packDes = String(item.packDes || '').toLowerCase();
+
+        if (packMethodCode.includes('חמגשית') || packDes.includes('חמגשית')) {
+          hasHotTray = true;
+        } else if (packMethodCode || packDes) {
+          hasHotNonTray = true;
+        }
+      }
+    });
+
+    // אם יש פריט חם שאינו חמגשית - זה תפזורת
+    if (hasHotNonTray) return false;
+    // רק אם כל הפריטים החמים הם חמגשית
+    return hasHotTray;
+  };
+
+  // המרה לנתונים שטוחים - עם זיהוי שיטת אריזה ברמת ההזמנה
   let flatData = Array.isArray(data) ? data : Object.values(data).flatMap(order => {
     if (!order || !order.items || !Array.isArray(order.items)) {
       return [];
     }
+
+    // קביעת שיטת אריזה לפי כל הפריטים החמים בהזמנה
+    const orderIsTrayOnly = isOrderTrayOnly(order);
+
     return order.items.map(item => ({
       ...item,
       ORDNAME: order.orderName || '',
@@ -2862,7 +2898,8 @@ function createAllergensReport(data) {
       DISTRLINEDES: String(order.distrLineDes || item.distrLineDes || '').trim(),
       PACKMETHODCODE: String(item.packMethodCode || '').trim(),
       PACKDES: String(item.packDes || '').trim(),
-      EATQUANT: parseFloat(item.eatQuant || 0) || 0
+      EATQUANT: parseFloat(item.eatQuant || 0) || 0,
+      ORDER_IS_TRAY_ONLY: orderIsTrayOnly // שיטת אריזה ברמת ההזמנה
     }));
   });
   
@@ -2938,16 +2975,12 @@ function createAllergensReport(data) {
     });
   });
   
-  // חישוב סיכום לפי כשרות (בד"ץ/חב"ד) ואיסוף שמות לקוחות
-  let totalBadatz = 0;
-  let totalChabad = 0;
-  let totalOther = 0;
-
-  // קיבוץ לפי הזמנה (לקוח) לכל כשרות - עם קו חלוקה, תיאור קו, שם לקוח, תיאור אתר
-  const ordersByKosher = {
-    badatz: {},
-    chabad: {},
-    other: {}
+  // קיבוץ לפי הזמנה (לקוח) לכל כשרות ושיטת אריזה
+  // המבנה: ordersByCategory[כשרות][שיטת אריזה][מספר הזמנה]
+  const ordersByCategory = {
+    badatz: { tray: {}, tafzoret: {} },
+    chabad: { tray: {}, tafzoret: {} },
+    other: { tray: {}, tafzoret: {} }
   };
 
   allergenFreeData.forEach(row => {
@@ -2960,6 +2993,7 @@ function createAllergensReport(data) {
     const distrLineDes = String(row.DISTRLINEDES || '').trim();
     const quantity = row.EATQUANT || 0;
 
+    // קביעת כשרות
     let kosherType = 'other';
     if (spec2Lower.includes('חבד') || spec2Lower.includes('חב"ד') || spec2Lower.includes('חב\'ד') ||
         spec2Lower.includes('נחלת') || spec2Lower.includes('ירוסלבסקי') || spec2Lower.includes('ביסטריצקי')) {
@@ -2969,9 +3003,12 @@ function createAllergensReport(data) {
       kosherType = 'badatz';
     }
 
+    // קביעת שיטת אריזה - לפי כל הפריטים החמים בהזמנה (לא רק הפריט האלרגני)
+    const packingType = row.ORDER_IS_TRAY_ONLY ? 'tray' : 'tafzoret';
+
     // קיבוץ לפי מספר הזמנה
-    if (!ordersByKosher[kosherType][ordName]) {
-      ordersByKosher[kosherType][ordName] = {
+    if (!ordersByCategory[kosherType][packingType][ordName]) {
+      ordersByCategory[kosherType][packingType][ordName] = {
         ordName: ordName,
         distrLineCode: distrLineCode,
         distrLineDes: distrLineDes,
@@ -2980,17 +3017,27 @@ function createAllergensReport(data) {
         quantity: 0
       };
     }
-    ordersByKosher[kosherType][ordName].quantity += quantity;
+    ordersByCategory[kosherType][packingType][ordName].quantity += quantity;
   });
 
   // המרה למערכים וחישוב סיכומים
-  const badatzOrders = Object.values(ordersByKosher.badatz).sort((a, b) => a.distrLineCode.localeCompare(b.distrLineCode));
-  const chabadOrders = Object.values(ordersByKosher.chabad).sort((a, b) => a.distrLineCode.localeCompare(b.distrLineCode));
-  const otherOrders = Object.values(ordersByKosher.other).sort((a, b) => a.distrLineCode.localeCompare(b.distrLineCode));
+  const sortByLine = (orders) => Object.values(orders).sort((a, b) => a.distrLineCode.localeCompare(b.distrLineCode));
 
-  totalBadatz = badatzOrders.reduce((sum, o) => sum + o.quantity, 0);
-  totalChabad = chabadOrders.reduce((sum, o) => sum + o.quantity, 0);
-  totalOther = otherOrders.reduce((sum, o) => sum + o.quantity, 0);
+  const badatzTray = sortByLine(ordersByCategory.badatz.tray);
+  const badatzTafzoret = sortByLine(ordersByCategory.badatz.tafzoret);
+  const chabadTray = sortByLine(ordersByCategory.chabad.tray);
+  const chabadTafzoret = sortByLine(ordersByCategory.chabad.tafzoret);
+  const otherTray = sortByLine(ordersByCategory.other.tray);
+  const otherTafzoret = sortByLine(ordersByCategory.other.tafzoret);
+
+  const calcTotal = (orders) => orders.reduce((sum, o) => sum + o.quantity, 0);
+
+  const totalBadatzTray = calcTotal(badatzTray);
+  const totalBadatzTafzoret = calcTotal(badatzTafzoret);
+  const totalChabadTray = calcTotal(chabadTray);
+  const totalChabadTafzoret = calcTotal(chabadTafzoret);
+  const totalOtherTray = calcTotal(otherTray);
+  const totalOtherTafzoret = calcTotal(otherTafzoret);
 
   // קיבוץ ההזמנות לפי קו חלוקה בתוך כל כשרות
   const groupOrdersByLine = (orders) => {
@@ -3060,25 +3107,56 @@ function createAllergensReport(data) {
     return sectionHtml;
   };
 
-  // יצירת HTML
-  let html = '<div style="width:100%;display:flex;flex-wrap:wrap;justify-content:center;gap:40px;padding:20px;">';
+  // יצירת HTML - הפרדה לפי חמגשית ותפזורת
+  let html = '';
 
-  // קטגוריית בד"ץ
-  html += createKosherSection('אלרגני בד"ץ', badatzOrders, totalBadatz, '#e3f2fd', '#1976d2');
+  // === חלק חמגשית ===
+  const hasTrayData = badatzTray.length > 0 || chabadTray.length > 0 || otherTray.length > 0;
+  if (hasTrayData) {
+    html += '<div style="width:100%;margin-bottom:30px;">';
+    html += '<h2 style="text-align:center;background:#c8e6c9;padding:15px;margin:0 0 20px 0;border:2px solid #4caf50;border-radius:8px;color:#2e7d32;">🍽️ חמגשית</h2>';
+    html += '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:40px;padding:10px 20px;">';
 
-  // קטגוריית חב"ד
-  html += createKosherSection('אלרגני חב"ד', chabadOrders, totalChabad, '#fff3e0', '#f57c00');
+    // בד"ץ חמגשית
+    html += createKosherSection('אלרגני בד"ץ חמגשית', badatzTray, totalBadatzTray, '#e3f2fd', '#1976d2');
 
-  // קטגוריית אחר (אם יש)
-  html += createKosherSection('אלרגני אחר', otherOrders, totalOther, '#f5f5f5', '#757575');
+    // חב"ד חמגשית
+    html += createKosherSection('אלרגני חב"ד חמגשית', chabadTray, totalChabadTray, '#fff3e0', '#f57c00');
 
-  html += '</div>';
-  
+    // אחר חמגשית (אם יש)
+    html += createKosherSection('אלרגני אחר חמגשית', otherTray, totalOtherTray, '#f5f5f5', '#757575');
+
+    html += '</div></div>';
+  }
+
+  // === חלק תפזורת ===
+  const hasTafzoretData = badatzTafzoret.length > 0 || chabadTafzoret.length > 0 || otherTafzoret.length > 0;
+  if (hasTafzoretData) {
+    html += '<div style="width:100%;">';
+    html += '<h2 style="text-align:center;background:#bbdefb;padding:15px;margin:0 0 20px 0;border:2px solid #1976d2;border-radius:8px;color:#0d47a1;">📦 תפזורת</h2>';
+    html += '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:40px;padding:10px 20px;">';
+
+    // בד"ץ תפזורת
+    html += createKosherSection('אלרגני בד"ץ תפזורת', badatzTafzoret, totalBadatzTafzoret, '#e3f2fd', '#1976d2');
+
+    // חב"ד תפזורת
+    html += createKosherSection('אלרגני חב"ד תפזורת', chabadTafzoret, totalChabadTafzoret, '#fff3e0', '#f57c00');
+
+    // אחר תפזורת (אם יש)
+    html += createKosherSection('אלרגני אחר תפזורת', otherTafzoret, totalOtherTafzoret, '#f5f5f5', '#757575');
+
+    html += '</div></div>';
+  }
+
+  if (!hasTrayData && !hasTafzoretData) {
+    html = '<p style="text-align:center;padding:50px;color:#999;">לא נמצאו פריטים ללא אלרגנים</p>';
+  }
+
   container.innerHTML = html;
-  
-  const totalGroups = Object.keys(groupedByCustomer).length;
-  const totalLines = Object.values(groupedByCustomer).reduce((sum, group) => sum + group.lines.length, 0);
-  console.log('✅ דוח אלרגנים - הושלם, סה"כ קבוצות:', totalGroups, 'סה"כ קווי חלוקה:', totalLines);
+
+  const totalOrders = badatzTray.length + badatzTafzoret.length + chabadTray.length + chabadTafzoret.length + otherTray.length + otherTafzoret.length;
+  const totalQuantity = totalBadatzTray + totalBadatzTafzoret + totalChabadTray + totalChabadTafzoret + totalOtherTray + totalOtherTafzoret;
+  console.log('✅ דוח אלרגנים - הושלם, סה"כ הזמנות:', totalOrders, 'סה"כ מנות:', totalQuantity);
 }
 
 // הדפסת דוח אלרגנים
@@ -3304,6 +3382,8 @@ function createLabelsReport(data, labelType = 'hot') {
   // איסוף כשרויות ייחודיות (רק לחמים)
   const kashrutSelect = document.getElementById('kashrutFilter' + suffix);
   const customerTypeSelect = document.getElementById('customerTypeFilter' + suffix);
+  // סוג מוסד (רק לקרים)
+  const institutionTypeSelect = document.getElementById('institutionTypeFilter' + suffix);
 
   if (isHot && kashrutSelect) {
     const kashrutSet = new Set();
@@ -3342,6 +3422,7 @@ function createLabelsReport(data, labelType = 'hot') {
     const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
     const selectedCustomerType = customerTypeSelect ? customerTypeSelect.value : '';
     const selectedKashrut = kashrutSelect ? kashrutSelect.value : '';
+    const selectedInstitutionType = institutionTypeSelect ? institutionTypeSelect.value : '';
 
     if (orders) {
       // עבודה עם מבנה NoSQL
@@ -3412,17 +3493,31 @@ function createLabelsReport(data, labelType = 'hot') {
         }));
       }
 
-      // סינון לפי סוג לקוח (מילגם / לא מילגם)
+      // סינון לפי סוג לקוח (מילגם / לא מילגם / פרטי)
       if (selectedCustomerType) {
         filteredOrders = Object.fromEntries(Object.entries(filteredOrders).filter(([key, order]) => {
-          const custDes = (order.custDes || '').toLowerCase();
           const spec1 = (order.spec1 || '').toLowerCase();
-          const isMilgam = custDes.includes('מילגם') || spec1.includes('מילגם');
+          const isMilgam = spec1.includes('מילגם');
 
           if (selectedCustomerType === 'milgam') {
             return isMilgam;
-          } else if (selectedCustomerType === 'notMilgam') {
+          } else if (selectedCustomerType === 'notMilgam' || selectedCustomerType === 'private') {
             return !isMilgam;
+          }
+          return true;
+        }));
+      }
+
+      // סינון לפי סוג מוסד (גן / בית ספר) - לפי PRIT_CLASSNAME
+      if (selectedInstitutionType) {
+        filteredOrders = Object.fromEntries(Object.entries(filteredOrders).filter(([key, order]) => {
+          const pritClassname = (order.pritClassname || '').toLowerCase();
+          const isGan = pritClassname.includes('גן');
+
+          if (selectedInstitutionType === 'gan') {
+            return isGan;
+          } else if (selectedInstitutionType === 'school') {
+            return !isGan;
           }
           return true;
         }));
@@ -3517,13 +3612,13 @@ function createLabelsReport(data, labelType = 'hot') {
         filtered = Object.values(filteredOrders).flat();
       }
 
-      // סינון לפי סוג לקוח (מילגם / לא מילגם)
+      // סינון לפי סוג לקוח (מילגם / לא מילגם / פרטי)
       if (selectedCustomerType) {
         const ordersByCustomer = {};
         filtered.forEach(r => {
           const orderKey = r.ORDNAME;
           if (!ordersByCustomer[orderKey]) {
-            ordersByCustomer[orderKey] = { items: [], custDes: r.CUSTDES, spec1: r.SPEC1 };
+            ordersByCustomer[orderKey] = { items: [], spec1: r.SPEC1 };
           }
           ordersByCustomer[orderKey].items.push(r);
         });
@@ -3531,15 +3626,45 @@ function createLabelsReport(data, labelType = 'hot') {
         const filteredOrders = {};
         Object.keys(ordersByCustomer).forEach(orderKey => {
           const order = ordersByCustomer[orderKey];
-          const custDes = (order.custDes || '').toLowerCase();
           const spec1 = (order.spec1 || '').toLowerCase();
-          const isMilgam = custDes.includes('מילגם') || spec1.includes('מילגם');
+          const isMilgam = spec1.includes('מילגם');
 
           let match = false;
           if (selectedCustomerType === 'milgam') {
             match = isMilgam;
-          } else if (selectedCustomerType === 'notMilgam') {
+          } else if (selectedCustomerType === 'notMilgam' || selectedCustomerType === 'private') {
             match = !isMilgam;
+          }
+
+          if (match) {
+            filteredOrders[orderKey] = order.items;
+          }
+        });
+        filtered = Object.values(filteredOrders).flat();
+      }
+
+      // סינון לפי סוג מוסד (גן / בית ספר) - לפי PRIT_CLASSNAME
+      if (selectedInstitutionType) {
+        const ordersByInstitution = {};
+        filtered.forEach(r => {
+          const orderKey = r.ORDNAME;
+          if (!ordersByInstitution[orderKey]) {
+            ordersByInstitution[orderKey] = { items: [], pritClassname: r.PRIT_CLASSNAME };
+          }
+          ordersByInstitution[orderKey].items.push(r);
+        });
+
+        const filteredOrders = {};
+        Object.keys(ordersByInstitution).forEach(orderKey => {
+          const order = ordersByInstitution[orderKey];
+          const pritClassname = (order.pritClassname || '').toLowerCase();
+          const isGan = pritClassname.includes('גן');
+
+          let match = false;
+          if (selectedInstitutionType === 'gan') {
+            match = isGan;
+          } else if (selectedInstitutionType === 'school') {
+            match = !isGan;
           }
 
           if (match) {
@@ -3574,6 +3699,7 @@ function createLabelsReport(data, labelType = 'hot') {
   if (sortModeSelect) sortModeSelect.onchange = applyFilters;
   if (customerTypeSelect) customerTypeSelect.onchange = applyFilters;
   if (kashrutSelect) kashrutSelect.onchange = applyFilters;
+  if (institutionTypeSelect) institutionTypeSelect.onchange = applyFilters;
 
   // הוספת event listener לשדה החיפוש
   if (searchInput) {
