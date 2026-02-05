@@ -1985,12 +1985,12 @@ function applyTraysFilters() {
     html += '</tbody></table></div></div>';
   }
   
-  // טבלת מארז 5 - רק פריטי תפזורת עם PACK5 > 0 (לא חמגשית ולא גסטרונום)
+  // טבלת מארז 5 - פריטי תפזורת וגסטרונום עם PACK5 > 0 (לא חמגשית)
   const pack5Data = filteredData.filter(r => {
     const pack5 = parseFloat(r.PACK5 || r.pack5 || 0) || 0;
     if (pack5 <= 0) return false;
 
-    // בדיקה שזה לא חמגשית ולא גסטרונום - רק תפזורת נכלל בטבלה הזו
+    // בדיקה שזה לא חמגשית - תפזורת וגסטרונום נכללים בטבלה הזו
     const pm = String(r.PACKMETHODCODE || r.packMethodCode || '').trim().toLowerCase();
     const packDes = String(r.PACKDES || r.packDes || '').trim().toLowerCase();
     const pspec1 = String(r.PSPEC1 || r.pspec1 || '').trim().toLowerCase();
@@ -2000,12 +2000,7 @@ function applyTraysFilters() {
       return false;
     }
 
-    // אם זה גסטרונום - לא נכלל בטבלת מארז 5 (יש לו טבלה נפרדת)
-    if (pm.includes('גסטרונום') || pm.includes('גסטרו') ||
-        packDes.includes('גסטרונום') || packDes.includes('גסטרו') ||
-        pspec1.includes('גסטרונום') || pspec1.includes('גסטרו')) {
-      return false;
-    }
+    // גסטרונום כן נכלל בטבלת מארז 5
 
     return true;
   });
@@ -2136,12 +2131,12 @@ function applyTraysFilters() {
     html += '</tbody></table></div></div>';
   }
   
-  // טבלת מארז 7 - רק פריטי תפזורת עם PACK7 > 0 (לא חמגשית ולא גסטרונום)
+  // טבלת מארז 7 - פריטי תפזורת וגסטרונום עם PACK7 > 0 (לא חמגשית)
   const pack7Data = filteredData.filter(r => {
     const pack7 = parseFloat(r.PACK7 || r.pack7 || 0) || 0;
     if (pack7 <= 0) return false;
 
-    // בדיקה שזה לא חמגשית ולא גסטרונום - רק תפזורת נכלל בטבלה הזו
+    // בדיקה שזה לא חמגשית - תפזורת וגסטרונום נכללים בטבלה הזו
     const pm = String(r.PACKMETHODCODE || r.packMethodCode || '').trim().toLowerCase();
     const packDes = String(r.PACKDES || r.packDes || '').trim().toLowerCase();
     const pspec1 = String(r.PSPEC1 || r.pspec1 || '').trim().toLowerCase();
@@ -2151,12 +2146,7 @@ function applyTraysFilters() {
       return false;
     }
 
-    // אם זה גסטרונום - לא נכלל בטבלת מארז 7 (יש לו טבלה נפרדת)
-    if (pm.includes('גסטרונום') || pm.includes('גסטרו') ||
-        packDes.includes('גסטרונום') || packDes.includes('גסטרו') ||
-        pspec1.includes('גסטרונום') || pspec1.includes('גסטרו')) {
-      return false;
-    }
+    // גסטרונום כן נכלל בטבלת מארז 7
 
     return true;
   });
