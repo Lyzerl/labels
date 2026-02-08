@@ -1985,22 +1985,27 @@ function applyTraysFilters() {
     html += '</tbody></table></div></div>';
   }
   
-  // טבלת מארז 5 - פריטי תפזורת וגסטרונום עם PACK5 > 0 (לא חמגשית)
+  // טבלת מארז 5 - פריטי תפזורת וגסטרונום עם PACK5 > 0, וגם חמגשיות בכשרות חב"ד
   const pack5Data = filteredData.filter(r => {
     const pack5 = parseFloat(r.PACK5 || r.pack5 || 0) || 0;
     if (pack5 <= 0) return false;
 
-    // בדיקה שזה לא חמגשית - תפזורת וגסטרונום נכללים בטבלה הזו
     const pm = String(r.PACKMETHODCODE || r.packMethodCode || '').trim().toLowerCase();
     const packDes = String(r.PACKDES || r.packDes || '').trim().toLowerCase();
     const pspec1 = String(r.PSPEC1 || r.pspec1 || '').trim().toLowerCase();
+    const spec2 = String(r.SPEC2 || r.spec2 || '').trim().toLowerCase();
 
-    // אם זה חמגשית - לא נכלל בטבלת מארז 5
-    if (pm.includes('חמגשית') || packDes.includes('חמגשית') || pspec1.includes('חמגשית')) {
+    // בדיקה אם זה חמגשית
+    const isTray = pm.includes('חמגשית') || packDes.includes('חמגשית') || pspec1.includes('חמגשית');
+
+    // בדיקה אם זה כשרות חב"ד (ירוסלבסקי או ביסטריצקי)
+    const isChabadKashrut = spec2.includes('חבד') || spec2.includes('חב"ד') || spec2.includes("חב'ד") ||
+                            spec2.includes('ירוסלבסקי') || spec2.includes('ביסטריצקי');
+
+    // אם זה חמגשית - נכלל רק אם זה כשרות חב"ד
+    if (isTray && !isChabadKashrut) {
       return false;
     }
-
-    // גסטרונום כן נכלל בטבלת מארז 5
 
     return true;
   });
@@ -2131,22 +2136,27 @@ function applyTraysFilters() {
     html += '</tbody></table></div></div>';
   }
   
-  // טבלת מארז 7 - פריטי תפזורת וגסטרונום עם PACK7 > 0 (לא חמגשית)
+  // טבלת מארז 7 - פריטי תפזורת וגסטרונום עם PACK7 > 0, וגם חמגשיות בכשרות חב"ד
   const pack7Data = filteredData.filter(r => {
     const pack7 = parseFloat(r.PACK7 || r.pack7 || 0) || 0;
     if (pack7 <= 0) return false;
 
-    // בדיקה שזה לא חמגשית - תפזורת וגסטרונום נכללים בטבלה הזו
     const pm = String(r.PACKMETHODCODE || r.packMethodCode || '').trim().toLowerCase();
     const packDes = String(r.PACKDES || r.packDes || '').trim().toLowerCase();
     const pspec1 = String(r.PSPEC1 || r.pspec1 || '').trim().toLowerCase();
+    const spec2 = String(r.SPEC2 || r.spec2 || '').trim().toLowerCase();
 
-    // אם זה חמגשית - לא נכלל בטבלת מארז 7
-    if (pm.includes('חמגשית') || packDes.includes('חמגשית') || pspec1.includes('חמגשית')) {
+    // בדיקה אם זה חמגשית
+    const isTray = pm.includes('חמגשית') || packDes.includes('חמגשית') || pspec1.includes('חמגשית');
+
+    // בדיקה אם זה כשרות חב"ד (ירוסלבסקי או ביסטריצקי)
+    const isChabadKashrut = spec2.includes('חבד') || spec2.includes('חב"ד') || spec2.includes("חב'ד") ||
+                            spec2.includes('ירוסלבסקי') || spec2.includes('ביסטריצקי');
+
+    // אם זה חמגשית - נכלל רק אם זה כשרות חב"ד
+    if (isTray && !isChabadKashrut) {
       return false;
     }
-
-    // גסטרונום כן נכלל בטבלת מארז 7
 
     return true;
   });
