@@ -4701,8 +4701,10 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
         const isNoAllergenRow = rowClasses.includes('label-row-no-allergen');
         const isVegetarianRow = rowClasses.includes('label-row-vegetarian');
         const isSoupStyleRow = rowClasses.includes('label-row-soup');
-        // צבעים חזקים יותר שיגברו על צבע החמגשית
-        const rowBgColor = isNoAllergenRow ? '#ff5252' : (isVegetarianRow ? '#64b5f6' : (isSoupStyleRow ? '#fff59d' : '#fff'));
+        // בדיקת הדגשה ידנית מהמשתמש
+        const highlightColor = getHighlightColor(partDesText);
+        // צבעים חזקים יותר שיגברו על צבע החמגשית - הדגשה ידנית מקבלת עדיפות
+        const rowBgColor = highlightColor ? highlightColor : (isNoAllergenRow ? '#ff5252' : (isVegetarianRow ? '#64b5f6' : (isSoupStyleRow ? '#fff59d' : '#fff')));
         
         let rowHtml = `<tr class="${rowClasses.join(' ')}">`;
         
@@ -5436,6 +5438,218 @@ function downloadLabelsCSV(labelType = 'hot') {
   const typeSuffix = labelType === 'hot' ? '_hot' : '_cold';
   link.download = `labels${typeSuffix}_${document.getElementById('dateInput').value}.csv`;
   link.click();
+}
+
+// אחסון גלובלי להדגשות מנות
+window.highlightedDishes = window.highlightedDishes || {};
+
+// פתיחת modal להדגשת מנות
+function openHighlightDishesModal() {
+  const modal = document.getElementById('highlightDishesModal');
+  const listContainer = document.getElementById('highlightDishesList');
+
+  if (!modal || !listContainer) return;
+
+  // איסוף כל המנות/שילובים הייחודיים מהמדבקות
+  const dishes = collectUniqueDishes();
+
+  if (dishes.length === 0) {
+    listContainer.innerHTML = '<p style="text-align:center;color:#999;">אין מנות להצגה. יש לטעון נתונים תחילה.</p>';
+    modal.style.display = 'flex';
+    return;
+  }
+
+  // צבעים להדגשה
+  const colors = [
+    { name: 'ללא', value: '' },
+    { name: 'צהוב', value: '#FFFF00' },
+    { name: 'ירוק בהיר', value: '#90EE90' },
+    { name: 'ורוד', value: '#FFB6C1' },
+    { name: 'תכלת', value: '#87CEEB' },
+    { name: 'כתום', value: '#FFA500' },
+    { name: 'סגול בהיר', value: '#DDA0DD' }
+  ];
+
+  // יצירת רשימת המנות
+  let html = '';
+  dishes.forEach((dish, index) => {
+    const currentColor = window.highlightedDishes[dish] || '';
+    html += `<div class="highlight-dish-item" style="display:flex;align-items:center;gap:10px;padding:10px;background:#f5f5f5;border-radius:5px;">`;
+    html += `<span style="flex:1;font-weight:bold;word-break:break-word;">${dish}</span>`;
+    html += `<select id="dishColor_${index}" data-dish="${encodeURIComponent(dish)}" style="padding:5px;border-radius:4px;border:1px solid #ccc;">`;
+    colors.forEach(color => {
+      const selected = currentColor === color.value ? 'selected' : '';
+      const bgStyle = color.value ? `background-color:${color.value}` : '';
+      html += `<option value="${color.value}" ${selected} style="${bgStyle}">${color.name}</option>`;
+    });
+    html += `</select>`;
+    html += `</div>`;
+  });
+
+  listContainer.innerHTML = html;
+  modal.style.display = 'flex';
+}
+
+// סגירת modal הדגשות
+function closeHighlightDishesModal() {
+  const modal = document.getElementById('highlightDishesModal');
+  if (modal) modal.style.display = 'none';
+}
+
+// איסוף כל המנות/שילובים הייחודיים
+function collectUniqueDishes() {
+  const dishes = new Set();
+
+  // מנסה לאסוף מ-window.labelsDataHot
+  const labelsData = window.labelsDataHot;
+  if (!labelsData) return [];
+
+  // אם זה מבנה NoSQL (אובייקט של הזמנות)
+  if (typeof labelsData === 'object' && !Array.isArray(labelsData)) {
+    Object.values(labelsData).forEach(order => {
+      if (!order || !order.items) return;
+
+      // בדיקה אם זו הזמנת חמגשיות
+      const trayItemsByMeal = {};
+      const looseItems = [];
+
+      order.items.forEach(item => {
+        const packMethodCode = String(item.packMethodCode || '').toLowerCase();
+        const packDes = String(item.packDes || '').toLowerCase();
+        const partDes = String(item.partDes || '').trim();
+
+        // בדיקה אם פריט חם
+        const cartonType = String(item.cartonType || '').toLowerCase();
+        const pspec6 = String(item.pspec6 || '').toLowerCase();
+        const isHotItem = cartonType.includes('חם') || pspec6.includes('חם');
+
+        if (!isHotItem || !partDes) return;
+
+        const isTray = packMethodCode.includes('חמגשית') || packDes.includes('חמגשית');
+
+        if (isTray) {
+          // חמגשית - קיבוץ לפי ארוחה
+          const mealName = String(item.mealName || '').trim() || 'ללא_ארוחה';
+          if (!trayItemsByMeal[mealName]) {
+            trayItemsByMeal[mealName] = [];
+          }
+          if (!trayItemsByMeal[mealName].includes(partDes)) {
+            trayItemsByMeal[mealName].push(partDes);
+          }
+        } else {
+          // תפזורת - כל מנה בנפרד
+          if (!looseItems.includes(partDes)) {
+            looseItems.push(partDes);
+          }
+        }
+      });
+
+      // הוספת שילובי חמגשיות
+      Object.values(trayItemsByMeal).forEach(items => {
+        if (items.length > 0) {
+          const combo = items.sort().join(' + ');
+          dishes.add(combo);
+        }
+      });
+
+      // הוספת מנות תפזורת בנפרד
+      looseItems.forEach(item => dishes.add(item));
+    });
+  }
+
+  return Array.from(dishes).sort();
+}
+
+// החלת הדגשות
+function applyHighlightDishes() {
+  const listContainer = document.getElementById('highlightDishesList');
+  if (!listContainer) return;
+
+  const selects = listContainer.querySelectorAll('select');
+  window.highlightedDishes = {};
+
+  selects.forEach(select => {
+    const dish = decodeURIComponent(select.dataset.dish);
+    const color = select.value;
+    if (color) {
+      window.highlightedDishes[dish] = color;
+    }
+  });
+
+  // שמירה ב-localStorage
+  localStorage.setItem('highlightedDishes', JSON.stringify(window.highlightedDishes));
+
+  // רענון המדבקות
+  refreshLabelsWithHighlights();
+
+  closeHighlightDishesModal();
+}
+
+// ניקוי כל ההדגשות
+function clearHighlightDishes() {
+  window.highlightedDishes = {};
+  localStorage.removeItem('highlightedDishes');
+
+  // עדכון ה-selects
+  const listContainer = document.getElementById('highlightDishesList');
+  if (listContainer) {
+    const selects = listContainer.querySelectorAll('select');
+    selects.forEach(select => select.value = '');
+  }
+
+  // רענון המדבקות
+  refreshLabelsWithHighlights();
+}
+
+// רענון המדבקות עם הדגשות
+function refreshLabelsWithHighlights() {
+  // קריאה מחדש לרינדור המדבקות
+  const container = document.getElementById('labelsContainerHot');
+  if (!container || !window.labelsDataHot) return;
+
+  // שמירת הסינונים הנוכחיים
+  const distrLineSelect = document.getElementById('distrLineFilterHot');
+  const packingMethodSelect = document.getElementById('packingMethodFilterHot');
+  const sortModeSelect = document.getElementById('labelsSortModeFilterHot');
+
+  // טריגור לרענון - שימוש באירוע change
+  if (distrLineSelect) {
+    distrLineSelect.dispatchEvent(new Event('change'));
+  }
+}
+
+// טעינת הדגשות שמורות מ-localStorage
+function loadSavedHighlights() {
+  const saved = localStorage.getItem('highlightedDishes');
+  if (saved) {
+    try {
+      window.highlightedDishes = JSON.parse(saved);
+    } catch (e) {
+      window.highlightedDishes = {};
+    }
+  }
+}
+
+// טעינה בעת אתחול
+document.addEventListener('DOMContentLoaded', loadSavedHighlights);
+
+// פונקציה לקבלת צבע הדגשה עבור מנה/שילוב
+function getHighlightColor(dishText) {
+  if (!window.highlightedDishes || !dishText) return '';
+
+  // בדיקה ישירה
+  if (window.highlightedDishes[dishText]) {
+    return window.highlightedDishes[dishText];
+  }
+
+  // בדיקה אם המנה היא חלק משילוב מודגש
+  for (const [highlightedDish, color] of Object.entries(window.highlightedDishes)) {
+    if (dishText.includes(highlightedDish) || highlightedDish.includes(dishText)) {
+      return color;
+    }
+  }
+
+  return '';
 }
 
 // הורדת PDF לדוח מדבקות - באמצעות הדפסה

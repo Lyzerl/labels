@@ -173,6 +173,7 @@
     <div class="labels-actions">
       <button class="btn download" onclick="downloadLabelsCSV('hot')" id="downloadLabelsBtnHot">📥 הורד CSV</button>
       <button class="btn download" onclick="downloadLabelsPDF('hot')" id="downloadLabelsPDFBtnHot">📄 הורד PDF</button>
+      <button class="btn" onclick="openHighlightDishesModal()" id="highlightDishesBtnHot" style="background:#FF9800;color:white;">🎨 מנות להדגשה</button>
     </div>
     <div class="table-container" id="labelsContainerHot"></div>
   </div>
@@ -262,6 +263,26 @@
     </div>
     <div class="modal-body" id="modalBody">
       <!-- Content will be inserted here -->
+    </div>
+  </div>
+</div>
+
+<!-- Modal for highlight dishes -->
+<div id="highlightDishesModal" class="modal-overlay" style="display:none;">
+  <div class="modal-content" style="max-width:700px;">
+    <div class="modal-header">
+      <h2>🎨 מנות להדגשה</h2>
+      <button class="modal-close" onclick="closeHighlightDishesModal()">✕ סגור</button>
+    </div>
+    <div class="modal-body" style="text-align:right;max-height:70vh;overflow-y:auto;">
+      <p style="margin-bottom:15px;color:#666;">בחר מנות להדגשה בצבע. המנות המסומנות יודגשו במדבקות.</p>
+      <div id="highlightDishesList" style="display:flex;flex-direction:column;gap:10px;">
+        <!-- רשימת המנות תיווצר דינמית -->
+      </div>
+      <div class="settings-actions" style="margin-top:20px;">
+        <button class="btn" onclick="applyHighlightDishes()" style="background:#4CAF50;color:white;">✓ החל הדגשות</button>
+        <button class="btn" onclick="clearHighlightDishes()" style="background:#f44336;color:white;">✕ נקה הכל</button>
+      </div>
     </div>
   </div>
 </div>
