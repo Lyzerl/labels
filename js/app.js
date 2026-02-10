@@ -5636,14 +5636,24 @@ document.addEventListener('DOMContentLoaded', loadSavedHighlights);
 function getHighlightColor(dishText) {
   if (!window.highlightedDishes || !dishText) return '';
 
-  // בדיקה ישירה
-  if (window.highlightedDishes[dishText]) {
-    return window.highlightedDishes[dishText];
+  // ניקוי הטקסט לפני השוואה
+  const cleanDishText = dishText.trim();
+
+  // בדיקה ישירה - התאמה מדויקת בלבד
+  if (window.highlightedDishes[cleanDishText]) {
+    return window.highlightedDishes[cleanDishText];
   }
 
-  // בדיקה אם המנה היא חלק משילוב מודגש
+  // נרמול הטקסט להשוואה (הסרת רווחים מיותרים סביב +)
+  const normalizedDishText = cleanDishText.replace(/\s*\+\s*/g, ' + ').trim();
+  if (window.highlightedDishes[normalizedDishText]) {
+    return window.highlightedDishes[normalizedDishText];
+  }
+
+  // בדיקת התאמה עם נרמול גם של המפתחות
   for (const [highlightedDish, color] of Object.entries(window.highlightedDishes)) {
-    if (dishText.includes(highlightedDish) || highlightedDish.includes(dishText)) {
+    const normalizedHighlight = highlightedDish.replace(/\s*\+\s*/g, ' + ').trim();
+    if (normalizedDishText === normalizedHighlight) {
       return color;
     }
   }
