@@ -5496,65 +5496,53 @@ function closeHighlightDishesModal() {
   if (modal) modal.style.display = 'none';
 }
 
-// איסוף כל המנות/שילובים הייחודיים ממדבקות חמים
+// איסוף כל המנות/שילובים הייחודיים - קריאה ישירה מה-DOM של המדבקות
 function collectUniqueDishes() {
   const dishes = new Set();
 
-  // שליפה מנתוני המדבקות חמים - window.labelsDataHot
-  const labelsData = window.labelsDataHot;
-  if (!labelsData) return [];
+  // קריאה ישירה מהמדבקות שמוצגות על המסך
+  const container = document.getElementById('labelsContainerHot');
+  if (!container) return [];
 
-  // אם זה מבנה NoSQL (אובייקט של הזמנות)
-  if (typeof labelsData === 'object' && !Array.isArray(labelsData)) {
-    Object.values(labelsData).forEach(order => {
-      if (!order || !order.items) return;
+  // חיפוש כל הטבלאות במדבקות
+  const tables = container.querySelectorAll('table');
+  tables.forEach(table => {
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('td');
+      cells.forEach(cell => {
+        const text = cell.textContent.trim();
 
-      // קיבוץ פריטים לפי ארוחה - לחמגשיות
-      const trayItemsByMeal = {};
-      // פריטים בודדים - לתפזורת
-      const looseItems = new Set();
+        // בדיקה אם זה טקסט של מנה/שילוב
+        // מסנן: מספרים, טקסטים קצרים, כותרות, טלפונים וכו'
+        if (text &&
+            text.length > 2 &&
+            text.length < 150 &&
+            !/^\d+$/.test(text) &&           // לא רק מספרים
+            !/^\d+\/\d+$/.test(text) &&      // לא מספר קרטון
+            !/^0\d+/.test(text) &&           // לא טלפון
+            !text.includes('@') &&           // לא אימייל
+            !text.includes('מוקד') &&
+            !text.includes('שירות') &&
+            !text.includes('טלפון') &&
+            /[\u0590-\u05FF]/.test(text)) {  // מכיל עברית
 
-      order.items.forEach(item => {
-        const packMethodCode = String(item.packMethodCode || '').toLowerCase();
-        const packDes = String(item.packDes || '').toLowerCase();
-        const partDes = String(item.partDes || '').trim();
+          // ניקוי הטקסט
+          let cleanText = text
+            .replace(/\s*\(אלרגני\)\s*/g, '')
+            .replace(/\s*\(ללא אלרגנים\)\s*/g, '')
+            .replace(/\s*\(צמחוני\)\s*/g, '')
+            .trim();
 
-        // בדיקה אם פריט חם
-        const cartonType = String(item.cartonType || '').toLowerCase();
-        const pspec6 = String(item.pspec6 || '').toLowerCase();
-        const pspec3 = String(item.pspec3 || '').toLowerCase();
-        const isHotItem = cartonType.includes('חם') || pspec6.includes('חם') || pspec3.includes('חם');
-
-        if (!isHotItem || !partDes) return;
-
-        const isTray = packMethodCode.includes('חמגשית') || packDes.includes('חמגשית');
-
-        if (isTray) {
-          // חמגשית - קיבוץ לפי ארוחה
-          const mealName = String(item.mealName || '').trim() || 'ללא_ארוחה';
-          if (!trayItemsByMeal[mealName]) {
-            trayItemsByMeal[mealName] = new Set();
+          // בדיקה אם זה נראה כמו מנה (לא כתובת, לא שם מוסד ארוך)
+          // מנות בדרך כלל קצרות יותר ולא מכילות מספרים
+          if (cleanText.length > 2 && cleanText.length < 100) {
+            dishes.add(cleanText);
           }
-          trayItemsByMeal[mealName].add(partDes);
-        } else {
-          // תפזורת - כל מנה בנפרד
-          looseItems.add(partDes);
         }
       });
-
-      // הוספת שילובי חמגשיות - כל ארוחה = שילוב אחד
-      Object.values(trayItemsByMeal).forEach(itemsSet => {
-        const itemsArray = Array.from(itemsSet);
-        if (itemsArray.length > 0) {
-          const combo = itemsArray.sort().join(' + ');
-          dishes.add(combo);
-        }
-      });
-
-      // הוספת מנות תפזורת בנפרד
-      looseItems.forEach(item => dishes.add(item));
     });
-  }
+  });
 
   return Array.from(dishes).sort();
 }
@@ -5632,22 +5620,7 @@ function loadSavedHighlights() {
 // טעינה בעת אתחול
 document.addEventListener('DOMContentLoaded', loadSavedHighlights);
 
-// פונקציה לנרמול שילוב - מיון הרכיבים לסדר אחיד
-function normalizeCombo(text) {
-  if (!text) return '';
-  // בדיקה אם זה שילוב (מכיל +)
-  if (text.includes('+')) {
-    // פיצול לרכיבים, ניקוי, מיון וחיבור מחדש
-    return text.split('+')
-      .map(part => part.trim())
-      .filter(part => part.length > 0)
-      .sort()
-      .join(' + ');
-  }
-  return text.trim();
-}
-
-// פונקציה לקבלת צבע הדגשה עבור מנה/שילוב
+// פונקציה לקבלת צבע הדגשה עבור מנה/שילוב - התאמה מדויקת בלבד
 function getHighlightColor(dishText) {
   if (!window.highlightedDishes || !dishText) return '';
 
@@ -5658,18 +5631,14 @@ function getHighlightColor(dishText) {
     .replace(/\s*\(צמחוני\)\s*/g, '')
     .trim();
 
-  // נרמול השילוב (מיון הרכיבים)
-  const normalizedDishText = normalizeCombo(cleanDishText);
-
   // בדיקה ישירה - התאמה מדויקת בלבד
-  if (window.highlightedDishes[normalizedDishText]) {
-    return window.highlightedDishes[normalizedDishText];
+  if (window.highlightedDishes[cleanDishText]) {
+    return window.highlightedDishes[cleanDishText];
   }
 
-  // בדיקת התאמה עם נרמול גם של המפתחות
+  // בדיקת התאמה עם המפתחות - התאמה מדויקת בלבד
   for (const [highlightedDish, color] of Object.entries(window.highlightedDishes)) {
-    const normalizedHighlight = normalizeCombo(highlightedDish);
-    if (normalizedDishText === normalizedHighlight) {
+    if (cleanDishText === highlightedDish.trim()) {
       return color;
     }
   }
