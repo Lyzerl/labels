@@ -3768,6 +3768,11 @@ function createLabelsReport(data, labelType = 'hot') {
 
 // רינדור דוח מדבקות ממבנה NoSQL (יותר נקי ויעיל)
 function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode = 'distribution', isHot = true) {
+  // איפוס אוסף המנות בתחילת רנדור חדש (רק למדבקות חמות)
+  if (isHot) {
+    window.labelsDishesSet = new Set();
+  }
+
   // פונקציה לזיהוי כשרות - האם זה חב"ד או בד"ץ
   const isChabad = (order) => {
     const spec2 = String(order.spec2 || '').trim().toLowerCase();
@@ -4819,8 +4824,19 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       };
       
       // הצגת כל הפריטים במדבקה אחת - ללא הגבלה, גובה דינמי
+      // שמירת המנות לאוסף גלובלי (להדגשות)
+      if (!window.labelsDishesSet) window.labelsDishesSet = new Set();
       itemsArray.forEach(item => {
         html += renderItemRow(item);
+        // שמירת שם המנה/שילוב לאוסף
+        const dishName = (item.itemsKey || item.partDes || '').trim()
+          .replace(/\s*\(אלרגני\)\s*/g, '')
+          .replace(/\s*\(ללא אלרגנים\)\s*/g, '')
+          .replace(/\s*\(צמחוני\)\s*/g, '')
+          .trim();
+        if (dishName && dishName.length > 2) {
+          window.labelsDishesSet.add(dishName);
+        }
       });
       
       html += '</tbody></table>';
@@ -5496,55 +5512,13 @@ function closeHighlightDishesModal() {
   if (modal) modal.style.display = 'none';
 }
 
-// איסוף כל המנות/שילובים הייחודיים - קריאה ישירה מה-DOM של המדבקות
+// איסוף כל המנות/שילובים הייחודיים - מהאוסף שנשמר בזמן הרנדור
 function collectUniqueDishes() {
-  const dishes = new Set();
-
-  // קריאה ישירה מהמדבקות שמוצגות על המסך
-  const container = document.getElementById('labelsContainerHot');
-  if (!container) return [];
-
-  // חיפוש כל הטבלאות במדבקות
-  const tables = container.querySelectorAll('table');
-  tables.forEach(table => {
-    const rows = table.querySelectorAll('tbody tr');
-    rows.forEach(row => {
-      const cells = row.querySelectorAll('td');
-      cells.forEach(cell => {
-        const text = cell.textContent.trim();
-
-        // בדיקה אם זה טקסט של מנה/שילוב
-        // מסנן: מספרים, טקסטים קצרים, כותרות, טלפונים וכו'
-        if (text &&
-            text.length > 2 &&
-            text.length < 150 &&
-            !/^\d+$/.test(text) &&           // לא רק מספרים
-            !/^\d+\/\d+$/.test(text) &&      // לא מספר קרטון
-            !/^0\d+/.test(text) &&           // לא טלפון
-            !text.includes('@') &&           // לא אימייל
-            !text.includes('מוקד') &&
-            !text.includes('שירות') &&
-            !text.includes('טלפון') &&
-            /[\u0590-\u05FF]/.test(text)) {  // מכיל עברית
-
-          // ניקוי הטקסט
-          let cleanText = text
-            .replace(/\s*\(אלרגני\)\s*/g, '')
-            .replace(/\s*\(ללא אלרגנים\)\s*/g, '')
-            .replace(/\s*\(צמחוני\)\s*/g, '')
-            .trim();
-
-          // בדיקה אם זה נראה כמו מנה (לא כתובת, לא שם מוסד ארוך)
-          // מנות בדרך כלל קצרות יותר ולא מכילות מספרים
-          if (cleanText.length > 2 && cleanText.length < 100) {
-            dishes.add(cleanText);
-          }
-        }
-      });
-    });
-  });
-
-  return Array.from(dishes).sort();
+  // קריאה מהאוסף הגלובלי שנשמר בזמן יצירת המדבקות
+  if (window.labelsDishesSet && window.labelsDishesSet.size > 0) {
+    return Array.from(window.labelsDishesSet).sort();
+  }
+  return [];
 }
 
 // החלת הדגשות
