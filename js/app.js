@@ -5533,7 +5533,9 @@ function applyHighlightDishes() {
     const dish = decodeURIComponent(select.dataset.dish);
     const color = select.value;
     if (color) {
-      window.highlightedDishes[dish] = color;
+      // נרמול המנה לפני שמירה
+      const normalizedDish = normalizeDishText(dish);
+      window.highlightedDishes[normalizedDish] = color;
     }
   });
 
@@ -5594,25 +5596,32 @@ function loadSavedHighlights() {
 // טעינה בעת אתחול
 document.addEventListener('DOMContentLoaded', loadSavedHighlights);
 
+// פונקציה לנרמול טקסט מנה - מסיר רווחים מיותרים ומאחד את הפורמט
+function normalizeDishText(text) {
+  if (!text) return '';
+  return text.trim()
+    .replace(/\s*\(אלרגני\)\s*/g, '')
+    .replace(/\s*\(ללא אלרגנים\)\s*/g, '')
+    .replace(/\s*\(צמחוני\)\s*/g, '')
+    .replace(/\s*\+\s*/g, '+')  // נרמול + עם רווחים ל-+ בלי רווחים
+    .trim();
+}
+
 // פונקציה לקבלת צבע הדגשה עבור מנה/שילוב - התאמה מדויקת בלבד
 function getHighlightColor(dishText) {
   if (!window.highlightedDishes || !dishText) return '';
 
-  // ניקוי הטקסט לפני השוואה - הסרת סימנים כמו (אלרגני)
-  let cleanDishText = dishText.trim()
-    .replace(/\s*\(אלרגני\)\s*/g, '')
-    .replace(/\s*\(ללא אלרגנים\)\s*/g, '')
-    .replace(/\s*\(צמחוני\)\s*/g, '')
-    .trim();
+  // נרמול הטקסט לפני השוואה
+  const cleanDishText = normalizeDishText(dishText);
 
   // בדיקה ישירה - התאמה מדויקת בלבד
   if (window.highlightedDishes[cleanDishText]) {
     return window.highlightedDishes[cleanDishText];
   }
 
-  // בדיקת התאמה עם המפתחות - התאמה מדויקת בלבד
+  // בדיקת התאמה עם המפתחות - התאמה מדויקת בלבד (עם נרמול)
   for (const [highlightedDish, color] of Object.entries(window.highlightedDishes)) {
-    if (cleanDishText === highlightedDish.trim()) {
+    if (cleanDishText === normalizeDishText(highlightedDish)) {
       return color;
     }
   }
