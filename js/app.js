@@ -5496,64 +5496,99 @@ function closeHighlightDishesModal() {
   if (modal) modal.style.display = 'none';
 }
 
-// איסוף כל המנות/שילובים הייחודיים
+// איסוף כל המנות/שילובים הייחודיים מדוח אריזה חמה (מארז 5/7 וחמגשיות)
 function collectUniqueDishes() {
   const dishes = new Set();
 
-  // מנסה לאסוף מ-window.labelsDataHot
-  const labelsData = window.labelsDataHot;
-  if (!labelsData) return [];
+  // איסוף מדוח אריזה חמה - window.traysData מכיל את הקטגוריות
+  const traysData = window.traysData;
+  const allTraysData = window.allTraysData;
 
-  // אם זה מבנה NoSQL (אובייקט של הזמנות)
-  if (typeof labelsData === 'object' && !Array.isArray(labelsData)) {
-    Object.values(labelsData).forEach(order => {
-      if (!order || !order.items) return;
+  if (!traysData && !allTraysData) return [];
 
-      // בדיקה אם זו הזמנת חמגשיות
-      const trayItemsByMeal = {};
-      const looseItems = [];
-
-      order.items.forEach(item => {
-        const packMethodCode = String(item.packMethodCode || '').toLowerCase();
-        const packDes = String(item.packDes || '').toLowerCase();
-        const partDes = String(item.partDes || '').trim();
-
-        // בדיקה אם פריט חם
-        const cartonType = String(item.cartonType || '').toLowerCase();
-        const pspec6 = String(item.pspec6 || '').toLowerCase();
-        const isHotItem = cartonType.includes('חם') || pspec6.includes('חם');
-
-        if (!isHotItem || !partDes) return;
-
-        const isTray = packMethodCode.includes('חמגשית') || packDes.includes('חמגשית');
-
-        if (isTray) {
-          // חמגשית - קיבוץ לפי ארוחה
-          const mealName = String(item.mealName || '').trim() || 'ללא_ארוחה';
-          if (!trayItemsByMeal[mealName]) {
-            trayItemsByMeal[mealName] = [];
-          }
-          if (!trayItemsByMeal[mealName].includes(partDes)) {
-            trayItemsByMeal[mealName].push(partDes);
-          }
-        } else {
-          // תפזורת - כל מנה בנפרד
-          if (!looseItems.includes(partDes)) {
-            looseItems.push(partDes);
-          }
-        }
+  // אם יש traysData (מבנה קטגוריות)
+  if (traysData) {
+    // חמגשית קטנה - שילובים
+    if (traysData.smallTray && Array.isArray(traysData.smallTray)) {
+      // קיבוץ לפי הזמנה וארוחה
+      const combos = {};
+      traysData.smallTray.forEach(row => {
+        const orderName = String(row.ORDNAME || row.orderName || '').trim();
+        const mealName = String(row.MEALNAME || row.mealName || '').trim() || 'ללא';
+        const partDes = String(row.PARTDES || row.partDes || '').trim();
+        const key = `${orderName}|${mealName}`;
+        if (!combos[key]) combos[key] = [];
+        if (partDes && !combos[key].includes(partDes)) combos[key].push(partDes);
       });
-
-      // הוספת שילובי חמגשיות
-      Object.values(trayItemsByMeal).forEach(items => {
-        if (items.length > 0) {
-          const combo = items.sort().join(' + ');
-          dishes.add(combo);
-        }
+      Object.values(combos).forEach(items => {
+        if (items.length > 0) dishes.add(items.sort().join(' + '));
       });
+    }
 
-      // הוספת מנות תפזורת בנפרד
-      looseItems.forEach(item => dishes.add(item));
+    // חמגשית גדולה - שילובים
+    if (traysData.largeTray && Array.isArray(traysData.largeTray)) {
+      const combos = {};
+      traysData.largeTray.forEach(row => {
+        const orderName = String(row.ORDNAME || row.orderName || '').trim();
+        const mealName = String(row.MEALNAME || row.mealName || '').trim() || 'ללא';
+        const partDes = String(row.PARTDES || row.partDes || '').trim();
+        const key = `${orderName}|${mealName}`;
+        if (!combos[key]) combos[key] = [];
+        if (partDes && !combos[key].includes(partDes)) combos[key].push(partDes);
+      });
+      Object.values(combos).forEach(items => {
+        if (items.length > 0) dishes.add(items.sort().join(' + '));
+      });
+    }
+
+    // מארז 5 - מנות בודדות
+    if (traysData.pack5 && Array.isArray(traysData.pack5)) {
+      traysData.pack5.forEach(row => {
+        const partDes = String(row.PARTDES || row.partDes || '').trim();
+        if (partDes) dishes.add(partDes);
+      });
+    }
+
+    // מארז 7 - מנות בודדות
+    if (traysData.pack7 && Array.isArray(traysData.pack7)) {
+      traysData.pack7.forEach(row => {
+        const partDes = String(row.PARTDES || row.partDes || '').trim();
+        if (partDes) dishes.add(partDes);
+      });
+    }
+  }
+
+  // אם אין traysData אבל יש allTraysData - נאסוף משם
+  if (dishes.size === 0 && allTraysData && Array.isArray(allTraysData)) {
+    const trayCombosByOrder = {};
+
+    allTraysData.forEach(row => {
+      const pm = String(row.PACKMETHODCODE || row.packMethodCode || '').toLowerCase();
+      const packDes = String(row.PACKDES || row.packDes || '').toLowerCase();
+      const partDes = String(row.PARTDES || row.partDes || '').trim();
+      const pack5 = parseFloat(row.PACK5 || row.pack5 || 0) || 0;
+      const pack7 = parseFloat(row.PACK7 || row.pack7 || 0) || 0;
+
+      if (!partDes) return;
+
+      const isTray = pm.includes('חמגשית') || packDes.includes('חמגשית');
+
+      if (isTray) {
+        // חמגשית - קיבוץ לפי הזמנה וארוחה
+        const orderName = String(row.ORDNAME || row.orderName || '').trim();
+        const mealName = String(row.MEALNAME || row.mealName || '').trim() || 'ללא';
+        const key = `${orderName}|${mealName}`;
+        if (!trayCombosByOrder[key]) trayCombosByOrder[key] = [];
+        if (!trayCombosByOrder[key].includes(partDes)) trayCombosByOrder[key].push(partDes);
+      } else if (pack5 > 0 || pack7 > 0) {
+        // מארז 5/7 - מנה בודדת
+        dishes.add(partDes);
+      }
+    });
+
+    // הוספת שילובי חמגשיות
+    Object.values(trayCombosByOrder).forEach(items => {
+      if (items.length > 0) dishes.add(items.sort().join(' + '));
     });
   }
 
