@@ -2482,12 +2482,13 @@ function createTabularView() {
     html += '<h3 style="text-align:center;background:#4FC3F7;padding:10px;margin:0;border-radius:5px 5px 0 0;">פירוט מיכלים טבלאי</h3>';
     html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;border:1px solid #ccc;">';
 
-    // כותרת עם קווי חלוקה - הוספת עמודה למארז קטן/גדול
+    // כותרת עם קווי חלוקה - הוספת עמודה למארז קטן/גדול ועמודת סה"כ
     html += '<thead><tr style="background:#4FC3F7;">';
     html += '<th style="border:1px solid #ccc;padding:8px;text-align:right;min-width:150px;" colspan="2">פריט</th>';
     distrLines.forEach(line => {
       html += `<th style="border:1px solid #ccc;padding:8px;text-align:center;min-width:80px;">${line}</th>`;
     });
+    html += '<th style="border:1px solid #ccc;padding:8px;text-align:center;min-width:80px;background:#FFD54F;">סה"כ</th>';
     html += '</tr></thead><tbody>';
 
     // שורות פריטים - רק שורות עם נתונים
@@ -2521,6 +2522,7 @@ function createTabularView() {
           const qty = data ? data.containers : 0;
           html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;">${qty > 0 ? qty.toFixed(0) : ''}</td>`;
         });
+        html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;background:#FFE082;">${totalContainers.toFixed(0)}</td>`;
         html += '</tr>';
         isFirstRow = false;
       }
@@ -2538,6 +2540,7 @@ function createTabularView() {
           const qty = data ? data.pack5 : 0;
           html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;background:#e8f5e9;">${qty > 0 ? qty.toFixed(0) : ''}</td>`;
         });
+        html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;background:#FFE082;">${totalPack5.toFixed(0)}</td>`;
         html += '</tr>';
       }
 
@@ -2553,6 +2556,7 @@ function createTabularView() {
           const qty = data ? data.pack7 : 0;
           html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;background:#fffde7;">${qty > 0 ? qty.toFixed(0) : ''}</td>`;
         });
+        html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;background:#FFE082;">${totalPack7.toFixed(0)}</td>`;
         html += '</tr>';
       }
     });
@@ -2566,12 +2570,13 @@ function createTabularView() {
     html += '<h3 style="text-align:center;background:#4FC3F7;padding:10px;margin:0;border-radius:5px 5px 0 0;">פירוט חמגשיות טבלאי</h3>';
     html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;border:1px solid #ccc;">';
 
-    // כותרת עם קווי חלוקה
+    // כותרת עם קווי חלוקה ועמודת סה"כ
     html += '<thead><tr style="background:#4FC3F7;">';
     html += '<th style="border:1px solid #ccc;padding:8px;text-align:right;min-width:150px;" colspan="2">פריט</th>';
     distrLines.forEach(line => {
       html += `<th style="border:1px solid #ccc;padding:8px;text-align:center;min-width:80px;">${line}</th>`;
     });
+    html += '<th style="border:1px solid #ccc;padding:8px;text-align:center;min-width:80px;background:#FFD54F;">סה"כ</th>';
     html += '</tr></thead><tbody>';
 
     // שורות פריטים - עם הפרדה לקטנה/גדולה
@@ -2604,6 +2609,7 @@ function createTabularView() {
           const qty = data ? data.small : 0;
           html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;background:#e8f5e9;">${qty > 0 ? qty.toFixed(0) : ''}</td>`;
         });
+        html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;background:#FFE082;">${totalSmall.toFixed(0)}</td>`;
         html += '</tr>';
         isFirstRow = false;
       }
@@ -2620,6 +2626,7 @@ function createTabularView() {
           const qty = data ? data.large : 0;
           html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;background:#fffde7;">${qty > 0 ? qty.toFixed(0) : ''}</td>`;
         });
+        html += `<td style="border:1px solid #ccc;padding:8px;text-align:center;font-weight:bold;background:#FFE082;">${totalLarge.toFixed(0)}</td>`;
         html += '</tr>';
       }
     });
