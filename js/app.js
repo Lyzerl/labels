@@ -5632,27 +5632,43 @@ function loadSavedHighlights() {
 // טעינה בעת אתחול
 document.addEventListener('DOMContentLoaded', loadSavedHighlights);
 
+// פונקציה לנרמול שילוב - מיון הרכיבים לסדר אחיד
+function normalizeCombo(text) {
+  if (!text) return '';
+  // בדיקה אם זה שילוב (מכיל +)
+  if (text.includes('+')) {
+    // פיצול לרכיבים, ניקוי, מיון וחיבור מחדש
+    return text.split('+')
+      .map(part => part.trim())
+      .filter(part => part.length > 0)
+      .sort()
+      .join(' + ');
+  }
+  return text.trim();
+}
+
 // פונקציה לקבלת צבע הדגשה עבור מנה/שילוב
 function getHighlightColor(dishText) {
   if (!window.highlightedDishes || !dishText) return '';
 
-  // ניקוי הטקסט לפני השוואה
-  const cleanDishText = dishText.trim();
+  // ניקוי הטקסט לפני השוואה - הסרת סימנים כמו (אלרגני)
+  let cleanDishText = dishText.trim()
+    .replace(/\s*\(אלרגני\)\s*/g, '')
+    .replace(/\s*\(ללא אלרגנים\)\s*/g, '')
+    .replace(/\s*\(צמחוני\)\s*/g, '')
+    .trim();
+
+  // נרמול השילוב (מיון הרכיבים)
+  const normalizedDishText = normalizeCombo(cleanDishText);
 
   // בדיקה ישירה - התאמה מדויקת בלבד
-  if (window.highlightedDishes[cleanDishText]) {
-    return window.highlightedDishes[cleanDishText];
-  }
-
-  // נרמול הטקסט להשוואה (הסרת רווחים מיותרים סביב +)
-  const normalizedDishText = cleanDishText.replace(/\s*\+\s*/g, ' + ').trim();
   if (window.highlightedDishes[normalizedDishText]) {
     return window.highlightedDishes[normalizedDishText];
   }
 
   // בדיקת התאמה עם נרמול גם של המפתחות
   for (const [highlightedDish, color] of Object.entries(window.highlightedDishes)) {
-    const normalizedHighlight = highlightedDish.replace(/\s*\+\s*/g, ' + ').trim();
+    const normalizedHighlight = normalizeCombo(highlightedDish);
     if (normalizedDishText === normalizedHighlight) {
       return color;
     }
