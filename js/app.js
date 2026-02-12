@@ -4773,12 +4773,12 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           const eatQuant = item.eatQuant || item.totalQuantity || 0;
           
           // זיהוי גודל חמגשית - קטנה=ירוק, גדולה=אפור
-          // אבל אם זה אלרגני או צמחוני, נשתמש ב-rowBgColor
+          // אבל אם יש הדגשה ידנית, אלרגני או צמחוני - נשתמש ב-rowBgColor
           let quantityBgColor = traySize === 'large' ? '#d3d3d3' : '#c8e6c9'; // גדולה=אפור, קטנה=ירוק
           let productBgColor = '#e0e0e0'; // רקע רגיל לתיאור מוצר
-          
-          // אם זה אלרגני או צמחוני, נשתמש ב-rowBgColor לכל התאים
-          if (isNoAllergenRow || isVegetarianRow) {
+
+          // אם יש הדגשה ידנית, אלרגני או צמחוני - נשתמש ב-rowBgColor לכל התאים
+          if (highlightColor || isNoAllergenRow || isVegetarianRow) {
             quantityBgColor = rowBgColor;
             productBgColor = rowBgColor;
           }
