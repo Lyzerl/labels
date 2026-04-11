@@ -4069,6 +4069,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           nonTrayItemsMap[uniqueKey] = {
             partName: item.partName,
             partDes: item.partDes,
+            pspec1: item.pspec1 || item.PSPEC1 || '',
             cartonType: item.cartonType || '',
             mealName: item.mealName || '',
             sumQuant: 0,
@@ -4148,6 +4149,7 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
 
           // איסוף כל שמות הפריטים (ללא כפילויות)
           const uniquePartDes = [];
+          const partDesCategory = {}; // partDes -> עדיפות קטגוריה (0=עיקר, 1=פחמימה, 2=ירק, 3=אחר)
           let hasNoAllergen = false;
           let isChabadKashrut = false; // בדיקה אם יש כשרות חב"ד
           let eatQuantSmall = 0; // כמות לחמגשית קטנה
@@ -4167,6 +4169,16 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
             const pspec1 = String(item.pspec1 || item.PSPEC1 || '').trim().toLowerCase();
             if (pspec1.includes('ללא אלרגני') || pspec1.includes('לא אלרגני')) {
               hasNoAllergen = true;
+            }
+
+            // קביעת עדיפות קטגוריה לסידור: מנה עיקרית → פחמימה → ירק → אחר
+            let catPriority = 3;
+            if (pspec1.includes('עיקר')) catPriority = 0;
+            else if (pspec1.includes('פחמימה')) catPriority = 1;
+            else if (pspec1.includes('ירק')) catPriority = 2;
+            // אם לאותו partDes יש כבר עדיפות נמוכה יותר (=חשוב יותר), נשמור אותה
+            if (partDesCategory[partDes] === undefined || catPriority < partDesCategory[partDes]) {
+              partDesCategory[partDes] = catPriority;
             }
             const pspec6 = String(item.pspec6 || item.PSPEC6 || '').trim().toLowerCase();
             // בדיקה אם הכשרות היא חב"ד (בפרמטר 6 למוצר)
@@ -4201,7 +4213,16 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
           if (uniquePartDes.length === 0) return;
 
           // יצירת מפתח ייחודי לכל הפריטים יחד (מחוברים ב-"+")
-          const itemsKey = uniquePartDes.sort().join('+');
+          // סידור לפי קטגוריה: מנה עיקרית → פחמימה → ירק → אחר, ואז לפי א"ב כשבירת שוויון
+          const sortedPartDes = [...uniquePartDes].sort((a, b) => {
+            const pa = partDesCategory[a] ?? 3;
+            const pb = partDesCategory[b] ?? 3;
+            if (pa !== pb) return pa - pb;
+            return a.localeCompare(b, 'he');
+          });
+          const itemsKey = sortedPartDes.join('+');
+          // העדיפות הנמוכה (הכי חשובה) בקבוצה - לשימוש בסידור השורות במדבקה
+          const groupCatPriority = Math.min(...Object.values(partDesCategory), 3);
 
           // אם יש אלרגני, להוסיף סימון
           let finalItemsKey = itemsKey;
@@ -4223,7 +4244,8 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               isVegetarian: isVegetarianGroup,
               pspec6: isChabadKashrut ? 'חבד' : '',
               cartonType: itemCartonType,
-              traySize: 'small'
+              traySize: 'small',
+              _catPriority: groupCatPriority
             });
             summary.push({
               itemsKey: finalItemsKey,
@@ -4235,7 +4257,8 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               isVegetarian: isVegetarianGroup,
               pspec6: isChabadKashrut ? 'חבד' : '',
               cartonType: itemCartonType,
-              traySize: 'large'
+              traySize: 'large',
+              _catPriority: groupCatPriority
             });
           } else if (eatQuantSmall > 0) {
             // רק קטנה
@@ -4249,7 +4272,8 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               isVegetarian: isVegetarianGroup,
               pspec6: isChabadKashrut ? 'חבד' : '',
               cartonType: itemCartonType,
-              traySize: 'small'
+              traySize: 'small',
+              _catPriority: groupCatPriority
             });
           } else if (eatQuantLarge > 0) {
             // רק גדולה
@@ -4263,7 +4287,8 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
               isVegetarian: isVegetarianGroup,
               pspec6: isChabadKashrut ? 'חבד' : '',
               cartonType: itemCartonType,
-              traySize: 'large'
+              traySize: 'large',
+              _catPriority: groupCatPriority
             });
           }
         };
@@ -4996,6 +5021,17 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
       
       // יצירת מדבקה אחת עם כל הפריטים (חמגשית ותפזורת)
       const allHotItems = [...allHotTrayItems, ...hotNonTrayItems.map(item => ({...item, isTray: false}))];
+
+      // סידור הפריטים במדבקה לפי קטגוריה: מנה עיקרית → פחמימה → ירק → אחר
+      const getCatPriority = (it) => {
+        if (typeof it._catPriority === 'number') return it._catPriority;
+        const p = String(it.pspec1 || it.PSPEC1 || '').trim().toLowerCase();
+        if (p.includes('עיקר')) return 0;
+        if (p.includes('פחמימה')) return 1;
+        if (p.includes('ירק')) return 2;
+        return 3;
+      };
+      allHotItems.sort((a, b) => getCatPriority(a) - getCatPriority(b));
       if (allHotItems.length > 0) {
         // חישוב מספר קרטונים נדרש
         const hasTrayOnly = allHotItems.every(item => item.isTray === true);
