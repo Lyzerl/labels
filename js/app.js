@@ -390,7 +390,10 @@ function calculateContainersAndPacks(data) {
       const pspec1 = String(newRow.PSPEC1 || newRow.pspec1 || '').toLowerCase();
       const packMethod = String(newRow.PACKMETHODCODE || newRow.packMethodCode || '').toLowerCase();
       const packDes = String(newRow.PACKDES || newRow.packDes || '').toLowerCase();
-      const isGastronome = pspec1.includes('גסטרונום') || packMethod.includes('גסטרונום') || packDes.includes('גסטרונום');
+      // ירק שאריזתו גסטרונום - מתייחסים אליו כתפזורת (לא כגסטרונום)
+      const isVegetable = pspec1.includes('ירק');
+      const isGastronomeRaw = pspec1.includes('גסטרונום') || packMethod.includes('גסטרונום') || packDes.includes('גסטרונום');
+      const isGastronome = isGastronomeRaw && !isVegetable;
 
       // בדיקת סניף - סניף דרום (0,1), סניף צפון (3,4)
       const branchName = String(newRow.BRANCHNAME || '').trim();
@@ -1308,7 +1311,9 @@ function applyTraysFilters() {
     }
 
     // גסטרונום - לפי PSPEC1 או PACKMETHODCODE, רק אם יש כמות (containers > 0)
-    if ((pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום')) && containers > 0) {
+    // ירק שאריזתו גסטרונום - מתייחסים אליו כתפזורת (לא ייכנס לקטגוריית גסטרונום)
+    const isVegetableItem = pspec1.includes('ירק');
+    if ((pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום')) && containers > 0 && !isVegetableItem) {
       categories.gastronome.push(r);
       addedToCategory = true;
     }
@@ -1845,7 +1850,10 @@ function applyTraysFilters() {
     }
     
     // אם זה גסטרונום - לא נכלל (בודק בכל השדות הרלוונטיים)
-    if (pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום')) {
+    // יוצא דופן: ירק שאריזתו גסטרונום - מתייחסים אליו כתפזורת ולכן כן נכלל
+    const isVeg = pspec1.includes('ירק');
+    const isGastro = pspec1.includes('גסטרונום') || pm.includes('גסטרונום') || packDes.includes('גסטרונום');
+    if (isGastro && !isVeg) {
       return false;
     }
 
@@ -1858,8 +1866,10 @@ function applyTraysFilters() {
     }
 
     // רק תפזורת, תפזורת101 או סיפט
+    // יוצא דופן: ירק שאריזתו גסטרונום - מתייחסים אליו כתפזורת
     const isBulk = pm.includes('תפזורת') || packDes.includes('תפזורת') ||
-                   pm.includes('תפזורת101') || packDes.includes('תפזורת101') || isSift;
+                   pm.includes('תפזורת101') || packDes.includes('תפזורת101') || isSift ||
+                   (isVeg && isGastro);
 
     return isBulk;
   });
@@ -2935,14 +2945,17 @@ function createAllergensReport(data) {
     // קביעת שיטת אירוז
     const packMethod = String(row.PACKMETHODCODE || '').trim();
     const packDes = String(row.PACKDES || '').trim().toLowerCase();
+    const pspec1 = String(row.PSPEC1 || '').trim().toLowerCase();
+    const isVeg = pspec1.includes('ירק');
     let packingMethod = 'אחר';
-    
+
     if (packMethod.includes('חמגשית') || packDes.includes('חמגשית')) {
       packingMethod = 'חמגשית';
     } else if (packMethod.includes('תפזורת') || packDes.includes('תפזורת') || packMethod.includes('סיפט') || packDes.includes('סיפט')) {
       packingMethod = 'תפזורת';
     } else if (packDes.includes('גסטרונום') || packMethod.includes('גסטרונום')) {
-      packingMethod = 'גסטרונום';
+      // ירק שאריזתו גסטרונום - מתייחסים אליו כתפזורת
+      packingMethod = isVeg ? 'תפזורת' : 'גסטרונום';
     }
     
     // יצירת מפתח ייחודי
@@ -3502,8 +3515,11 @@ function createLabelsReport(data, labelType = 'hot') {
             const pspec1 = String(item.pspec1 || '').toLowerCase();
 
             // זיהוי סוג אריזה - סדר עדיפות: חמגשית > גסטרונום > תפזורת
+            // ירק שאריזתו גסטרונום - מתייחסים אליו כתפזורת
+            const isVeggie = pspec1.includes('ירק');
             const isTrayItem = packMethodCode.includes('חמגשית') || packDes.includes('חמגשית');
-            const isGastronormItem = packDes.includes('גסטרונום') || packDes.includes('גסטרו') || pspec1.includes('גסטרונום');
+            const isGastronormRaw = packDes.includes('גסטרונום') || packDes.includes('גסטרו') || pspec1.includes('גסטרונום');
+            const isGastronormItem = isGastronormRaw && !isVeggie;
 
             if (isTrayItem) {
               hasHotTray = true;
@@ -3624,11 +3640,13 @@ function createLabelsReport(data, labelType = 'hot') {
           });
 
           // בדיקה אם יש גסטרונום (ללא חמגשית)
+          // ירק שאריזתו גסטרונום - מתייחסים אליו כתפזורת ולכן לא ייחשב כגסטרונום
           const hasOnlyGastronorm = hotItems.length > 0 && !allItemsTray && hotItems.some(item => {
             const packDes = String(item.PACKDES || '').toLowerCase();
             const pspec1 = String(item.PSPEC1 || '').toLowerCase();
             const packMethod = String(item.PACKMETHODCODE || '').trim();
-            const isGastronorm = packDes.includes('גסטרונום') || packDes.includes('גסטרו') || pspec1.includes('גסטרונום');
+            const isVeggie = pspec1.includes('ירק');
+            const isGastronorm = (packDes.includes('גסטרונום') || packDes.includes('גסטרו') || pspec1.includes('גסטרונום')) && !isVeggie;
             const isTray = packMethod.includes('חמגשית');
             return isGastronorm && !isTray;
           });

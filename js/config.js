@@ -482,6 +482,9 @@ const DEFINITIONS = {
         const packDes = String(item.packDes || item.PACKDES || '').toLowerCase();
         const pspec1 = String(item.pspec1 || item.PSPEC1 || '').toLowerCase();
 
+        // ירק שאריזתו גסטרונום - מתייחסים אליו כתפזורת (לא כגסטרונום)
+        if (pspec1.includes('ירק')) return false;
+
         return this.gastronormKeywords.some(kw =>
             packDes.includes(kw) || pspec1.includes(kw)
         );

@@ -495,9 +495,11 @@ function processDataForDay(dayData, dayIndex, branch = 'all') {
         const mealName = row.MEALNAME || '';
 
         // בדיקה אם זה חמגשית אלרגנית - מדלגים עליה
+        const pspec1 = String(row.PSPEC1 || '').toLowerCase();
         const pspec2 = String(row.PSPEC2 || '').toLowerCase();
         const spec2 = String(row.SPEC2 || '').toLowerCase();
         const packMethod = String(row.PACKMETHODCODE || '').toLowerCase();
+        const packDes = String(row.PACKDES || '').toLowerCase();
         const isTray = packMethod.includes('חמגשית');
         const isAllergen = pspec2.includes('אלרגנ') || spec2.includes('אלרגנ');
 
@@ -505,7 +507,10 @@ function processDataForDay(dayData, dayIndex, branch = 'all') {
         if (isTray && isAllergen) return;
 
         // זיהוי שיטת אריזה גסטרונום
-        const isGastronorm = packMethod.includes('גסטרונום');
+        // ירק שאריזתו גסטרונום - מתייחסים אליו כתפזורת (לא כגסטרונום)
+        const isVeggie = pspec1.includes('ירק');
+        const isGastronormRaw = packMethod.includes('גסטרונום') || packDes.includes('גסטרונום') || pspec1.includes('גסטרונום');
+        const isGastronorm = isGastronormRaw && !isVeggie;
 
         // בדיקה אם זה לקוח חב"ד עם מנה עיקרית בשרית - מתייחסים כתפזורת
         // PSPEC3 מכיל את הפרמטר של בשרי/פרווה
