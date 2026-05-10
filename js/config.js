@@ -795,6 +795,7 @@ function validatePriorityData(data, opts = {}) {
  * @returns {Promise<{count: number|null, raw: Object|null, error: string|null}>}
  */
 async function fetchPriorityCount(filterParts) {
+  let url = null;
   try {
     const validParts = filterParts.filter(Boolean);
     if (validParts.length === 0) return { count: null, raw: null, error: 'no filter' };
@@ -803,11 +804,17 @@ async function fetchPriorityCount(filterParts) {
     const filter = `$filter=${validParts.join(' and ')}`;
     const query = `${filter}&$top=0&$count=true&$inlinecount=allpages`;
     // חשוב: בלי fetchAll - זו בקשה אחת קצרה
-    const url = `${PROXY_URL}?filter=${encodeURIComponent(query)}`;
+    url = `${PROXY_URL}?filter=${encodeURIComponent(query)}`;
 
     const response = await fetch(url);
     if (!response.ok) {
-      return { count: null, raw: null, error: `HTTP ${response.status}` };
+      const errMsg = `HTTP ${response.status}`;
+      // לוג אבחון אוטומטי לכשל
+      if (typeof console.error === 'function') {
+        console.error('[fetchPriorityCount] HTTP error:', errMsg, 'URL:', url);
+      }
+      window._lastCountProbe = { ok: false, status: response.status, url, error: errMsg };
+      return { count: null, raw: null, error: errMsg };
     }
     const json = await response.json();
 
@@ -825,9 +832,35 @@ async function fetchPriorityCount(filterParts) {
       (json.meta && typeof json.meta.count === 'number' ? json.meta.count : null) ??
       null;
 
+    // ===== אבחון אוטומטי כשהספירה לא נמצאה =====
+    // שמירה גלובלית כדי שתוכל להריץ console.log(window._lastCountProbe) בקלות
+    window._lastCountProbe = {
+      ok: true,
+      url: url,
+      topLevelKeys: Object.keys(json),
+      meta: json.meta || null,
+      sampleBody: JSON.stringify(json).substring(0, 800),
+      valueLength: Array.isArray(json.value) ? json.value.length : null,
+      countFound: count
+    };
+
+    if (count === null && typeof console.error === 'function') {
+      // לוג אדום מובלט — קל לראות בקונסול
+      console.error('[fetchPriorityCount] ❌ ספירה לא נמצאה בתשובה');
+      console.error('[fetchPriorityCount] מפתחות ברמה העליונה:', Object.keys(json));
+      console.error('[fetchPriorityCount] meta:', json.meta);
+      console.error('[fetchPriorityCount] תחילת התשובה (800 תווים):', JSON.stringify(json).substring(0, 800));
+      console.error('[fetchPriorityCount] URL ששלחנו:', url);
+    }
+
     return { count: typeof count === 'number' && !isNaN(count) ? count : null, raw: json, error: null };
   } catch (err) {
-    return { count: null, raw: null, error: err.message || String(err) };
+    const msg = err.message || String(err);
+    if (typeof console.error === 'function') {
+      console.error('[fetchPriorityCount] Exception:', msg, 'URL:', url);
+    }
+    window._lastCountProbe = { ok: false, url, error: msg, exception: true };
+    return { count: null, raw: null, error: msg };
   }
 }
 
