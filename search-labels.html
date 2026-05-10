@@ -183,35 +183,29 @@ async function searchLabels() {
     try {
         showStatus('מחפש בשרת...', 'loading');
 
-        // בניית פילטר OData מדויק
-        const dateStr = selectedDate + 'T00:00:00Z';
-        let filterParts = [`DUEDATE eq ${dateStr}`];
-
-        // הוספת פילטר לפי מספר לקוח (CUSTNAME)
+        // הוספת פילטר לפי מספר לקוח (CUSTNAME) ו/או שם לקוח (CUSTDES)
+        const extraFilters = [];
         if (customerCode) {
-            filterParts.push(`CUSTNAME eq '${customerCode}'`);
+            extraFilters.push(`CUSTNAME eq '${customerCode}'`);
         }
-
-        // הוספת פילטר לפי שם לקוח (CUSTDES)
         if (customerName) {
-            filterParts.push(`CUSTDES eq '${customerName}'`);
+            extraFilters.push(`CUSTDES eq '${customerName}'`);
         }
 
-        const filter = `$filter=${filterParts.join(' and ')}`;
-        const url = `${PROXY_URL}?filter=${encodeURIComponent(filter)}&fetchAll=true`;
+        // משיכה דרך helper משותף - $orderby, retry, אימות
+        const result = await fetchPriorityData({
+            date: selectedDate,
+            branchSelect: 'all',
+            extraFilters: extraFilters,
+            retries: 2
+        });
 
-        console.log('Searching with URL:', url);
+        const results = result.data;
 
-        const response = await fetch(url);
-
-        if (!response.ok) {
-            throw new Error(`שגיאת שרת: ${response.status}`);
+        // הצגת אזהרות אימות אם יש (לוג בלבד - לא מפריע לחיפוש לקוח ספציפי)
+        if (result.issues && result.issues.length > 0 && typeof console.error === 'function') {
+            console.error('אזהרות אימות בחיפוש:', result.issues);
         }
-
-        const data = await response.json();
-        const results = data.value || data;
-
-        console.log('Results from server:', results.length);
 
         if (results.length === 0) {
             showStatus('לא נמצאו תוצאות לחיפוש זה', 'error');
@@ -220,7 +214,16 @@ async function searchLabels() {
             return;
         }
 
-        showStatus(`✅ נמצאו ${results.length} הזמנות`, 'success');
+        // אישור עם מידע על אימות הספירה
+        let successMsg = `✅ נמצאו ${results.length} הזמנות`;
+        if (result.countVerified === true) {
+            successMsg += ` (אומת מול השרת: ${results.length}/${result.expectedCount})`;
+        } else if (result.expectedCount !== null && result.countVerified === false) {
+            const diff = result.expectedCount - results.length;
+            showStatus(`❌ אי-התאמה: נמשכו ${results.length} מתוך ${result.expectedCount} צפויות (חסרות ${diff}). נסה שוב.`, 'error');
+            return;
+        }
+        showStatus(successMsg, 'success');
         displayLabels(results);
 
     } catch (error) {

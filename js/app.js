@@ -448,25 +448,56 @@ function calculateContainersAndPacks(data) {
 // שומרת רק שורה אחת לכל שילוב ייחודי, מסכמת כמויות
 function deduplicateRows(data) {
   const uniqueRowsMap = new Map();
+  let exactDuplicates = 0;   // אותו מפתח, אותם ערכים - כפילות אמיתית של שרת
+  let conflictingDuplicates = 0; // אותו מפתח, ערכים שונים - חשוד!
+  const conflicts = [];
 
   data.forEach(row => {
     // יצירת מפתח ייחודי: הזמנה + מוצר + ארוחה
+    // הערה: MEALNAME הוא השדה הנכון (לא MESSION - תוקן)
     const ordName = String(row.ORDNAME || '').trim();
     const partName = String(row.PARTNAME || '').trim();
     const partDes = String(row.PARTDES || '').trim();
-    const mealName = String(row.MESSION || row.MEALNAME || '').trim();
+    const mealName = String(row.MEALNAME || '').trim();
 
     const uniqueKey = `${ordName}|${partName}|${partDes}|${mealName}`;
 
     if (!uniqueRowsMap.has(uniqueKey)) {
-      // שורה ראשונה עם המפתח הזה - שומרים אותה
       uniqueRowsMap.set(uniqueKey, { ...row });
     } else {
-      // שורה כפולה - מסכמים את הכמות (TQUANT) אם צריך
-      // אבל לרוב זו פשוט כפילות ולא צריך לסכום
-      // נשאיר את השורה הראשונה כמו שהיא
+      // שורה כפולה - בדיקה אם זו כפילות אמיתית או קונפליקט
+      const existing = uniqueRowsMap.get(uniqueKey);
+      const sameTQuant = parseFloat(existing.TQUANT || 0) === parseFloat(row.TQUANT || 0);
+      const sameEatQuant = parseFloat(existing.EATQUANT || 0) === parseFloat(row.EATQUANT || 0);
+
+      if (sameTQuant && sameEatQuant) {
+        exactDuplicates++;
+      } else {
+        conflictingDuplicates++;
+        if (conflicts.length < 5) {
+          conflicts.push({
+            key: uniqueKey,
+            existing: { TQUANT: existing.TQUANT, EATQUANT: existing.EATQUANT },
+            duplicate: { TQUANT: row.TQUANT, EATQUANT: row.EATQUANT }
+          });
+        }
+      }
     }
   });
+
+  // אם יש קונפליקטים - להציג בקונסול (אזהרה אמיתית, לא רק info)
+  if (conflictingDuplicates > 0 && typeof console.error === 'function') {
+    console.error(`⚠️ deduplicateRows: ${conflictingDuplicates} שורות עם אותו מפתח אבל כמויות שונות! דוגמאות:`, conflicts);
+  }
+
+  // שמירת הסטטיסטיקה למעקב
+  window._lastDedupStats = {
+    inputRows: data.length,
+    outputRows: uniqueRowsMap.size,
+    exactDuplicates,
+    conflictingDuplicates,
+    conflicts
+  };
 
   return Array.from(uniqueRowsMap.values());
 }
@@ -485,20 +516,7 @@ async function fetchData() {
     alert('אנא בחר תאריך');
     return;
   }
-  
-  // בניית הפילטר
-  const dateStr = dateInput + 'T00:00:00Z';
-  let filter = `$filter=DUEDATE eq ${dateStr}`;
-  
-  // הוספת פילטר סניף
-  if (branchSelect === 'south') {
-    filter += ` and BRANCHNAME le '1'`;
-  } else if (branchSelect === 'north') {
-    filter += ` and BRANCHNAME ge '3'`;
-  }
-  
-  console.log('Filter:', filter);
-  
+
   // איפוס
   const startTime = Date.now();
   statusDiv.className = 'status loading';
@@ -510,64 +528,49 @@ async function fetchData() {
   tableContainer.innerHTML = '';
   currentData = [];
   currentStructuredData = {};
-  
+
   try {
-    let allData = [];
-    let pageNum = 0;
-    let fetchId = null;
-    
-    // ========== משיכה יציבה - כל ה-pagination בצד השרת ==========
-    // בקשה אחת לשרת שמחזיר את כל הנתונים
-    const url = `${PROXY_URL}?filter=${encodeURIComponent(filter)}&fetchAll=true`;
-    
-    console.log('🔒 Stable fetch - single request to server');
-    console.log('URL:', url);
-    
-    let response;
-    try {
-      response = await fetch(url);
-    } catch (fetchError) {
-      console.error('Fetch error:', fetchError);
-      throw new Error(`שגיאת רשת: ${fetchError.message}. בדוק את החיבור לשרת.`);
-    }
-    
-    if (!response.ok) {
-      let errorText = '';
-      try {
-        errorText = await response.text();
-        console.error('Response error:', errorText);
-      } catch (e) {
-        errorText = 'לא ניתן לקרוא את התשובה';
-      }
-      
-      if (response.status === 502) {
-        throw new Error('שגיאת שרת (502 Bad Gateway): השרת לא מגיב. נסה שוב מאוחר יותר.');
-      } else if (response.status === 503) {
-        throw new Error('השרת זמנית לא זמין (503). נסה שוב מאוחר יותר.');
-      } else {
-        throw new Error(`שגיאת שרת ${response.status}: ${errorText.substring(0, 200)}`);
-      }
-    }
-    
-    const jsonData = await response.json();
-    allData = jsonData.value || jsonData;
-    
-    // שמירת מטא-דאטה מהשרת
-    if (jsonData.meta) {
-      fetchId = jsonData.meta.fetchId;
-      pageNum = jsonData.meta.pagesLoaded || 1;
-      console.log('📦 Server meta:', jsonData.meta);
-    } else {
-      fetchId = 'local-' + Date.now();
-      pageNum = 1;
-    }
-    
+    // ========== משיכה מאומתת דרך helper משותף ==========
+    // כולל: $orderby ל-pagination יציב, סינון סניף מפורש, retry, אימות פוסט-משיכה
+    const result = await fetchPriorityData({
+      date: dateInput,
+      branchSelect: branchSelect,
+      retries: 2
+    });
+
+    let allData = result.data;
+    const fetchId = (result.meta && result.meta.fetchId) || ('local-' + Date.now());
+    const pageNum = (result.meta && result.meta.pagesLoaded) || 1;
+
     // עדכון התצוגה
     const fetchDuration = ((Date.now() - startTime) / 1000).toFixed(1);
     recordCount.textContent = allData.length;
     pageCountEl.textContent = pageNum;
-    
-    console.log(`✅ Fetch complete: ${allData.length} records, ${fetchDuration}s, ID: ${fetchId}`);
+
+    // הצגת אזהרות אם האימות זיהה בעיות
+    if (result.issues && result.issues.length > 0) {
+      console.error('Validation issues:', result.issues);
+      window._lastFetchWarnings = result.issues;
+    } else {
+      window._lastFetchWarnings = null;
+    }
+
+    // שמירת מידע אימות הספירה לתצוגה
+    window._lastFetchCountInfo = {
+      expectedCount: result.expectedCount,
+      actualCount: allData.length,
+      countVerified: result.countVerified,
+      countError: result.countError
+    };
+
+    if (typeof console.info === 'function') {
+      const countMsg = result.countVerified
+        ? `✅ אומת מול שרת (${result.expectedCount})`
+        : (result.expectedCount !== null
+            ? `❌ אי-התאמה: ${allData.length}/${result.expectedCount}`
+            : `⚠️ ספירה לא אומתה (${result.countError || 'unknown'})`);
+      console.info(`Fetch: ${allData.length} שורות | ${result.stats.uniqueOrders} הזמנות | סניפים: [${result.stats.branchesFound.join(',')}] | ${fetchDuration}s | ${countMsg}`);
+    }
     
     // לוגים לבדיקה
     if (allData.length > 0) {
@@ -616,9 +619,49 @@ async function fetchData() {
       
       // הצגת טאבים
       document.getElementById('tabsContainer').style.display = 'flex';
-      statusDiv.className = 'status success';
       const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-      statusDiv.innerHTML = `✓ הצלחה! נמשכו <strong>${allData.length}</strong> רשומות (<strong>${Object.keys(structuredData).length}</strong> הזמנות) בזמן <strong>${totalTime}</strong> שניות`;
+      const dedupStats = window._lastDedupStats || {};
+      const warnings = window._lastFetchWarnings || [];
+      const countInfo = window._lastFetchCountInfo || {};
+
+      // ========== הודעה ראשית עם אימות ספירה ==========
+      let statusHtml = '';
+      if (countInfo.countVerified === true) {
+        // אומת מול השרת - הודעה ירוקה
+        statusHtml = `✓ הצלחה! נמשכו <strong>${allData.length} מתוך ${countInfo.expectedCount}</strong> רשומות `
+                   + `<span style="color:#2e7d32">(✅ אומת מול השרת)</span> `
+                   + `· <strong>${Object.keys(structuredData).length}</strong> הזמנות · ${totalTime}s`;
+        statusDiv.className = 'status success';
+      } else if (countInfo.expectedCount !== null && countInfo.expectedCount !== undefined) {
+        // אי-התאמה בספירה - הודעה אדומה
+        const diff = countInfo.expectedCount - allData.length;
+        statusHtml = `❌ <strong>אי-התאמה בספירה!</strong> נמשכו <strong>${allData.length}</strong> מתוך <strong>${countInfo.expectedCount}</strong> רשומות `
+                   + `· חסרות <strong>${diff}</strong> שורות. <strong>אנא נסה למשוך שוב.</strong>`;
+        statusDiv.className = 'status error';
+      } else {
+        // ספירה לא אומתה (Worker לא תומך) - אזהרה צהובה
+        statusHtml = `✓ נמשכו <strong>${allData.length}</strong> רשומות `
+                   + `<span style="color:#f57c00" title="${countInfo.countError || ''}">(⚠️ ספירה לא אומתה)</span> `
+                   + `· <strong>${Object.keys(structuredData).length}</strong> הזמנות · ${totalTime}s`;
+        statusDiv.className = 'status success';
+      }
+
+      // איחוד שורות
+      if (dedupStats.exactDuplicates > 0 || dedupStats.conflictingDuplicates > 0) {
+        statusHtml += `<br><small style="opacity:0.8">איחוד שורות: ${allData.length}→${deduplicatedData.length}`;
+        if (dedupStats.conflictingDuplicates > 0) {
+          statusHtml += ` | ⚠️ <span style="color:#d32f2f;font-weight:bold">${dedupStats.conflictingDuplicates} קונפליקטים בכמויות</span>`;
+        }
+        statusHtml += '</small>';
+      }
+
+      // אזהרות אימות נוספות
+      if (warnings.length > 0) {
+        statusHtml += '<br><br><strong style="color:#d32f2f">⚠️ אזהרות:</strong><br>';
+        statusHtml += warnings.map(w => `<small style="color:#d32f2f">• ${w}</small>`).join('<br>');
+      }
+
+      statusDiv.innerHTML = statusHtml;
       downloadBtn.disabled = false;
     }
     
@@ -1052,6 +1095,7 @@ function createTraysReport(data) {
       PACKDES: String(item.packDes || '').trim(),
       TQUANT: parseFloat(item.tQuant || 0) || 0,
       EATQUANT: parseFloat(item.eatQuant || 0) || 0,
+      SPEC1: String(order.spec1 || '').trim(),
       SPEC2: String(order.spec2 || '').trim(),
       PSPEC2: String(item.pspec2 || '').trim(),
       ORDNAME: String(order.orderName || '').trim(),
@@ -1115,6 +1159,12 @@ function createTraysReport(data) {
     // שימוש ב-onchange במקום addEventListener כדי למנוע כפילות
     branchFilter.onchange = applyTraysFilters;
   }
+
+  // רישום onchange לסינון סוג לקוח (מילגם / פרטיים)
+  const customerTypeFilter = document.getElementById('traysCustomerTypeFilter');
+  if (customerTypeFilter) {
+    customerTypeFilter.onchange = applyTraysFilters;
+  }
   
   // מילוי סינון קווי חלוקה
   const distrLineFilter = document.getElementById('traysDistrLineFilter');
@@ -1156,6 +1206,7 @@ function applyTraysFilters() {
   const container = document.getElementById('traysContainer');
   const branchFilter = document.getElementById('traysBranchFilter');
   const distrLineFilter = document.getElementById('traysDistrLineFilter');
+  const customerTypeFilter = document.getElementById('traysCustomerTypeFilter');
   
   // בדיקת בטיחות
   if (!container) {
@@ -1188,6 +1239,18 @@ function applyTraysFilters() {
   // סינון לפי קו חלוקה
   if (distrLineFilter && distrLineFilter.value) {
     filteredData = filteredData.filter(r => String(r.DISTRLINECODE || r.distrLineCode || '') === distrLineFilter.value);
+  }
+
+  // סינון לפי סוג לקוח (מילגם / פרטיים) - לפי SPEC1
+  if (customerTypeFilter && customerTypeFilter.value) {
+    const ct = customerTypeFilter.value;
+    filteredData = filteredData.filter(r => {
+      const spec1 = String(r.SPEC1 || r.spec1 || '').toLowerCase();
+      const isMilgam = spec1.includes('מילגם');
+      if (ct === 'milgam') return isMilgam;
+      if (ct === 'private') return !isMilgam;
+      return true;
+    });
   }
   
   // ללא סינון לפי חם/קר - מציגים לפי נתונים בעמודות הרלוונטיות:

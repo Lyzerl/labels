@@ -319,6 +319,14 @@ h1 { margin-bottom: 20px; }
                 <option value="north">צפון</option>
             </select>
         </div>
+        <div class="branch-filter">
+            <label for="customerTypeSelect">סוג לקוח:</label>
+            <select id="customerTypeSelect">
+                <option value="all">הכל</option>
+                <option value="milgam">מילגם</option>
+                <option value="private">פרטיים</option>
+            </select>
+        </div>
         <button class="btn" onclick="loadReport()" id="loadBtn">🔄 טען דוח</button>
         <button class="btn download" onclick="printReport()" id="printBtn" disabled>🖨️ הדפס</button>
         <button class="btn download" onclick="downloadCSV()" id="csvBtn" disabled>📥 הורד CSV</button>
@@ -416,27 +424,48 @@ function updateDateRangeDisplay() {
     }
 }
 
-// משיכת נתונים מהשרת
+// משיכת נתונים מהשרת - דרך helper משותף
+// כולל: $orderby ל-pagination יציב, סינון סניף מפורש, retry, אימות ספירה
 async function fetchDataForDate(date, branch) {
-    const dateStr = formatDateForAPI(date) + 'T00:00:00Z';
-    let filter = `$filter=DUEDATE eq ${dateStr}`;
+    const dateStr = formatDateForAPI(date);
 
-    // הוספת פילטר סניף
-    if (branch === 'south') {
-        filter += ` and BRANCHNAME le '1'`;
-    } else if (branch === 'north') {
-        filter += ` and BRANCHNAME ge '3'`;
+    const result = await fetchPriorityData({
+        date: dateStr,
+        branchSelect: branch,
+        retries: 2
+    });
+
+    // צבירת מידע אימות לכל יום - להצגה למשתמש בסיום
+    if (!window._productionReportWarnings) window._productionReportWarnings = [];
+    if (!window._productionReportCountInfo) window._productionReportCountInfo = [];
+
+    window._productionReportCountInfo.push({
+        date: dateStr,
+        actual: result.data.length,
+        expected: result.expectedCount,
+        verified: result.countVerified,
+        error: result.countError
+    });
+
+    // אזהרות - לוגים מובנים
+    if (result.issues && result.issues.length > 0) {
+        if (typeof console.error === 'function') {
+            console.error(`⚠️ אזהרות ביום ${dateStr}:`, result.issues);
+        }
+        result.issues.forEach(issue => {
+            window._productionReportWarnings.push(`${dateStr}: ${issue}`);
+        });
     }
 
-    const url = `${PROXY_URL}?filter=${encodeURIComponent(filter)}&fetchAll=true`;
-
-    const response = await fetch(url);
-    if (!response.ok) {
-        throw new Error(`שגיאת שרת: ${response.status}`);
+    // אם יש אי-התאמה בספירה ביום מסוים - זרוק שגיאה ברורה
+    if (result.expectedCount !== null && result.countVerified === false) {
+        const diff = result.expectedCount - result.data.length;
+        if (diff > 0) {
+            throw new Error(`אי-התאמה בספירה ליום ${dateStr}: נמשכו ${result.data.length} מתוך ${result.expectedCount} צפויות (חסרות ${diff})`);
+        }
     }
 
-    const data = await response.json();
-    return data.value || data;
+    return result.data;
 }
 
 // סינון רק פריטים חמים - משתמש בפונקציה מ-DEFINITIONS שבודקת כל השדות הרלוונטיים
@@ -445,6 +474,21 @@ function filterHotItems(data) {
         // משתמשים בפונקציה isHotItem מ-DEFINITIONS שבודקת:
         // CARTON_TYPE, PSPEC6, PSPEC3
         return DEFINITIONS.isHotItem(row);
+    });
+}
+
+// סינון לפי סוג לקוח - מילגם / פרטיים / הכל
+// הזיהוי לפי שדה SPEC1 (סוג לקוח)
+function filterByCustomerType(data, customerType) {
+    if (!customerType || customerType === 'all') return data;
+
+    return data.filter(row => {
+        const spec1 = String(row.SPEC1 || '').toLowerCase();
+        const isMilgam = spec1.includes('מילגם');
+
+        if (customerType === 'milgam') return isMilgam;
+        if (customerType === 'private') return !isMilgam;
+        return true;
     });
 }
 
@@ -905,6 +949,7 @@ async function loadReport() {
     const printBtn = document.getElementById('printBtn');
     const csvBtn = document.getElementById('csvBtn');
     const branchSelect = document.getElementById('branchSelect').value;
+    const customerTypeSelect = document.getElementById('customerTypeSelect').value;
 
     loadBtn.disabled = true;
     printBtn.disabled = true;
@@ -916,6 +961,9 @@ async function loadReport() {
 
     // איפוס נתוני ההזמנות
     productOrdersData = {};
+    // איפוס אזהרות ומידע אימות מהריצה הקודמת
+    window._productionReportWarnings = [];
+    window._productionReportCountInfo = [];
 
     try {
         // משיכת נתונים לכל 4 הימים
@@ -937,8 +985,10 @@ async function loadReport() {
         for (let i = 0; i < workingDays.length; i++) {
             statusDiv.innerHTML = `טוען נתונים ליום ${i + 1} מתוך 4...`;
             const dayData = await fetchDataForDate(workingDays[i], branchSelect);
+            // סינון לפי סוג לקוח (מילגם / פרטיים / הכל)
+            const filteredByCustomer = filterByCustomerType(dayData, customerTypeSelect);
             // סינון רק פריטים חמים
-            const hotData = filterHotItems(dayData);
+            const hotData = filterHotItems(filteredByCustomer);
             allDaysDataGlobal.push(hotData);
 
             // עיבוד הנתונים ליום זה (עם שמירת הזמנות)
@@ -973,8 +1023,44 @@ async function loadReport() {
             Object.keys(day.trays).forEach(p => totalProducts.add(p));
         });
 
-        statusDiv.className = 'status success';
-        statusDiv.innerHTML = `נטענו ${totalProducts.size} מוצרים חמים ל-4 ימים`;
+        // ===== הצגת סיכום אימות הספירה =====
+        const countInfo = window._productionReportCountInfo || [];
+        const allVerified = countInfo.length > 0 && countInfo.every(c => c.verified === true);
+        const anyMismatch = countInfo.some(c => c.expected !== null && c.verified === false);
+        const allUnverified = countInfo.length > 0 && countInfo.every(c => c.expected === null || c.expected === undefined);
+
+        let statusHtml = '';
+        if (allVerified) {
+            const totalActual = countInfo.reduce((s, c) => s + c.actual, 0);
+            const totalExpected = countInfo.reduce((s, c) => s + (c.expected || 0), 0);
+            statusHtml = `נטענו ${totalProducts.size} מוצרים חמים ל-4 ימים `
+                       + `<span style="color:#2e7d32">(✅ ${totalActual}/${totalExpected} שורות אומתו מול השרת)</span>`;
+            statusDiv.className = 'status success';
+        } else if (anyMismatch) {
+            statusHtml = `❌ <strong>אי-התאמה בספירה ביום אחד או יותר!</strong><br>`;
+            countInfo.forEach(c => {
+                if (c.expected !== null && c.verified === false) {
+                    statusHtml += `<small style="color:#d32f2f">• ${c.date}: ${c.actual}/${c.expected} (חסרות ${c.expected - c.actual})</small><br>`;
+                }
+            });
+            statusDiv.className = 'status error';
+        } else if (allUnverified) {
+            statusHtml = `נטענו ${totalProducts.size} מוצרים חמים ל-4 ימים `
+                       + `<span style="color:#f57c00">(⚠️ ספירה לא אומתה - ה-Worker לא תומך ב-$count)</span>`;
+            statusDiv.className = 'status success';
+        } else {
+            statusHtml = `נטענו ${totalProducts.size} מוצרים חמים ל-4 ימים`;
+            statusDiv.className = 'status success';
+        }
+
+        // הצגת אזהרות אימות אם זוהו
+        const warnings = window._productionReportWarnings || [];
+        if (warnings.length > 0) {
+            statusHtml += '<br><br><strong style="color:#d32f2f">⚠️ אזהרות:</strong><br>';
+            statusHtml += warnings.map(w => `<small style="color:#d32f2f">• ${w}</small>`).join('<br>');
+        }
+
+        statusDiv.innerHTML = statusHtml;
 
         printBtn.disabled = false;
         csvBtn.disabled = false;
@@ -1048,11 +1134,13 @@ function downloadCSV() {
     // הורדה
     const branchSelect = document.getElementById('branchSelect').value;
     const branchName = branchSelect === 'south' ? 'דרום' : branchSelect === 'north' ? 'צפון' : 'הכל';
+    const customerType = document.getElementById('customerTypeSelect').value;
+    const customerName = customerType === 'milgam' ? '_מילגם' : customerType === 'private' ? '_פרטיים' : '';
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `דוח_ייצור_חם_${branchName}_${formatDateForAPI(new Date())}.csv`;
+    a.download = `דוח_ייצור_חם_${branchName}${customerName}_${formatDateForAPI(new Date())}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

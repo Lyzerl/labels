@@ -669,8 +669,296 @@ const DEFINITIONS = {
     }
 };
 
+// ============================================================
+// ========== עזרי משיכת נתונים (Priority Fetch Helpers) ==========
+// ============================================================
+// מטרה: למרכז את לוגיקת המשיכה כדי להבטיח עקביות בין כל הדפים
+// (index, production-report, search-labels) ולמנוע פספוס הזמנות.
+//
+// תיקונים שכלולים כאן:
+//   1. סינון סניף מפורש (eq) במקום השוואת מחרוזות le/ge
+//   2. $orderby קבוע ל-pagination יציב (חיוני לעקביות OData)
+//   3. retry אוטומטי לשגיאות רשת זמניות
+//   4. אימות פוסט-משיכה: סניפים שהתקבלו, NULLים, ספירת הזמנות
+
+/**
+ * בונה ביטוי OData לסינון סניף.
+ * משתמש ב-eq מפורש (לא le/ge) כדי לא לפספס סניפים לא צפויים
+ * ולא לכלול בטעות סניפים חדשים שיתווספו בעתיד.
+ *
+ * סניף דרום = '0' או '1'
+ * סניף צפון = '3' או '4'
+ *
+ * @param {string} branchSelect - 'south' | 'north' | 'all' | undefined
+ * @returns {string|null} - ביטוי OData או null אם 'all'/לא מוגדר
+ */
+function buildBranchFilter(branchSelect) {
+  if (branchSelect === 'south') {
+    return `(BRANCHNAME eq '0' or BRANCHNAME eq '1')`;
+  }
+  if (branchSelect === 'north') {
+    return `(BRANCHNAME eq '3' or BRANCHNAME eq '4')`;
+  }
+  return null;
+}
+
+/**
+ * בונה URL מלא לבקשת Priority עם $orderby ל-pagination יציב.
+ * חשוב: ללא $orderby, OData עלול להחזיר אותן שורות בכמה דפים
+ * או לפספס שורות בין דפים.
+ *
+ * @param {string[]} filterParts - מערך ביטויי OData שיחוברו ב-and
+ * @param {Object} opts - { orderby?, fetchAll? }
+ * @returns {string} URL מוכן לקריאה
+ */
+function buildPriorityFetchUrl(filterParts, opts = {}) {
+  const validParts = filterParts.filter(Boolean);
+  const filter = `$filter=${validParts.join(' and ')}`;
+  // $orderby ברירת מחדל: ORDNAME,PARTNAME - חיוני לעקביות
+  const orderby = opts.orderby !== undefined ? opts.orderby : '$orderby=ORDNAME,PARTNAME';
+  const queryParts = [filter];
+  if (orderby) queryParts.push(orderby);
+  const query = queryParts.join('&');
+  const fetchAll = opts.fetchAll !== false ? '&fetchAll=true' : '';
+  return `${PROXY_URL}?filter=${encodeURIComponent(query)}${fetchAll}`;
+}
+
+/**
+ * מאמת נתונים שנמשכו מ-Priority ומחזיר סטטיסטיקות + רשימת בעיות.
+ *
+ * @param {Array} data - מערך השורות שהתקבלו
+ * @param {Object} opts - { branchSelect? } - לאימות מול הפילטר שביקשנו
+ * @returns {{stats: Object, issues: string[]}}
+ */
+function validatePriorityData(data, opts = {}) {
+  const issues = [];
+  const uniqueOrders = new Set();
+  const branchesFound = new Set();
+  let nullOrdname = 0;
+  let nullBranchname = 0;
+  let nullDuedate = 0;
+
+  data.forEach(row => {
+    const ord = String(row.ORDNAME || '').trim();
+    const branch = String(row.BRANCHNAME || '').trim();
+    const due = String(row.DUEDATE || '').trim();
+
+    if (!ord) nullOrdname++;
+    if (!branch) nullBranchname++;
+    if (!due) nullDuedate++;
+
+    if (ord) uniqueOrders.add(ord);
+    if (branch) branchesFound.add(branch);
+  });
+
+  const stats = {
+    totalRows: data.length,
+    uniqueOrders: uniqueOrders.size,
+    branchesFound: [...branchesFound].sort(),
+    nullOrdname,
+    nullBranchname,
+    nullDuedate
+  };
+
+  // אימות התאמה לסינון הסניף שביקשנו
+  if (opts.branchSelect === 'south') {
+    const unexpected = stats.branchesFound.filter(b => b !== '0' && b !== '1');
+    if (unexpected.length > 0) {
+      issues.push(`סניפים לא צפויים בתוצאות "דרום": [${unexpected.join(', ')}]`);
+    }
+  } else if (opts.branchSelect === 'north') {
+    const unexpected = stats.branchesFound.filter(b => b !== '3' && b !== '4');
+    if (unexpected.length > 0) {
+      issues.push(`סניפים לא צפויים בתוצאות "צפון": [${unexpected.join(', ')}]`);
+    }
+  }
+
+  if (stats.nullOrdname > 0) issues.push(`${stats.nullOrdname} שורות ללא ORDNAME`);
+  if (stats.nullBranchname > 0 && opts.branchSelect && opts.branchSelect !== 'all') {
+    issues.push(`${stats.nullBranchname} שורות ללא BRANCHNAME (לא נכללות בסינון סניף)`);
+  }
+  if (stats.nullDuedate > 0) issues.push(`${stats.nullDuedate} שורות ללא DUEDATE`);
+
+  return { stats, issues };
+}
+
+/**
+ * Probe קל לקבלת ספירת רשומות צפויה מ-Priority (ללא משיכת השורות עצמן).
+ *
+ * שולח בקשה עם $top=0&$count=true ומחפש את הספירה בתשובה
+ * תחת אחד מהשמות הסטנדרטיים של OData (v3/v4) או מטא של הפרוקסי.
+ *
+ * חשוב: עמיד לכישלונות. אם ה-Worker לא תומך / Priority לא מחזיר ספירה,
+ * הפונקציה מחזירה null במקום לזרוק שגיאה — כך שהמשיכה הראשית לא תיחסם.
+ *
+ * @param {string[]} filterParts - רכיבי OData ($filter)
+ * @returns {Promise<{count: number|null, raw: Object|null, error: string|null}>}
+ */
+async function fetchPriorityCount(filterParts) {
+  try {
+    const validParts = filterParts.filter(Boolean);
+    if (validParts.length === 0) return { count: null, raw: null, error: 'no filter' };
+
+    // בקשת OData מינימלית: רק ספירה, ללא רשומות
+    const filter = `$filter=${validParts.join(' and ')}`;
+    const query = `${filter}&$top=0&$count=true&$inlinecount=allpages`;
+    // חשוב: בלי fetchAll - זו בקשה אחת קצרה
+    const url = `${PROXY_URL}?filter=${encodeURIComponent(query)}`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      return { count: null, raw: null, error: `HTTP ${response.status}` };
+    }
+    const json = await response.json();
+
+    // OData החזיר את הספירה באחד מהשדות הבאים, לפי גרסה:
+    //   v4: @odata.count
+    //   v3: odata.count / __count
+    //   פרוקסי מותאם: count / total / meta.totalCount
+    const count =
+      (typeof json['@odata.count'] === 'number' ? json['@odata.count'] : null) ??
+      (typeof json['odata.count'] === 'number' ? json['odata.count'] : null) ??
+      (typeof json['__count'] === 'string' ? parseInt(json['__count'], 10) : null) ??
+      (typeof json['count'] === 'number' ? json['count'] : null) ??
+      (typeof json['total'] === 'number' ? json['total'] : null) ??
+      (json.meta && typeof json.meta.totalCount === 'number' ? json.meta.totalCount : null) ??
+      (json.meta && typeof json.meta.count === 'number' ? json.meta.count : null) ??
+      null;
+
+    return { count: typeof count === 'number' && !isNaN(count) ? count : null, raw: json, error: null };
+  } catch (err) {
+    return { count: null, raw: null, error: err.message || String(err) };
+  }
+}
+
+/**
+ * משיכת נתונים מאומתת מ-Priority — נקודת כניסה אחת לכל המערכת.
+ *
+ * - בונה פילטר עם $orderby קבוע (pagination יציב)
+ * - סינון סניף מפורש (eq)
+ * - **probe ספירה לפני המשיכה** (מאומת מול השרת)
+ * - retry אוטומטי לשגיאות רשת
+ * - אימות פוסט-משיכה
+ *
+ * @param {Object} opts - {
+ *   date, branchSelect, extraFilters[], retries, orderby, verifyCount
+ * }
+ * @returns {Promise<{data, meta, stats, issues, url, durationMs, expectedCount, countVerified}>}
+ */
+async function fetchPriorityData(opts = {}) {
+  const {
+    date,
+    branchSelect = 'all',
+    extraFilters = [],
+    retries = 2,
+    orderby,
+    verifyCount = true   // ברירת מחדל: לאמת ספירה
+  } = opts;
+
+  // בניית הפילטר
+  const filterParts = [];
+  if (date) {
+    const dateStr = date.includes('T') ? date : (date + 'T00:00:00Z');
+    filterParts.push(`DUEDATE eq ${dateStr}`);
+  }
+  const branchFilter = buildBranchFilter(branchSelect);
+  if (branchFilter) filterParts.push(branchFilter);
+  if (Array.isArray(extraFilters)) filterParts.push(...extraFilters);
+
+  if (filterParts.length === 0) {
+    throw new Error('חובה להעביר לפחות פילטר אחד (date או extraFilters)');
+  }
+
+  const url = buildPriorityFetchUrl(filterParts, orderby !== undefined ? { orderby } : {});
+  const startTime = Date.now();
+
+  // ========== שלב 1: Probe ספירה (במקביל - לא חוסם) ==========
+  // שולחים את ה-probe במקביל למשיכה הראשית כדי לחסוך זמן.
+  // אם ה-probe נכשל / הספירה לא הוחזרה - לא נחסום, רק נסמן שלא אומת.
+  const countPromise = verifyCount ? fetchPriorityCount(filterParts) : Promise.resolve({ count: null, error: 'disabled' });
+
+  // ========== שלב 2: משיכת הנתונים הראשית עם retry ==========
+  let lastError = null;
+  let dataResult = null;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        // 502/503 — שגיאה זמנית, ננסה שוב
+        if ((response.status === 502 || response.status === 503) && attempt < retries) {
+          throw new Error(`HTTP ${response.status} (זמני)`);
+        }
+        throw new Error(`שגיאת שרת ${response.status}: ${errText.substring(0, 200)}`);
+      }
+      const json = await response.json();
+      const data = Array.isArray(json) ? json : (json.value || []);
+      dataResult = { data, meta: json.meta || null };
+      break;
+    } catch (err) {
+      lastError = err;
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+        continue;
+      }
+    }
+  }
+
+  if (!dataResult) {
+    throw lastError || new Error('שגיאה לא ידועה במשיכת נתונים');
+  }
+
+  const { data, meta } = dataResult;
+  const { stats, issues } = validatePriorityData(data, { branchSelect });
+  const durationMs = Date.now() - startTime;
+
+  // ========== שלב 3: השוואת ספירה עם תוצאת ה-probe ==========
+  let expectedCount = null;
+  let countVerified = false;
+  let countError = null;
+
+  try {
+    const countResult = await countPromise;
+    expectedCount = countResult.count;
+    countError = countResult.error;
+
+    if (expectedCount !== null && typeof expectedCount === 'number') {
+      if (data.length === expectedCount) {
+        countVerified = true;
+      } else {
+        countVerified = false;
+        const diff = expectedCount - data.length;
+        if (diff > 0) {
+          issues.unshift(`🚨 חסרות ${diff} שורות: נמשכו ${data.length} מתוך ${expectedCount} צפויות`);
+        } else {
+          issues.unshift(`⚠️ נמשכו ${Math.abs(diff)} שורות מעבר לצפוי: ${data.length} מתוך ${expectedCount}`);
+        }
+      }
+    }
+  } catch (e) {
+    countError = e.message || String(e);
+  }
+
+  return {
+    data,
+    meta,
+    stats,
+    issues,
+    url,
+    durationMs,
+    expectedCount,
+    countVerified,
+    countError
+  };
+}
+
 // ייצוא לשימוש גלובלי
 window.DEFINITIONS = DEFINITIONS;
 window.CARTON_CONFIG = CARTON_CONFIG;
 window.calculateCartons = calculateCartons;
 window.divideItemsToCartons = divideItemsToCartons;
+window.buildBranchFilter = buildBranchFilter;
+window.buildPriorityFetchUrl = buildPriorityFetchUrl;
+window.validatePriorityData = validatePriorityData;
+window.fetchPriorityCount = fetchPriorityCount;
+window.fetchPriorityData = fetchPriorityData;
