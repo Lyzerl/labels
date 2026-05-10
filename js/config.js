@@ -884,8 +884,7 @@ async function fetchPriorityData(opts = {}) {
     branchSelect = 'all',
     extraFilters = [],
     retries = 2,
-    orderby,
-    verifyCount = true   // ברירת מחדל: לאמת ספירה
+    orderby
   } = opts;
 
   // בניית הפילטר
@@ -905,12 +904,7 @@ async function fetchPriorityData(opts = {}) {
   const url = buildPriorityFetchUrl(filterParts, orderby !== undefined ? { orderby } : {});
   const startTime = Date.now();
 
-  // ========== שלב 1: Probe ספירה (במקביל - לא חוסם) ==========
-  // שולחים את ה-probe במקביל למשיכה הראשית כדי לחסוך זמן.
-  // אם ה-probe נכשל / הספירה לא הוחזרה - לא נחסום, רק נסמן שלא אומת.
-  const countPromise = verifyCount ? fetchPriorityCount(filterParts) : Promise.resolve({ count: null, error: 'disabled' });
-
-  // ========== שלב 2: משיכת הנתונים הראשית עם retry ==========
+  // ========== משיכת הנתונים הראשית עם retry ==========
   let lastError = null;
   let dataResult = null;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -918,7 +912,6 @@ async function fetchPriorityData(opts = {}) {
       const response = await fetch(url);
       if (!response.ok) {
         const errText = await response.text().catch(() => '');
-        // 502/503 — שגיאה זמנית, ננסה שוב
         if ((response.status === 502 || response.status === 503) && attempt < retries) {
           throw new Error(`HTTP ${response.status} (זמני)`);
         }
@@ -926,7 +919,7 @@ async function fetchPriorityData(opts = {}) {
       }
       const json = await response.json();
       const data = Array.isArray(json) ? json : (json.value || []);
-      dataResult = { data, meta: json.meta || null };
+      dataResult = { data, json };
       break;
     } catch (err) {
       lastError = err;
@@ -941,47 +934,58 @@ async function fetchPriorityData(opts = {}) {
     throw lastError || new Error('שגיאה לא ידועה במשיכת נתונים');
   }
 
-  const { data, meta } = dataResult;
+  const { data, json } = dataResult;
   const { stats, issues } = validatePriorityData(data, { branchSelect });
   const durationMs = Date.now() - startTime;
 
-  // ========== שלב 3: השוואת ספירה עם תוצאת ה-probe ==========
+  // ========== אימות ספירה דרך השדות שה-Worker מחזיר ==========
+  // Worker חדש (אחרי תיקון $orderby) מחזיר:
+  //   total            - אורך value אחרי dedup
+  //   rawRows          - אורך לפני dedup (אם קיים)
+  //   removedDuplicates - כמה שורות הוסרו ככפילות
+  //   pagesLoaded      - כמה דפים נטענו
+  //   countSource      - 'fetched' / 'odata'
+  //   stable           - true אם pagination יציב
+  //
+  // Worker ישן מחזיר רק total. שניהם מטופלים פה.
+  const total = (typeof json.total === 'number') ? json.total : null;
+  const removedDuplicates = (typeof json.removedDuplicates === 'number') ? json.removedDuplicates : null;
+  const pagesLoaded = (typeof json.pagesLoaded === 'number') ? json.pagesLoaded : null;
+  const stableFlag = (json.stable === true);
+
   let expectedCount = null;
   let countVerified = false;
   let countError = null;
 
-  try {
-    const countResult = await countPromise;
-    expectedCount = countResult.count;
-    countError = countResult.error;
-
-    if (expectedCount !== null && typeof expectedCount === 'number') {
-      if (data.length === expectedCount) {
-        countVerified = true;
-      } else {
-        countVerified = false;
-        const diff = expectedCount - data.length;
-        if (diff > 0) {
-          issues.unshift(`🚨 חסרות ${diff} שורות: נמשכו ${data.length} מתוך ${expectedCount} צפויות`);
-        } else {
-          issues.unshift(`⚠️ נמשכו ${Math.abs(diff)} שורות מעבר לצפוי: ${data.length} מתוך ${expectedCount}`);
-        }
-      }
+  if (total !== null) {
+    expectedCount = total;
+    if (data.length === total) {
+      countVerified = true;
+    } else {
+      issues.unshift(`⚠️ אי-התאמה: data.length=${data.length} אבל total=${total}`);
     }
-  } catch (e) {
-    countError = e.message || String(e);
+  } else {
+    countError = 'Worker ישן - אין שדה total. שדרג את ה-Worker לקבלת אימות מלא.';
   }
 
   return {
     data,
-    meta,
+    meta: json.meta || null,
     stats,
     issues,
     url,
     durationMs,
     expectedCount,
     countVerified,
-    countError
+    countError,
+    // מידע נוסף מה-Worker החדש
+    workerInfo: {
+      total,
+      removedDuplicates,
+      pagesLoaded,
+      stable: stableFlag,
+      countSource: json.countSource || null
+    }
   };
 }
 

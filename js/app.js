@@ -562,6 +562,7 @@ async function fetchData() {
       countVerified: result.countVerified,
       countError: result.countError
     };
+    window._lastFetchWorkerInfo = result.workerInfo || {};
 
     if (typeof console.info === 'function') {
       const countMsg = result.countVerified
@@ -624,24 +625,36 @@ async function fetchData() {
       const warnings = window._lastFetchWarnings || [];
       const countInfo = window._lastFetchCountInfo || {};
 
-      // ========== הודעה ראשית עם אימות ספירה ==========
+      // ========== הודעה ראשית עם אימות ספירה + מידע מה-Worker ==========
+      const workerInfo = window._lastFetchWorkerInfo || {};
       let statusHtml = '';
+
       if (countInfo.countVerified === true) {
-        // אומת מול השרת - הודעה ירוקה
-        statusHtml = `✓ הצלחה! נמשכו <strong>${allData.length} מתוך ${countInfo.expectedCount}</strong> רשומות `
-                   + `<span style="color:#2e7d32">(✅ אומת מול השרת)</span> `
-                   + `· <strong>${Object.keys(structuredData).length}</strong> הזמנות · ${totalTime}s`;
+        // אומת מול ה-Worker - הודעה ירוקה
+        const orders = Object.keys(structuredData).length;
+        statusHtml = `✓ הצלחה! נמשכו <strong>${allData.length}</strong> רשומות `
+                   + `<span style="color:#2e7d32">(✅ pagination יציב)</span> `
+                   + `· <strong>${orders}</strong> הזמנות · ${totalTime}s`;
+        // אם ה-Worker החדש החזיר מידע נוסף - הצגה
+        if (workerInfo.removedDuplicates !== null && workerInfo.removedDuplicates !== undefined) {
+          const dups = workerInfo.removedDuplicates;
+          if (dups === 0) {
+            statusHtml += `<br><small style="color:#2e7d32;opacity:0.85">📦 ${workerInfo.pagesLoaded || '?'} דפים נטענו · אפס כפילויות (pagination מושלם)</small>`;
+          } else {
+            statusHtml += `<br><small style="color:#f57c00;opacity:0.85">⚠️ ${workerInfo.pagesLoaded || '?'} דפים נטענו · ${dups} כפילויות נוקו על ידי ה-Worker</small>`;
+          }
+        }
         statusDiv.className = 'status success';
       } else if (countInfo.expectedCount !== null && countInfo.expectedCount !== undefined) {
         // אי-התאמה בספירה - הודעה אדומה
         const diff = countInfo.expectedCount - allData.length;
-        statusHtml = `❌ <strong>אי-התאמה בספירה!</strong> נמשכו <strong>${allData.length}</strong> מתוך <strong>${countInfo.expectedCount}</strong> רשומות `
-                   + `· חסרות <strong>${diff}</strong> שורות. <strong>אנא נסה למשוך שוב.</strong>`;
+        statusHtml = `❌ <strong>אי-התאמה!</strong> data.length=${allData.length} אבל total=${countInfo.expectedCount} `
+                   + `· הפרש: <strong>${diff}</strong>. אנא נסה למשוך שוב.`;
         statusDiv.className = 'status error';
       } else {
-        // ספירה לא אומתה (Worker לא תומך) - אזהרה צהובה
+        // Worker ישן - אזהרה צהובה
         statusHtml = `✓ נמשכו <strong>${allData.length}</strong> רשומות `
-                   + `<span style="color:#f57c00" title="${countInfo.countError || ''}">(⚠️ ספירה לא אומתה)</span> `
+                   + `<span style="color:#f57c00" title="${countInfo.countError || ''}">(⚠️ Worker ישן - שדרג לאימות מלא)</span> `
                    + `· <strong>${Object.keys(structuredData).length}</strong> הזמנות · ${totalTime}s`;
         statusDiv.className = 'status success';
       }

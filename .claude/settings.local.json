@@ -19,7 +19,23 @@
       "Bash(git revert:*)",
       "Bash(dir:*)",
       "Bash(node --check:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__list_connected_browsers",
+      "mcp__Claude_in_Chrome__switch_browser",
+      "mcp__Claude_in_Chrome__select_browser",
+      "mcp__Claude_in_Chrome__browser_batch",
+      "mcp__Claude_in_Chrome__navigate",
+      "mcp__Claude_in_Chrome__get_page_text",
+      "mcp__Claude_in_Chrome__javascript_tool",
+      "mcp__eadb6966-8a4c-432c-ac3b-626bbd9b040f__accounts_list",
+      "mcp__eadb6966-8a4c-432c-ac3b-626bbd9b040f__set_active_account",
+      "mcp__eadb6966-8a4c-432c-ac3b-626bbd9b040f__workers_list",
+      "mcp__eadb6966-8a4c-432c-ac3b-626bbd9b040f__workers_get_worker_code",
+      "Bash(node -c worker/priority-proxy.js)",
+      "Bash(which wrangler *)",
+      "Bash(npm list *)",
+      "Bash(npx --yes wrangler deploy --no-bundle)"
     ]
   }
 }
