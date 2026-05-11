@@ -117,24 +117,22 @@ function buildStableUrl(apiUrl, baseFilter, table, skip, top) {
 }
 
 // ============================================================
-// dedup בקצה השרת - לפי מפתח טבעי
+// dedup בקצה השרת - **רק שורות זהות לחלוטין**
 // ============================================================
+// חשוב: בעבר השתמשתי במפתח חלקי (ORDI+KLINEA) שגרם לאבדן מידע
+// כי ב-PRIT_ORDPACK_ONE יכולות להיות כמה שורות עם אותו ORDI+KLINEA
+// אבל ערכים שונים (למשל סוג אריזה / ארוחה / כשרות).
+//
+// עכשיו: dedup רק אם השורה זהה במאת האחוזים בכל השדות (JSON.stringify).
+// אם אפילו שדה אחד שונה - זו שורה אמיתית שונה ונשמרת.
 function dedupRows(rows, table) {
   if (!Array.isArray(rows) || rows.length === 0) return rows;
 
-  // לטבלת PRIT_ORDPACK_ONE - ORDI + KLINEA זה מפתח שורה ייחודי
-  // אם השדות חסרים - נופלים ל-JSON.stringify (פחות יעיל אבל נכון)
   const seen = new Set();
   const result = [];
   for (const r of rows) {
-    let key;
-    if (r && r.ORDI != null && r.KLINEA != null) {
-      key = `${r.ORDI}|${r.KLINEA}`;
-    } else if (r && r.ORDNAME && r.PARTNAME) {
-      key = `${r.ORDNAME}|${r.PARTNAME}|${r.MEALNAME || ''}`;
-    } else {
-      key = JSON.stringify(r);
-    }
+    // המפתח הוא JSON של כל השורה - רק שורות זהות 100% נחשבות ככפילות
+    const key = JSON.stringify(r);
     if (!seen.has(key)) {
       seen.add(key);
       result.push(r);
