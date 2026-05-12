@@ -4594,17 +4594,11 @@ function renderLabelsTableNoSQL(orders, container, labelsMode = 'all', sortMode 
         }
       }
       
-      // עיבוד כיתה - אם זה גן אז "גן", אם זה בית ספר אז להציג את הכיתה כמו שהיא (כולל "א" או "ב")
+      // עיבוד כיתה - תמיד להציג את השם המלא כמו שהוא ב-PRIT_CLASSNAME
+      // (כולל "גן חובה" / "גן טרום חובה" / "כיתה א" / "כיתה ב" וכו')
       let classText = '';
       if (order.pritClassname) {
-        const className = String(order.pritClassname).trim();
-        const classNameLower = className.toLowerCase();
-        if (classNameLower.includes('גן')) {
-          classText = 'גן';
-        } else {
-          // אם זה בית ספר - להציג את הכיתה כמו שהיא (כולל "א" או "ב" אם יש)
-          classText = className;
-        }
+        classText = String(order.pritClassname).trim();
       }
       
       // בדיקת כתובת - אם אין כתובת, לנסות גם state
@@ -6696,11 +6690,10 @@ function createAllergenLabelsReport(data) {
       return dateStr;
     };
     
-    // עיבוד כיתה
+    // עיבוד כיתה - תמיד להציג את השם המלא כמו ב-PRIT_CLASSNAME
+    // (כולל "גן חובה" / "גן טרום חובה" / "כיתה א" וכו')
     const formatClass = (className) => {
       if (!className) return '';
-      const cls = String(className).trim().toLowerCase();
-      if (cls.includes('גן')) return 'גן';
       return String(className).trim();
     };
     
