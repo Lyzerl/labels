@@ -446,38 +446,56 @@ function calculateContainersAndPacks(data) {
 
 // פונקציה לאיחוד שורות כפולות - אותה הזמנה, אותו מוצר, אותה ארוחה
 // שומרת רק שורה אחת לכל שילוב ייחודי, מסכמת כמויות
-// ============================================================
-// dedup צד-לקוח - **רק שורות זהות 100%**
-// ============================================================
-// בעבר השתמשתי במפתח חלקי (ORDNAME|PARTNAME|PARTDES|MEALNAME) שגרם
-// לאבדן מידע - שורות עם אותו מפתח אבל שדות שונים נמחקו בטעות.
-//
-// עכשיו: dedup רק אם השורה זהה לחלוטין (JSON.stringify).
-// אם הוורקר כבר ניקה כפילויות זהות - הפונקציה הזו תעשה 0 שינויים.
 function deduplicateRows(data) {
-  const seen = new Set();
-  const result = [];
+  const uniqueRowsMap = new Map();
   let exactDuplicates = 0;
+  let conflictingDuplicates = 0;
+  const conflicts = [];
 
-  for (const row of data) {
-    const key = JSON.stringify(row);
-    if (!seen.has(key)) {
-      seen.add(key);
-      result.push(row);
+  data.forEach(row => {
+    // מפתח ייחודי: הזמנה + מוצר + ארוחה
+    const ordName = String(row.ORDNAME || '').trim();
+    const partName = String(row.PARTNAME || '').trim();
+    const partDes = String(row.PARTDES || '').trim();
+    const mealName = String(row.MEALNAME || '').trim();
+
+    const uniqueKey = `${ordName}|${partName}|${partDes}|${mealName}`;
+
+    if (!uniqueRowsMap.has(uniqueKey)) {
+      uniqueRowsMap.set(uniqueKey, { ...row });
     } else {
-      exactDuplicates++;
+      const existing = uniqueRowsMap.get(uniqueKey);
+      const sameTQuant = parseFloat(existing.TQUANT || 0) === parseFloat(row.TQUANT || 0);
+      const sameEatQuant = parseFloat(existing.EATQUANT || 0) === parseFloat(row.EATQUANT || 0);
+
+      if (sameTQuant && sameEatQuant) {
+        exactDuplicates++;
+      } else {
+        conflictingDuplicates++;
+        if (conflicts.length < 5) {
+          conflicts.push({
+            key: uniqueKey,
+            existing: { TQUANT: existing.TQUANT, EATQUANT: existing.EATQUANT },
+            duplicate: { TQUANT: row.TQUANT, EATQUANT: row.EATQUANT }
+          });
+        }
+      }
     }
+  });
+
+  if (conflictingDuplicates > 0 && typeof console.error === 'function') {
+    console.error(`⚠️ deduplicateRows: ${conflictingDuplicates} שורות עם אותו מפתח אבל כמויות שונות!`, conflicts);
   }
 
   window._lastDedupStats = {
     inputRows: data.length,
-    outputRows: result.length,
+    outputRows: uniqueRowsMap.size,
     exactDuplicates,
-    conflictingDuplicates: 0,
-    conflicts: []
+    conflictingDuplicates,
+    conflicts
   };
 
-  return result;
+  return Array.from(uniqueRowsMap.values());
 }
 
 async function fetchData() {
